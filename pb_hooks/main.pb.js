@@ -1,5 +1,77 @@
 /// <reference path="../pb_data/types.d.ts" />
 
+// API endpoint to check if setup is needed
+routerAdd('GET', '/_api/setup-status', (e) => {
+	try {
+		const hasUsers = $app.findFirstRecordByFilter('users', '') !== null
+		let hasSuperusers = false
+		try {
+			hasSuperusers = $app.findFirstRecordByFilter('_superusers', '') !== null
+		} catch (superuserError) {
+			// _superusers collection might not exist or be accessible
+			console.log('Could not check superusers:', superuserError)
+			hasSuperusers = false
+		}
+
+		return e.json(200, {
+			setupComplete: hasUsers,
+			hasSuperuser: hasSuperusers
+		})
+	} catch (error) {
+		// If error checking, assume setup is needed
+		return e.json(200, { setupComplete: false, hasSuperuser: false })
+	}
+})
+
+// API endpoint to create superuser using PocketBase admin API
+routerAdd('POST', '/_api/create-superuser', (e) => {
+	try {
+		// Get email and password from request body first
+		let email
+		let password
+		try {
+			const body = e.request.header.get('content-type')?.includes('application/json') ? JSON.parse(readerToString(e.request.body)) : {}
+			email = body.email
+			password = body.password
+		} catch (err) {
+			console.log('Could not parse request body, using defaults')
+		}
+
+		// Check if superuser already exists with this email
+		try {
+			const existingSuperuser = $app.findFirstRecordByFilter('_superusers', `email = "${email}"`)
+			if (existingSuperuser) {
+				// Superuser with this email already exists, return success
+				return e.json(200, {
+					success: true,
+					credentials: { email, password: 'Same as admin password' },
+					message: 'Superuser already exists with this email.'
+				})
+			}
+		} catch (err) {
+			// _superusers collection might not exist or be accessible, continue
+			console.log('Error checking existing superusers:', err)
+		}
+
+		// Create superuser using PocketBase admin API
+		const superusersCollection = $app.findCollectionByNameOrId('_superusers')
+		const admin = new Record(superusersCollection, {
+			email: email,
+			password: password
+		})
+
+		$app.save(admin)
+
+		return e.json(200, {
+			success: true,
+			credentials: { email, password },
+			message: 'Superuser created successfully. You can change the password from the admin interface.'
+		})
+	} catch (error) {
+		console.error('Error creating superuser:', error)
+		return e.json(500, { error: 'Failed to create superuser: ' + error.message })
+	}
+})
 
 onRecordValidate((e) => {
 	if (!e.record) {
@@ -7,9 +79,17 @@ onRecordValidate((e) => {
 		return
 	}
 
+	const collection = e.record.collection()
+
+	// Skip validation for users collection during creation
+	// The users collection has its own validation
+	if (collection.name === 'users') {
+		e.next()
+		return
+	}
+
 	// Select model for validation
 	const { models } = require(__hooks + '/common/index.cjs')
-	const collection = e.record.collection()
 	const model = models[collection.name]
 	if (!model) {
 		e.next()
@@ -67,8 +147,6 @@ onRecordAfterUpdateSuccess((e) => {
 
 	e.next()
 }, 'users')
-
-routerAdd('GET', '/admin/{path...}', $apis.static('./pb_public', true))
 
 routerAdd('GET', '/{path...}', (e) => {
 	// Handle missing trailing slash

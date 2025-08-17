@@ -52,9 +52,7 @@
 	$effect(() => set_current_user())
 </script>
 
-{#if !$current_user}
-	<div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white;">Loading...</div>
-{:else if !$current_user?.serverRole}
+{#if !$current_user?.serverRole}
 	<div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white;">Forbidden</div>
 {:else}
 	<Sidebar.Provider>

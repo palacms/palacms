@@ -4,7 +4,10 @@
 	import { compilers_registered } from '$lib/stores'
 	import { registerProcessors } from '$lib/builder/component'
 	import { Toaster } from '$lib/components/ui/sonner'
-	import { set_current_user } from '$lib/pocketbase/user'
+	import { goto } from '$app/navigation'
+	import { page } from '$app/stores'
+	import { Users } from '$lib/pocketbase/collections'
+	import { onMount } from 'svelte'
 
 	let { children } = $props()
 
@@ -14,6 +17,36 @@
 			$compilers_registered = true
 		})
 	}
+
+	onMount(async () => {
+		// Skip redirect if already on setup page
+		if ($page.url.pathname.startsWith('/admin/setup')) {
+			return
+		}
+
+		// First check if user is already authenticated
+		const pb = Users.instance
+		if (pb.authStore.isValid) {
+			// User is already authenticated, no need to check setup
+			return
+		}
+
+		try {
+			// Check setup status using our custom API endpoint
+			const response = await fetch('/_api/setup-status')
+			console.log({ response })
+			if (response.ok) {
+				const data = await response.json()
+				console.log({ data })
+				if (!data.setupComplete) {
+					// No users exist, redirect to setup
+					goto('/admin/setup')
+				}
+			}
+		} catch (error) {
+			console.error('Error checking setup status:', error)
+		}
+	})
 </script>
 
 <Toaster />

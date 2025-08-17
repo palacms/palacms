@@ -24,7 +24,7 @@
 	import { current_user } from '$lib/pocketbase/user.js'
 	import { useImportSiteSymbol } from '$lib/ImportSymbol.svelte.js'
 	import { tick } from 'svelte'
-	import { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
 
 	const host = $derived(page.url.host)
 	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
@@ -121,7 +121,7 @@
 	let adding_block = $state(false)
 	let static_transition_dialog = $state(false)
 	let pending_symbol_toggle = $state<{ relation: any; symbol: any } | null>(null)
-	
+
 	// Handle unsaved changes for block editors
 	let editing_block_has_unsaved_changes = $state(false)
 	let creating_block_has_unsaved_changes = $state(false)
