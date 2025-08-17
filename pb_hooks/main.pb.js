@@ -1,95 +1,35 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// API endpoint to check if setup is needed
-routerAdd('GET', '/_api/setup-status', (e) => {
-	try {
-		const hasUsers = $app.findFirstRecordByFilter('users', '') !== null
-		let hasSuperusers = false
-		try {
-			hasSuperusers = $app.findFirstRecordByFilter('_superusers', '') !== null
-		} catch (superuserError) {
-			// _superusers collection might not exist or be accessible
-			console.log('Could not check superusers:', superuserError)
-			hasSuperusers = false
+onBootstrap((e) => {
+	// Some typings for this should be availabe in next Pocketbase update.
+	// https://github.com/pocketbase/pocketbase/discussions/7091#discussioncomment-14085548
+	// TODO: Use provided typings after the Pocketbase update.
+	$app.onServe().bindFunc((/** @type {core.ServeEvent} */ e) => {
+		e.installerFunc = (_app, systemSuperuser, baseURL) => {
+			/** 30 minutes in nanoseconds (1 min = 60 s; 1 s = 10^9 ns) */
+			const tokenDuration = 30 * 60 * 10 ** 9
+			const token = systemSuperuser.newStaticAuthToken(tokenDuration)
+			baseURL = baseURL.replace(/\/$/, '') // Remove trailing slash
+			const url = `${baseURL}/admin/setup#${token}`
+			$app.logger().info('Launch the URL below in the browser to start PalaCMS setup:\n' + url)
 		}
 
-		return e.json(200, {
-			setupComplete: hasUsers,
-			hasSuperuser: hasSuperusers
-		})
-	} catch (error) {
-		// If error checking, assume setup is needed
-		return e.json(200, { setupComplete: false, hasSuperuser: false })
-	}
+		e.next()
+	})
+
+	e.next()
 })
 
-// API endpoint to create superuser using PocketBase admin API
-routerAdd('POST', '/_api/create-superuser', (e) => {
-	try {
-		// Get email and password from request body first
-		let email
-		let password
-		try {
-			const body = e.request.header.get('content-type')?.includes('application/json') ? JSON.parse(readerToString(e.request.body)) : {}
-			email = body.email
-			password = body.password
-		} catch (err) {
-			console.log('Could not parse request body, using defaults')
-		}
-
-		// Check if superuser already exists with this email
-		try {
-			const existingSuperuser = $app.findFirstRecordByFilter('_superusers', `email = "${email}"`)
-			if (existingSuperuser) {
-				// Superuser with this email already exists, return success
-				return e.json(200, {
-					success: true,
-					credentials: { email, password: 'Same as admin password' },
-					message: 'Superuser already exists with this email.'
-				})
-			}
-		} catch (err) {
-			// _superusers collection might not exist or be accessible, continue
-			console.log('Error checking existing superusers:', err)
-		}
-
-		// Create superuser using PocketBase admin API
-		const superusersCollection = $app.findCollectionByNameOrId('_superusers')
-		const admin = new Record(superusersCollection, {
-			email: email,
-			password: password
-		})
-
-		$app.save(admin)
-
-		return e.json(200, {
-			success: true,
-			credentials: { email, password },
-			message: 'Superuser created successfully. You can change the password from the admin interface.'
-		})
-	} catch (error) {
-		console.error('Error creating superuser:', error)
-		return e.json(500, { error: 'Failed to create superuser: ' + error.message })
-	}
-})
-
+// Validate records
 onRecordValidate((e) => {
 	if (!e.record) {
 		e.next()
 		return
 	}
 
-	const collection = e.record.collection()
-
-	// Skip validation for users collection during creation
-	// The users collection has its own validation
-	if (collection.name === 'users') {
-		e.next()
-		return
-	}
-
 	// Select model for validation
 	const { models } = require(__hooks + '/common/index.cjs')
+	const collection = e.record.collection()
 	const model = models[collection.name]
 	if (!model) {
 		e.next()
@@ -122,6 +62,7 @@ onRecordValidate((e) => {
 	e.next()
 })
 
+// Send email invitations
 onRecordAfterCreateSuccess((e) => {
 	if (e.record.get('invite') === 'pending') {
 		try {
@@ -135,6 +76,7 @@ onRecordAfterCreateSuccess((e) => {
 	e.next()
 }, 'users')
 
+// Send email invitations
 onRecordAfterUpdateSuccess((e) => {
 	if (e.record.get('invite') === 'pending') {
 		try {
@@ -148,6 +90,10 @@ onRecordAfterUpdateSuccess((e) => {
 	e.next()
 }, 'users')
 
+// Serve admin pages
+routerAdd('GET', '/admin/{path...}', $apis.static('./pb_public', true))
+
+// Serve sites
 routerAdd('GET', '/{path...}', (e) => {
 	// Handle missing trailing slash
 	if (e.request.url.path.slice(-1) !== '/') {
@@ -190,6 +136,7 @@ routerAdd('GET', '/{path...}', (e) => {
 	}
 })
 
+// Serve site previews
 routerAdd('GET', '/_preview/{site}', (e) => {
 	const siteId = e.request.pathValue('site')
 	let site
@@ -215,6 +162,7 @@ routerAdd('GET', '/_preview/{site}', (e) => {
 	}
 })
 
+// Serve compiled symbol JavaScript
 routerAdd('GET', '/_symbols/{filename}', (e) => {
 	const filename = e.request.pathValue('filename')
 

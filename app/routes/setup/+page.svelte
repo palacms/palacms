@@ -3,8 +3,8 @@
 	import { Users, manager } from '$lib/pocketbase/collections'
 	import { Loader } from 'lucide-svelte'
 	import ServerLogo from '$lib/components/ui/ServerLogo.svelte'
-	import { onMount } from 'svelte'
-	import axios from 'axios'
+	import { self } from '$lib/pocketbase/PocketBase'
+	import { page } from '$app/state'
 
 	let current_step = $state(1)
 	let email = $state('')
@@ -14,24 +14,41 @@
 	let navigating = $state(false)
 	let checking_setup = $state(true)
 	let error = $state('')
-	let superuser_credentials: { email: string; password: string } | null = $state(null)
 	const is_form_valid = $derived(email.trim() !== '' && password.length >= 8 && confirm_password !== '' && password === confirm_password)
-	$inspect({ is_form_valid })
+	const token = $derived(page.url.hash.slice(1))
+	const authOpts = $derived({ headers: { Authorization: token } })
+
+	const users = self.collection('users')
+	const superusers = self.collection('_superusers')
 
 	// Check if setup is already complete and redirect if so
-	onMount(async () => {
-		try {
-			const { data } = await axios.get('/_api/setup-status')
-			if (data.setupComplete) {
-				// Setup is already complete, redirect to dashboard
-				await goto('/admin/dashboard', { replaceState: true })
-				return
-			}
-		} catch (error) {
-			// If there's an error, assume setup is needed
-			console.error('Error checking setup status:', error)
+	$effect(() => {
+		checking_setup = true
+		error = ''
+
+		if (!token) {
+			error = 'Missing the access token. Is the URL correct?'
+			return
 		}
-		checking_setup = false
+
+		superusers
+			.getList(0, 0, { ...authOpts, filter: 'email != "__pbinstaller@example.com"' })
+			.catch((err) => {
+				error = 'Authentication failed! Is the URL correct? Setup URL is generated when starting up PalaCMS and is valid for 30 minutes.'
+				throw err
+			})
+			.then(({ totalItems: userCount }) => {
+				if (userCount > 0) {
+					// Setup already complete
+					error = 'Setup is already completed! Redirecting...'
+					return goto('/admin', { replaceState: true })
+				} else {
+					checking_setup = false
+				}
+			})
+			.catch((err) => {
+				console.error('Setup failed:', err)
+			})
 	})
 
 	const create_user = async (event: SubmitEvent) => {
@@ -46,47 +63,37 @@
 		error = ''
 
 		try {
-			Users.create({
-				email,
-				password,
-				passwordConfirm: password,
-				serverRole: 'developer'
-			})
-			await manager.commit()
+			await users.create(
+				{
+					email,
+					password,
+					passwordConfirm: password,
+					serverRole: 'developer'
+				},
+				authOpts
+			)
+
+			await superusers.create(
+				{
+					email,
+					password,
+					passwordConfirm: password
+				},
+				authOpts
+			)
 
 			// Authenticate the user immediately after creation
 			try {
-				await Users.instance.collection('users').authWithPassword(email, password)
+				await Users.authWithPassword(email, password)
 				console.log('User authenticated successfully')
 				console.log('Auth record:', Users.instance.authStore.record)
 			} catch (authError) {
 				console.warn('Could not authenticate user:', authError)
 			}
 
-			// Also create superuser for database access with same credentials
-			try {
-				const response = await fetch('/_api/create-superuser', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						email: email,
-						password: password
-					})
-				})
-				if (response.ok) {
-					const data = await response.json()
-					superuser_credentials = data.credentials
-				}
-			} catch (superuserError) {
-				console.warn('Could not create superuser:', superuserError)
-			}
-
 			current_step = 2
 		} catch (err: any) {
 			console.error('User creation error:', err)
-			console.error('Error response data:', err.response?.data)
 
 			// Extract specific field errors if available
 			if (err.response?.data) {
@@ -105,7 +112,7 @@
 		console.log('Completing setup, navigating to /admin/site')
 		console.log('User authenticated:', Users.instance.authStore.isValid)
 		navigating = true
-		window.location.reload()
+		goto('/admin/site', { replaceState: true })
 	}
 </script>
 
@@ -123,10 +130,16 @@
 			</header>
 
 			{#if checking_setup}
-				<div class="loading-container">
-					<Loader class="animate-spin" />
-					<p>Checking setup status...</p>
-				</div>
+				{#if error}
+					<div class="loading-container">
+						<p class="error">{error}</p>
+					</div>
+				{:else}
+					<div class="loading-container">
+						<Loader class="animate-spin" />
+						<p>Checking setup status...</p>
+					</div>
+				{/if}
 			{:else}
 				<div class="steps-indicator">
 					<div class="step" class:active={current_step === 1} class:completed={current_step > 1}>
@@ -176,7 +189,7 @@
 						<div class="credentials-box">
 							<div class="credential-item">
 								<strong>Email:</strong>
-								{superuser_credentials?.email}
+								{email}
 							</div>
 							<div class="credential-item">
 								<strong>Password:</strong>

@@ -32,7 +32,12 @@
 </script>
 
 {#if creating_site}
-	<CreateSite />
+	<CreateSite
+		oncreated={() => {
+			manager.lists.clear()
+			creating_site = false
+		}}
+	/>
 {:else if site}
 	<Pala {site}>
 		{@render children?.()}

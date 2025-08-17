@@ -14,6 +14,8 @@
 	import { useCloneSite } from '$lib/CloneSite.svelte'
 	import { convert_markdown_to_html } from '$lib/builder/utils'
 
+	const { oncreated }: { oncreated?: () => void } = $props()
+
 	const all_site_groups = $derived(SiteGroups.list() ?? [])
 	const site_group = $derived(all_site_groups?.find((g) => g.name === 'Default') || all_site_groups?.[0])
 
@@ -193,12 +195,10 @@
 			})
 
 			await manager.commit()
-			// Reload to ensure permissions are properly initialized
-			window.location.reload()
+			oncreated?.()
 		} else {
 			await cloneSite()
-			// Reload to ensure permissions are properly initialized
-			window.location.reload()
+			oncreated?.()
 		}
 	}
 </script>
