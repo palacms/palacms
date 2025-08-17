@@ -1,6 +1,8 @@
-# PalaCMS (formerly Primo) V3 Beta
+# PalaCMS V3 Beta
 
-**The modern CMS that gives developers the control they need and content editors the simplicity they've always wanted.**
+**Pala is a modern monolithic CMS that gives developers the control they need and content editors the simplicity they've always wanted.** 
+
+![screenshot](https://cdn.primo.page/f52960e1-0bb0-4c64-9f70-5a9994ce95fc/staging/_images/1739675414227Screenshot%202025-02-15%20at%2010.10.10%E2%80%AFPM.png)
 
 ## ✨ Why Pala?
 
