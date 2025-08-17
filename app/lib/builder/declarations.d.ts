@@ -1,1 +1,1 @@
-declare module '@primocms/builder/stores/data/site';
+declare module '@primocms/builder/stores/data/site'

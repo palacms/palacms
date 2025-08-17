@@ -5,13 +5,12 @@
 	"type": "module",
 	"scripts": {
 		"dev": "devenv up",
-		"test": "playwright test",
 		"build": "NODE_OPTIONS=--max_old_space_size=16384 vite build",
 		"preview": "vite preview",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
-		"lint": "prettier --plugin-search-dir . --check .",
-		"format": "prettier --plugin-search-dir . --write ."
+		"check": "svelte-kit sync && svelte-check",
+		"check:watch": "svelte-kit sync && svelte-check --watch",
+		"lint": "prettier --check .",
+		"format": "prettier --write ."
 	},
 	"devDependencies": {
 		"@atlaskit/pragmatic-drag-and-drop": "^1.7.4",
@@ -21,7 +20,6 @@
 		"@codemirror/lang-html": "^6.4.9",
 		"@emmetio/codemirror6-plugin": "^0.4.0",
 		"@iconify/svelte": "^5.0.1",
-		"@playwright/test": "^1.54.2",
 		"@replit/codemirror-lang-svelte": "^6.0.0",
 		"@rollup/browser": "^4.46.2",
 		"@sveltejs/adapter-static": "^3.0.8",

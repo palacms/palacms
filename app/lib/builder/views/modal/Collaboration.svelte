@@ -217,12 +217,12 @@
 			font-weight: 500;
 			text-transform: uppercase;
 			letter-spacing: 0.025em;
-			
+
 			&.pending {
 				background: rgba(251, 191, 36, 0.2);
 				color: #fbbf24;
 			}
-			
+
 			&.sent {
 				background: rgba(129, 140, 248, 0.2);
 				color: #818cf8;

@@ -1,6 +1,5 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-
 onRecordValidate((e) => {
 	if (!e.record) {
 		e.next()

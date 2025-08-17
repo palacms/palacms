@@ -89,7 +89,6 @@ function build_fields({ symbols, site }) {
 	return [...symbol_fields, ...site_fields]
 }
 
-
 /** @returns {Array<import('$lib').Section>} */
 function build_sections(pages, sections, standard_page_type_id) {
 	// add palette section for each page (w/ master as pallete master)
@@ -118,12 +117,14 @@ function build_sections(pages, sections, standard_page_type_id) {
 
 /** @returns {Array<import('$lib').Symbol>} */
 function build_symbols(symbols, site_id, standard_page_type_id) {
-	return symbols.map((s, i) => factories.Symbol({
-		...s,
-		site: site_id,
-		index: s.index || i,
-		page_types: [standard_page_type_id]
-	}))
+	return symbols.map((s, i) =>
+		factories.Symbol({
+			...s,
+			site: site_id,
+			index: s.index || i,
+			page_types: [standard_page_type_id]
+		})
+	)
 }
 
 /** @returns {Array<import('$lib').Page>} */
@@ -158,7 +159,7 @@ function build_site(site) {
 	return Site({
 		id: site.id,
 		name: site.name,
-		code: Enclosing_Code(site.code),
+		code: Enclosing_Code(site.code)
 		// design: site.design,
 		// custom_domain: site.custom_domain
 	})

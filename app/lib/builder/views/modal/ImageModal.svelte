@@ -64,69 +64,69 @@
 </script>
 
 <div class="image-modal">
-		{#if loading}
-			<UI.Spinner />
-		{:else}
-			<div class="image-preview">
-				{#if local_value.size}
-					<span class="field-size">
-						{local_value.size}KB
-					</span>
+	{#if loading}
+		<UI.Spinner />
+	{:else}
+		<div class="image-preview">
+			{#if local_value.size}
+				<span class="field-size">
+					{local_value.size}KB
+				</span>
+			{/if}
+			{#if imagePreview}
+				<img src={imagePreview} alt="Preview" />
+			{/if}
+			<label class="image-upload">
+				<Icon height="2rem" icon="uil:image-upload" />
+				{#if !local_value.url}
+					<span>Upload</span>
 				{/if}
-				{#if imagePreview}
-					<img src={imagePreview} alt="Preview" />
-				{/if}
-				<label class="image-upload">
-					<Icon height="2rem" icon="uil:image-upload" />
-					{#if !local_value.url}
-						<span>Upload</span>
-					{/if}
-					<input onchange={encodeImageFileAsURL} type="file" accept="image/*" />
-				</label>
-			</div>
-		{/if}
-		<form
-			onsubmit={(event) => {
-				event.preventDefault()
-				onsave(local_value)
-			}}
-		>
-			<div class="inputs">
-				<label class="image-input">
-					<span>URL</span>
-					<!-- svelte-ignore a11y_autofocus -->
-					<input
-						autofocus
-						oninput={({ target }) => {
-							imagePreview = target.value
-							local_value = {
-								alt: '',
-								url: target.value,
-								size: null
-							}
-						}}
-						value={local_value.url}
-						type="url"
-					/>
-				</label>
-				<label class="image-input">
-					<span>Description</span>
-					<input 
-						type="text" 
-						value={local_value.alt}
-						oninput={({ target }) => {
-							local_value = {
-								...local_value,
-								alt: target.value
-							}
-						}}
-					/>
-				</label>
-			</div>
-			<footer>
-				<Button type="submit" label="Add Image" />
-			</footer>
-		</form>
+				<input onchange={encodeImageFileAsURL} type="file" accept="image/*" />
+			</label>
+		</div>
+	{/if}
+	<form
+		onsubmit={(event) => {
+			event.preventDefault()
+			onsave(local_value)
+		}}
+	>
+		<div class="inputs">
+			<label class="image-input">
+				<span>URL</span>
+				<!-- svelte-ignore a11y_autofocus -->
+				<input
+					autofocus
+					oninput={({ target }) => {
+						imagePreview = target.value
+						local_value = {
+							alt: '',
+							url: target.value,
+							size: null
+						}
+					}}
+					value={local_value.url}
+					type="url"
+				/>
+			</label>
+			<label class="image-input">
+				<span>Description</span>
+				<input
+					type="text"
+					value={local_value.alt}
+					oninput={({ target }) => {
+						local_value = {
+							...local_value,
+							alt: target.value
+						}
+					}}
+				/>
+			</label>
+		</div>
+		<footer>
+			<Button type="submit" label="Add Image" />
+		</footer>
+	</form>
 </div>
 
 <style lang="postcss">

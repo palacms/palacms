@@ -121,7 +121,7 @@
 	let adding_block = $state(false)
 	let static_transition_dialog = $state(false)
 	let pending_symbol_toggle = $state<{ relation: any; symbol: any } | null>(null)
-	
+
 	// Handle unsaved changes for block editors
 	let editing_block_has_unsaved_changes = $state(false)
 	let creating_block_has_unsaved_changes = $state(false)

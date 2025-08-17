@@ -5,6 +5,7 @@
 ## ✨ V3 Features & Improvements
 
 ### New in V3
+
 - **Self-hosting with PocketBase** - Run PalaCMS on your own infrastructure with PocketBase as the backend
 - **Custom Page Types** - Create flexible content types for different kinds of pages
 - **Dynamic Content Fields** - Site fields, page fields, and relational content that updates across pages
@@ -14,6 +15,7 @@
 - **10x Faster Builds** - Incremental page generation instead of rebuilding everything
 
 ### Enhanced User Experience
+
 - **Conditional Fields** - Show/hide fields based on other field values
 - **CSS Framework Support** - Works reliably with Bootstrap, Tailwind, Bulma, and other frameworks
 - **Improved Drag & Drop** - Better block placement, works on mobile
@@ -22,6 +24,7 @@
 - **Refined Block Editor** - Cleaner separation between code and content
 
 ### Coming in Beta
+
 - **Marketplace Integration** - Browse and install community blocks and starters
 - **Plugin API** - Easily create custom plugins to extend Pala's functionality.
 - **Enhanced Deployment** - Streamlined publishing workflow
