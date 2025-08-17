@@ -19,10 +19,12 @@
 	import { Sites, PageTypes, SiteSymbols, PageTypeSymbols, SiteSymbolFields, SiteSymbolEntries, PageTypeFields, PageTypeEntries, manager } from '$lib/pocketbase/collections'
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import DropZone from '$lib/components/DropZone.svelte'
-	import { exportSymbol, importSiteSymbol } from '$lib/builder/utils/symbolImportExport'
 	import { Button } from '$lib/components/ui/button'
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user.js'
+	import { useImportSiteSymbol } from '$lib/ImportSymbol.svelte.js'
+	import { tick } from 'svelte'
+	import { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
 
 	const host = $derived(page.url.host)
 	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
@@ -49,35 +51,30 @@
 	let upload_dialog_open = $state(false)
 	let upload_file_invalid = $state(false)
 
-	async function upload_block(file: File) {
-		if (!file || !site) return
+	let file = $state<File>()
+	const importSiteSymbol = $derived(useImportSiteSymbol(file, site?.id))
+	async function upload_block(newFile: File) {
+		file = newFile
+		await tick()
 
+		if (!file || !site) return
 		try {
 			console.log('Importing file:', file.name, 'Size:', file.size)
-			const text = await file.text()
-			console.log('File content preview:', text.substring(0, 200))
-
-			await importSiteSymbol(file, site.id, {
-				SiteSymbols,
-				SiteSymbolFields,
-				SiteSymbolEntries
-			})
+			await importSiteSymbol.run()
 			upload_dialog_open = false
 			upload_file_invalid = false
+			file = undefined
 			console.log('Import successful!')
 		} catch (error) {
 			console.error('Failed to import symbol:', error)
 			console.error('Error details:', error.message, error.stack)
 			upload_file_invalid = true
+			file = undefined
 		}
 	}
 
-	function export_block(symbol) {
-		exportSymbol(symbol)
-	}
-
 	let active_block_id = $state(null)
-	let active_block = $state(null)
+	let active_block = $state<ObjectOf<typeof SiteSymbols>>()
 
 	function edit_block(block, block_id) {
 		active_block = block
@@ -122,11 +119,13 @@
 	let editing_block = $state(false)
 	let creating_block = $state(false)
 	let adding_block = $state(false)
-	
+	let static_transition_dialog = $state(false)
+	let pending_symbol_toggle = $state<{ relation: any; symbol: any } | null>(null)
+
 	// Handle unsaved changes for block editors
 	let editing_block_has_unsaved_changes = $state(false)
 	let creating_block_has_unsaved_changes = $state(false)
-	
+
 	let commit_task = $state<NodeJS.Timeout>()
 </script>
 
@@ -152,7 +151,7 @@
 			block={active_block}
 			bind:has_unsaved_changes={editing_block_has_unsaved_changes}
 			header={{
-				title: `Edit ${active_block?.title || 'Block'}`,
+				title: `Edit ${active_block?.name || 'Block'}`,
 				button: {
 					label: 'Save',
 					onclick: () => {
@@ -217,6 +216,41 @@
 	</Dialog.Content>
 </Dialog.Root>
 
+<!-- Static Transition Dialog -->
+<Dialog.Root bind:open={static_transition_dialog}>
+	<Dialog.Content class="sm:max-w-[500px] p-6 pt-12">
+		<div class="mb-6">
+			<h2 class="text-lg font-semibold mb-2">Page Type Becoming Static</h2>
+			<p class="text-sm text-gray-400 leading-relaxed">
+				This page type will become static. Existing pages will keep their current sections but you won't be able to add to, remove, or reorder them. New pages will use the current template.
+			</p>
+		</div>
+		<div class="flex gap-2 justify-end">
+			<Button
+				variant="outline"
+				onclick={() => {
+					static_transition_dialog = false
+					pending_symbol_toggle = null
+				}}
+			>
+				Cancel
+			</Button>
+			<Button
+				onclick={() => {
+					if (pending_symbol_toggle) {
+						PageTypeSymbols.delete(pending_symbol_toggle.relation.id)
+						manager.commit()
+					}
+					static_transition_dialog = false
+					pending_symbol_toggle = null
+				}}
+			>
+				Continue
+			</Button>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>
+
 <div class="sidebar primo-reset">
 	<Tabs.Root value={active_tab === 'CONTENT' ? 'content' : 'blocks'} class="p-2">
 		<Tabs.List class="w-full mb-2">
@@ -262,9 +296,20 @@
 									{toggled}
 									on:toggle={({ detail }) => {
 										if (!page_type || detail === toggled) return // dispatches on creation for some reason
+
+										// Check if this toggle would make the page type static
+										const current_symbol_count = page_type_symbols.length
+										const will_be_static = toggled && current_symbol_count === 1 // removing last symbol
+
 										if (toggled) {
-											PageTypeSymbols.delete(relation.id)
-											manager.commit()
+											// Show dialog before making static
+											if (will_be_static) {
+												pending_symbol_toggle = { relation, symbol }
+												static_transition_dialog = true
+											} else {
+												PageTypeSymbols.delete(relation.id)
+												manager.commit()
+											}
 										} else {
 											PageTypeSymbols.create({ page_type: page_type.id, symbol: symbol.id })
 											manager.commit()

@@ -92,7 +92,7 @@
 
 	let showing_block_toolbar = $state(false)
 	let hovering_toolbar = $state(false)
-	
+
 	// Handle unsaved changes for section editor
 	let section_has_unsaved_changes = $state(false)
 	async function show_block_toolbar() {
@@ -478,6 +478,7 @@
 			bind:node={block_toolbar_element}
 			id={hovered_section_id}
 			i={page_type_sections.findIndex((s) => s.id === hovered_section_id)}
+			is_last={page_type_sections.findIndex((s) => s.id === hovered_section_id) === page_type_sections.length - 1}
 			on:delete={async () => {
 				if (!hovered_section_id) return
 				PageTypeSections.delete(hovered_section_id)
@@ -806,6 +807,7 @@
 	}
 
 	.page-zone {
+		padding: 0.5rem;
 		position: relative;
 		border: 2px dashed rgba(255, 255, 255, 0.1);
 		transition: all 0.2s ease;

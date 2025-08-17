@@ -113,7 +113,7 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
                   props
                 })
               } catch(e) {
-                document.querySelector('body').innerHTML = ''
+                document.querySelector('#component').innerHTML = ''
                 console.error(e.toString())
               }
             })
@@ -121,7 +121,7 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
         </script>
         ${head}
       </head>
-      <body id="page" style="margin:0;overflow:hidden;">
+      <body style="margin:0;overflow:hidden;">
         <div id="component"></div>
         ${foot}
         <style>

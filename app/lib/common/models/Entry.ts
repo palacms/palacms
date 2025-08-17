@@ -6,7 +6,7 @@ export const Entry = z.object({
 	locale: z.enum(locales),
 	value: z.any(),
 	field: z.string().nonempty(),
-	parent: z.string().optional().nullable(),
+	parent: z.string().optional(),
 	index: z.number().int().nonnegative()
 })
 

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { Button } from "$lib/components/ui/button/index.js";
-	import { cn } from "$lib/utils.ts";
-	import {PanelLeft} from "lucide-svelte";
-	import type { ComponentProps } from "svelte";
-	import { useSidebar } from "./context.svelte.js";
+	import { Button } from '$lib/components/ui/button/index.js'
+	import { cn } from '$lib/utils.ts'
+	import { PanelLeft } from 'lucide-svelte'
+	import type { ComponentProps } from 'svelte'
+	import { useSidebar } from './context.svelte.js'
 
 	let {
 		ref = $bindable(null),
@@ -11,22 +11,22 @@
 		onclick,
 		...restProps
 	}: ComponentProps<typeof Button> & {
-		onclick?: (e: MouseEvent) => void;
-	} = $props();
+		onclick?: (e: MouseEvent) => void
+	} = $props()
 
-	const sidebar = useSidebar();
+	const sidebar = useSidebar()
 </script>
 
 <Button
 	type="button"
 	onclick={(e) => {
-		onclick?.(e);
-		sidebar.toggle();
+		onclick?.(e)
+		sidebar.toggle()
 	}}
 	data-sidebar="trigger"
 	variant="ghost"
 	size="icon"
-	class={cn("h-7 w-7", className)}
+	class={cn('h-7 w-7', className)}
 	{...restProps}
 >
 	<PanelLeft />

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import CreateBlock from '$lib/components/Modals/CreateBlock.svelte'
 	import * as Sidebar from '$lib/components/ui/sidebar'
 	import * as Dialog from '$lib/components/ui/dialog'
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu'
@@ -7,7 +6,6 @@
 	import { Input } from '$lib/components/ui/input'
 	import * as RadioGroup from '$lib/components/ui/radio-group'
 	import { Label } from '$lib/components/ui/label'
-	import { processCode } from '$lib/builder/utils.js'
 	import { Separator } from '$lib/components/ui/separator'
 	import { Button } from '$lib/components/ui/button'
 	import EmptyState from '$lib/components/EmptyState.svelte'
@@ -19,8 +17,11 @@
 	import { useSidebar } from '$lib/components/ui/sidebar'
 	import { LibrarySymbolGroups, LibrarySymbols, LibrarySymbolFields, LibrarySymbolEntries, manager, SiteSymbols } from '$lib/pocketbase/collections'
 	import type { LibrarySymbol } from '$lib/common/models/LibrarySymbol'
-	import { exportSymbol, importLibrarySymbol } from '$lib/builder/utils/symbolImportExport'
+	import { useImportLibrarySymbol } from '$lib/ImportSymbol.svelte'
+	import { tick } from 'svelte'
+	import { BlockEditor } from '$lib/builder/views/modal'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { useExportLibrarySymbol } from '$lib/ExportSymbol.svelte'
 
 	const active_symbol_group_id = $derived(page.url.searchParams.get('group'))
 	const active_symbol_group = $derived(active_symbol_group_id ? LibrarySymbolGroups.one(active_symbol_group_id) : undefined)
@@ -31,19 +32,18 @@
 
 	const sidebar = useSidebar()
 
-	let editing_head = $state(false)
 	let creating_block = $state(false)
 
-	// Create a fresh symbol object for new blocks
-	let new_symbol = $state({ name: '', css: '', html: '', js: '' })
-
 	function open_create_block() {
-		// Reset to fresh symbol data
-		new_symbol = { name: '', css: '', html: '', js: '' }
 		creating_block = true
 	}
 
-	async function upload_block_file(file) {
+	let file = $state<File>()
+	const importLibrarySymbol = $derived(useImportLibrarySymbol(file, active_symbol_group_id ?? undefined))
+	async function upload_block_file(newFile) {
+		file = newFile
+		await tick()
+
 		if (!file) return
 		if (!active_symbol_group_id) {
 			console.error('No active symbol group selected')
@@ -51,13 +51,10 @@
 		}
 
 		try {
-			await importLibrarySymbol(file, active_symbol_group_id, {
-				LibrarySymbols,
-				LibrarySymbolFields,
-				LibrarySymbolEntries
-			})
+			await importLibrarySymbol.run()
 			upload_dialog_open = false
 			upload_file_invalid = false
+			file = undefined
 		} catch (error) {
 			console.error('Failed to import symbol:', error)
 
@@ -67,31 +64,8 @@
 			}
 
 			upload_file_invalid = true
+			file = undefined
 		}
-	}
-
-	// TODO: Remove?
-	let generated_head_code = $state('')
-
-	async function compile_component_head(html) {
-		const compiled = await processCode({
-			component: {
-				html,
-				css: '',
-				js: ''
-			}
-		})
-		if (!compiled.error) {
-			return compiled.head
-		} else return ''
-	}
-
-	let loading = $state(false)
-	async function save_settings() {
-		loading = true
-
-		editing_head = false
-		loading = false
 	}
 
 	let is_rename_open = $state(false)
@@ -117,48 +91,14 @@
 	let upload_file_invalid = $state(false)
 
 	// Export symbol
+	let symbol_to_export = $state<ObjectOf<typeof SiteSymbols>>()
+	const exportSymbol = $derived(useExportLibrarySymbol(symbol_to_export?.id))
 	async function export_symbol(symbol: ObjectOf<typeof SiteSymbols>) {
-		try {
-			const fields = symbol.fields()
-			const entries = symbol.entries()
-
-			const symbolData = {
-				name: symbol.name,
-				html: symbol.html,
-				css: symbol.css,
-				js: symbol.js,
-				fields:
-					fields?.map((field) => ({
-						id: field.id,
-						key: field.key,
-						label: field.label,
-						type: field.type,
-						config: field.config,
-						parent: field.parent,
-						index: field.index
-					})) || [],
-				entries:
-					entries?.map((entry) => ({
-						id: entry.id,
-						locale: entry.locale,
-						field: entry.field,
-						value: entry.value
-					})) || []
-			}
-
-			const blob = new Blob([JSON.stringify(symbolData, null, 2)], { type: 'application/json' })
-			const url = URL.createObjectURL(blob)
-			const a = document.createElement('a')
-			a.href = url
-			a.download = `${symbol.name.replace(/[^a-zA-Z0-9]/g, '_')}.json`
-			document.body.appendChild(a)
-			a.click()
-			document.body.removeChild(a)
-			URL.revokeObjectURL(url)
-		} catch (error) {
-			console.error('Failed to export symbol:', error)
-		}
+		symbol_to_export = symbol
+		await tick()
+		await exportSymbol.run()
 	}
+
 	async function handle_delete() {
 		deleting = true
 		if (!active_symbol_group_id) return
@@ -169,10 +109,10 @@
 		is_delete_open = false
 	}
 
-	let symbol_being_edited: LibrarySymbol | null = $state(null)
+	let symbol_being_edited = $state<ObjectOf<typeof LibrarySymbols>>()
 	let is_symbol_editor_open = $state(false)
 
-	function begin_symbol_edit(symbol: LibrarySymbol) {
+	function begin_symbol_edit(symbol: ObjectOf<typeof LibrarySymbols>) {
 		symbol_being_edited = symbol
 		is_symbol_editor_open = true
 	}
@@ -190,7 +130,8 @@
 	async function handle_symbol_rename(e) {
 		e.preventDefault()
 		if (!symbol_being_renamed) return
-		symbol_being_renamed.name = new_name
+		LibrarySymbols.update(symbol_being_renamed.id, { name: new_name })
+		await manager.commit()
 		is_symbol_renamer_open = false
 		symbol_being_renamed = null
 	}
@@ -209,7 +150,8 @@
 
 	async function move_symbol() {
 		if (!symbol_being_moved) return
-		// Move implementation
+		LibrarySymbols.update(symbol_being_moved.id, { group: selected_group_id })
+		await manager.commit()
 		is_symbol_move_open = false
 		symbol_being_moved = null
 	}
@@ -233,45 +175,8 @@
 		deleting = false
 	}
 
-	async function save_symbol(data) {
-		if (!symbol_being_edited) return
-		// preview = data.preview
-		LibrarySymbols.update(symbol_being_edited.id, data)
-		await manager.commit()
-		is_symbol_editor_open = false
-		// Give the modal time to close before nullifying the symbol
-		setTimeout(() => {
-			symbol_being_edited = null
-		}, 200)
-	}
-
-	async function create_symbol(data) {
-		if (!active_symbol_group_id) return
-		try {
-			// Remove id for creation and ensure required fields
-			const { id, preview, ...symbolData } = data
-
-			// Try creating with minimal required fields only
-			const createData = {
-				name: symbolData.name || 'Untitled Block',
-				html: symbolData.html || '',
-				css: symbolData.css || '',
-				js: symbolData.js || '',
-				group: active_symbol_group_id
-			}
-			console.log('Creating symbol with data:', createData)
-			LibrarySymbols.create(createData)
-			await manager.commit()
-			creating_block = false
-			// Reset the new_symbol after modal closes
-			setTimeout(() => {
-				new_symbol = { name: '', css: '', html: '', js: '' }
-			}, 100)
-		} catch (error) {
-			console.error('Failed to create symbol:', error)
-			console.error('Error details:', error.response?.data || error.data)
-		}
-	}
+	let creating_block_has_unsaved_changes = $state(false)
+	let editing_block_has_unsaved_changes = $state(false)
 </script>
 
 <!-- Symbol Group Dialogs -->
@@ -361,7 +266,7 @@
 			<ul>
 				{#each group_symbols as symbol (symbol.id)}
 					<li>
-						<SymbolButton symbol_id={symbol.id} head={generated_head_code} onclick={() => begin_symbol_edit(symbol)}>
+						<SymbolButton symbol_id={symbol.id} onclick={() => begin_symbol_edit(symbol)}>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
 									<EllipsisVertical size={14} />
@@ -410,8 +315,8 @@
 			<RadioGroup.Root bind:value={selected_group_id}>
 				{#each symbol_groups ?? [] as group}
 					<div class="flex items-center space-x-2">
-						<RadioGroup.Item value={group.name} id={group.name} />
-						<Label for={group.name}>{group.name}</Label>
+						<RadioGroup.Item value={group.id} id={group.id} />
+						<Label for={group.id}>{group.name}</Label>
 					</div>
 				{/each}
 			</RadioGroup.Root>
@@ -422,15 +327,73 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<Dialog.Root bind:open={creating_block}>
+<Dialog.Root
+	bind:open={creating_block}
+	onOpenChange={(open) => {
+		if (!open) {
+			// Check for unsaved changes before closing
+			if (creating_block_has_unsaved_changes) {
+				if (!confirm('You have unsaved changes. Are you sure you want to close without saving?')) {
+					// Prevent closing by reopening the dialog
+					creating_block = true
+					return
+				}
+				// User confirmed, discard changes
+				manager.discard()
+			}
+		}
+	}}
+>
 	<Dialog.Content escapeKeydownBehavior="ignore" class="max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4 gap-0">
-		<CreateBlock bind:symbol={new_symbol} head={generated_head_code} onsubmit={create_symbol} symbol_type="library" />
+		<BlockEditor
+			symbol_type="library"
+			bind:has_unsaved_changes={creating_block_has_unsaved_changes}
+			header={{
+				title: `New Block`,
+				button: {
+					label: 'Save',
+					onclick: () => {
+						creating_block = false
+					}
+				}
+			}}
+		/>
 	</Dialog.Content>
 </Dialog.Root>
 
-<Dialog.Root bind:open={is_symbol_editor_open}>
+<Dialog.Root
+	bind:open={is_symbol_editor_open}
+	onOpenChange={(open) => {
+		if (!open) {
+			// Check for unsaved changes before closing
+			if (editing_block_has_unsaved_changes) {
+				if (!confirm('You have unsaved changes. Are you sure you want to close without saving?')) {
+					// Prevent closing by reopening the dialog
+					is_symbol_editor_open = true
+					return
+				}
+				// User confirmed, discard changes
+				manager.discard()
+			}
+		}
+	}}
+>
 	<Dialog.Content escapeKeydownBehavior="ignore" class="max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4 gap-0">
-		<CreateBlock symbol={symbol_being_edited} head={generated_head_code} onsubmit={save_symbol} symbol_type="library" />
+		<BlockEditor
+			block={symbol_being_edited}
+			symbol_type="library"
+			bind:has_unsaved_changes={editing_block_has_unsaved_changes}
+			header={{
+				title: `Edit ${symbol_being_edited?.name || 'Block'}`,
+				button: {
+					label: 'Save',
+					onclick: () => {
+						is_symbol_editor_open = false
+						symbol_being_edited = undefined
+					}
+				}
+			}}
+		/>
 	</Dialog.Content>
 </Dialog.Root>
 

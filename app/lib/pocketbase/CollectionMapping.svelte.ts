@@ -56,7 +56,9 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 
 	const mapObject = (record: unknown): MappedObject<T, Options> => {
 		const object = model.parse(record)
-		const links = Object.fromEntries(Object.entries(options?.links ?? {}).map(([property, factory]) => [property, factory.bind({ ...object, collection: collectionMapping })]))
+		const links = Object.fromEntries(
+			Object.entries(options?.links ?? {}).map(([property, factory]) => [property, factory.bind({ ...object, collection: collectionMapping, values: () => ({ ...object }) })])
+		)
 		return Object.assign({}, object, links, { collection: collectionMapping, values: () => ({ ...object }) })
 	}
 

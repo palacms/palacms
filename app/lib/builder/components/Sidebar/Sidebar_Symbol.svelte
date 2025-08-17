@@ -14,6 +14,7 @@
 	import { block_html } from '$lib/builder/code_generators'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { manager, SiteSymbols } from '$lib/pocketbase/collections'
+	import { useExportSiteSymbol } from '$lib/ExportSymbol.svelte'
 
 	const dispatch = createEventDispatcher()
 
@@ -106,44 +107,10 @@
 	})
 
 	// Export symbol
+	const exportSymbol = $derived(useExportSiteSymbol(symbol.id))
 	async function export_symbol() {
 		try {
-			const fields = symbol.fields()
-			const entries = symbol.entries()
-
-			const symbolData = {
-				name: symbol.name,
-				html: symbol.html,
-				css: symbol.css,
-				js: symbol.js,
-				fields:
-					fields?.map((field) => ({
-						id: field.id,
-						key: field.key,
-						label: field.label,
-						type: field.type,
-						config: field.config,
-						parent: field.parent,
-						index: field.index
-					})) || [],
-				entries:
-					entries?.map((entry) => ({
-						id: entry.id,
-						locale: entry.locale,
-						field: entry.field,
-						value: entry.value
-					})) || []
-			}
-
-			const blob = new Blob([JSON.stringify(symbolData, null, 2)], { type: 'application/json' })
-			const url = URL.createObjectURL(blob)
-			const a = document.createElement('a')
-			a.href = url
-			a.download = `${symbol.name.replace(/[^a-zA-Z0-9]/g, '_')}.json`
-			document.body.appendChild(a)
-			a.click()
-			document.body.removeChild(a)
-			URL.revokeObjectURL(url)
+			await exportSymbol.run()
 		} catch (error) {
 			console.error('Failed to export symbol:', error)
 		}

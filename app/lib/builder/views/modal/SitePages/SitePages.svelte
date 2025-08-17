@@ -4,7 +4,7 @@
 	import PageForm from './PageForm.svelte'
 	import Icon from '@iconify/svelte'
 	import { page } from '$app/state'
-	import { Sites, Pages, manager } from '$lib/pocketbase/collections'
+	import { Sites, Pages, PageTypes, PageSections, PageSectionEntries, manager } from '$lib/pocketbase/collections'
 	import { getContext } from 'svelte'
 
 	// Get site from context (preferred) or fallback to hostname lookup
@@ -17,17 +17,58 @@
 	const child_pages = $derived(home_page?.children() ?? [])
 
 	let creating_page = $state(false)
+
+	/**
+	 * Create a page and copy all page type sections to it
+	 * Note: Only copies root-level entries for now, nested entries are handled on-demand
+	 */
+	async function create_page_with_sections(page_data) {
+		const page = Pages.create(page_data)
+
+		if (page.page_type) {
+			const page_type = PageTypes.one(page.page_type)
+			if (page_type) {
+				const page_type_sections = page_type.sections() ?? []
+
+				// Copy each page type section to the new page
+				for (const pts of page_type_sections) {
+					// Create the page section
+					const page_section = PageSections.create({
+						page: page.id,
+						symbol: pts.symbol,
+						index: pts.index
+					})
+
+					// Find and copy only root-level entries (parent = null/empty)
+					const page_type_section_entries = pts.entries()?.filter((e) => !e.parent) ?? []
+
+					for (const ptse of page_type_section_entries) {
+						PageSectionEntries.create({
+							section: page_section.id,
+							field: ptse.field,
+							locale: ptse.locale,
+							value: ptse.value,
+							index: ptse.index
+						})
+					}
+				}
+			}
+		}
+
+		await manager.commit()
+		return page
+	}
 </script>
 
 <Dialog.Header title="Pages" />
 {#if home_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)]">
 		<li>
-			<Item page={home_page} active={false} />
+			<Item page={home_page} active={false} oncreate={create_page_with_sections} />
 		</li>
 		{#each child_pages as child_page}
 			<li>
-				<Item page={child_page} active={false} />
+				<Item page={child_page} active={false} oncreate={create_page_with_sections} />
 			</li>
 		{/each}
 	</ul>
@@ -41,8 +82,7 @@
 					if (url_taken) {
 						alert(`That URL is already in use`)
 					} else {
-						Pages.create({ ...new_page, parent: home_page.id, site: site.id })
-						await manager.commit()
+						await create_page_with_sections({ ...new_page, parent: home_page.id, site: site.id })
 					}
 				}}
 			/>

@@ -14,7 +14,7 @@
 	import { locale } from '$lib/builder/stores/app/misc.js'
 	import hotkey_events from '$lib/builder/stores/app/hotkey_events.js'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { manager, Sites, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '$lib/pocketbase/collections'
+	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, Sites, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '$lib/pocketbase/collections'
 	import { page } from '$app/state'
 	import { getContent } from '$lib/pocketbase/content'
 	import { browser } from '$app/environment'
@@ -34,21 +34,44 @@
 					console.warn('Component not going anywhere', component)
 				}
 			}
-		}
-	}: { block?: ObjectOf<typeof SiteSymbols>; tab?: string; has_unsaved_changes?: boolean; header?: any } = $props()
+		},
+		symbol_type
+	}: {
+		block?: ObjectOf<typeof SiteSymbols> | ObjectOf<typeof LibrarySymbols>
+		tab?: string
+		has_unsaved_changes?: boolean
+		header?: any
+		symbol_type?: 'site' | 'library'
+	} = $props()
+
+	// Choose the right collections based on symbol type
+	const SymbolCollection = $derived(symbol_type === 'library' ? LibrarySymbols : SiteSymbols)
+	const FieldCollection = $derived(symbol_type === 'library' ? LibrarySymbolFields : SiteSymbolFields)
+	const EntryCollection = $derived(symbol_type === 'library' ? LibrarySymbolEntries : SiteSymbolEntries)
 
 	const host = $derived(page.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = $derived(symbol_type !== 'library' && host ? Sites.list({ filter: `host = "${host}"` })?.[0] : undefined)
+
+	const active_symbol_group_id = $derived(page.url.searchParams.get('group'))
+	const active_symbol_group = $derived(symbol_type === 'library' && active_symbol_group_id ? LibrarySymbolGroups.one(active_symbol_group_id) : undefined)
+
 	const new_block = () => {
-		if (!site) {
-			throw new Error('Site not loaded')
+		if (symbol_type === 'library') {
+			if (!active_symbol_group) {
+				throw new Error('Symbol group not loaded')
+			}
+			return LibrarySymbols.create({ css: '', html: '', js: '', name: 'New Block', group: active_symbol_group.id })
+		} else {
+			if (!site) {
+				throw new Error('Site not loaded')
+			}
+			return SiteSymbols.create({ css: '', html: '', js: '', name: 'New Block', site: site.id })
 		}
-		return SiteSymbols.create({ css: '', html: '', js: '', name: 'New Block', site: site.id })
 	}
 	const block = $state(existing_block ?? new_block())
 
-	const fields = $derived(block.fields())
-	const entries = $derived(block.entries())
+	const fields = $derived('site' in block ? block.fields() : block.fields())
+	const entries = $derived('site' in block ? block.entries() : block.entries())
 	let component_data = $derived(fields && entries && (getContent(block, fields, entries)[$locale] ?? {}))
 
 	let loading = $state(false)
@@ -143,7 +166,7 @@
 					on:save={save_component}
 					on:mod-e={toggle_tab}
 					oninput={() => {
-						SiteSymbols.update(block.id, {
+						SymbolCollection.update(block.id, {
 							html,
 							css,
 							js
@@ -160,7 +183,7 @@
 						const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 						const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
 
-						return SiteSymbolFields.create({
+						return FieldCollection.create({
 							type: 'text',
 							key: '',
 							label: '',
@@ -174,16 +197,16 @@
 						setFieldEntries({
 							fields,
 							entries,
-							updateEntry: SiteSymbolEntries.update,
-							createEntry: SiteSymbolEntries.create,
+							updateEntry: EntryCollection.update,
+							createEntry: EntryCollection.create,
 							values
 						})
 					}}
 					onchange={({ id, data }) => {
-						SiteSymbolFields.update(id, data)
+						FieldCollection.update(id, data)
 					}}
 					ondelete={(field_id) => {
-						SiteSymbolFields.delete(field_id)
+						FieldCollection.delete(field_id)
 					}}
 				/>
 			{/if}

@@ -1,24 +1,20 @@
-# PalaCMS (formerly Primo) V3
+# PalaCMS (formerly Primo) V3 Beta
 
 **The modern CMS that gives developers the control they need and content editors the simplicity they've always wanted.**
 
-PalaCMS is an open-source content management system that lets you build beautiful, custom websites with a visual editor while maintaining direct control over your code and hosting.
+## ✨ Why Pala?
 
-> **🚧 V3 Status**: Currently in active development. The codebase is functional but we're working toward a stable beta release with significant improvements over V2.
+### ✍️ **Content Management Simplicity**
 
-## ✨ Why PalaCMS?
-
-### 🎨 **Visual + Code**
-
-- Build visually with drag-and-drop blocks
-- Direct access to component HTML, CSS, and JavaScript
-- Works with any CSS framework (Tailwind, Bootstrap, etc.)
-
-### ⚡ **Developer-Friendly**
-
-- Reusable component library
+- Visual, on-page content editing
 - Custom page types and dynamic fields
 - Real-time collaboration
+
+### ⚡️ **Developer Control**
+
+- Reusable component library
+- Direct access to component HTML, CSS, and JavaScript (powered by Svelte)
+- Works with any CSS framework (Tailwind, Bootstrap, etc.)
 
 ### 🏠 **Self-Hosted Freedom**
 
@@ -31,7 +27,7 @@ PalaCMS is an open-source content management system that lets you build beautifu
 - **Agencies** building custom sites for clients
 - **Developers** who want visual editing without sacrificing control
 - **Teams** collaborating on content and design
-- **Anyone** tired of WordPress limitations or expensive SaaS platforms
+- **Anyone** tired of WordPress limitations or locked-in SaaS platforms
 
 ## 🔥 V3 Features & Improvements
 
@@ -41,8 +37,6 @@ PalaCMS is an open-source content management system that lets you build beautifu
 - **Custom Page Types** - Create flexible content types for different kinds of pages
 - **Dynamic Content Fields** - Site fields, page fields, and relational content that updates across pages
 - **Block/Starter Library** - Reusable components and starter templates
-- **Design System Editor** - Built-in tools for managing your site's design system
-- **Real-time Collaboration** - Multiple users can edit simultaneously (in development)
 
 ### Enhanced User Experience
 
@@ -60,6 +54,9 @@ PalaCMS is an open-source content management system that lets you build beautifu
 - **Local Development Tools** - Full local development environment and CLI tools
 - **Marketplace Integration** - Browse and install community blocks and starters
 - **Plugin API** - Extend functionality with custom plugins
+
+### Getting Started
+Host Pala on any host that supports Docker: Railway, Fly.io, Hetzner. Railway template coming soon. 
 
 ## 📚 Documentation
 

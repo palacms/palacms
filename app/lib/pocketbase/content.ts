@@ -47,6 +47,7 @@ export const getContent = <Collection extends keyof typeof ENTRY_MODELS>(entity:
 		// Handle group fields specially - collect subfield entries into an object
 		if (field.type === 'group' && field.key) {
 			const [entry] = fieldEntries
+			if (!entry) continue
 			if (!content[entry.locale]) content[entry.locale] = {}
 			content[entry.locale]![field.key] = getContent(entity, fields, entries, field, entry)[entry.locale]
 		}
@@ -66,6 +67,7 @@ export const getContent = <Collection extends keyof typeof ENTRY_MODELS>(entity:
 		// For single-value fields, collect just get the first value
 		else if (field.key) {
 			const [entry] = fieldEntries
+			if (!entry) continue
 			if (!content[entry.locale]) content[entry.locale] = {}
 			content[entry.locale]![field.key] = entry.value
 		}

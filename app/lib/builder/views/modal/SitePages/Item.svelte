@@ -16,7 +16,7 @@
 	let editing_page = $state(false)
 
 	/** @type {Props} */
-	let { parent, page, active }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean } = $props()
+	let { parent, page, active, oncreate }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function } = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const context_site = getContext('site')
@@ -204,8 +204,7 @@
 					if (url_taken) {
 						alert(`That URL is already in use`)
 					} else {
-						Pages.create({ ...new_page, parent: page.id, site: site.id })
-						manager.commit()
+						await oncreate({ ...new_page, parent: page.id, site: site.id })
 					}
 				}}
 			/>

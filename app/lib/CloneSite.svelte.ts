@@ -81,39 +81,39 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 						parent: parent?.id
 					})
 					site_field_map.set(starter_site_field.id, field)
-
-					const site_entry_map = new Map<string, SiteEntry>()
-					const create_site_entries = (starter_parent_entry?: SiteEntry) => {
-						for (const starter_site_entry of data.site_entries) {
-							if (starter_parent_entry ? starter_site_entry.parent !== starter_parent_entry.id : starter_site_entry.parent) {
-								continue
-							}
-
-							if (starter_site_entry.field !== starter_site_field.id) {
-								continue
-							}
-
-							const parent = starter_site_entry.parent ? site_entry_map.get(starter_site_entry.parent) : undefined
-							if (starter_site_entry.parent && !parent) {
-								throw new Error('No parent site entry')
-							}
-
-							const entry = SiteEntries.create({
-								...starter_site_entry.values(),
-								id: undefined,
-								field: field.id,
-								parent: parent?.id
-							})
-							site_entry_map.set(starter_site_entry.id, entry)
-							create_site_entries(starter_site_entry)
-						}
-					}
-					create_site_entries()
-
 					create_site_fields(starter_site_field)
 				}
 			}
 			create_site_fields()
+
+			const site_entry_map = new Map<string, SiteEntry>()
+			const create_site_entries = (starter_parent_entry?: SiteEntry) => {
+				for (const starter_site_entry of data.site_entries) {
+					if (starter_parent_entry ? starter_site_entry.parent !== starter_parent_entry.id : starter_site_entry.parent) {
+						continue
+					}
+
+					const field = site_field_map.get(starter_site_entry.field)
+					if (!field) {
+						throw new Error('No site field for site entry')
+					}
+
+					const parent = starter_site_entry.parent ? site_entry_map.get(starter_site_entry.parent) : undefined
+					if (starter_site_entry.parent && !parent) {
+						throw new Error('No parent site entry')
+					}
+
+					const entry = SiteEntries.create({
+						...starter_site_entry.values(),
+						id: undefined,
+						field: field.id,
+						parent: parent?.id
+					})
+					site_entry_map.set(starter_site_entry.id, entry)
+					create_site_entries(starter_site_entry)
+				}
+			}
+			create_site_entries()
 
 			const symbol_map = new Map<string, SiteSymbol>()
 			const symbol_field_map = new Map<string, SiteSymbolField>()
@@ -143,42 +143,43 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 						const field = SiteSymbolFields.create({
 							...starter_symbol_field.values(),
 							id: undefined,
-							symbol: symbol.id
+							symbol: symbol.id,
+							parent: parent?.id
 						})
 						symbol_field_map.set(starter_symbol_field.id, field)
-
-						const symbol_entry_map = new Map<string, SiteSymbolEntry>()
-						const create_symbol_entries = (starter_parent_entry?: SiteSymbolEntry) => {
-							for (const starter_symbol_entry of data.symbol_entries) {
-								if (starter_parent_entry ? starter_symbol_entry.parent !== starter_parent_entry.id : starter_symbol_entry.parent) {
-									continue
-								}
-
-								if (starter_symbol_entry.field !== starter_symbol_field.id) {
-									continue
-								}
-
-								const parent = starter_symbol_entry.parent ? symbol_entry_map.get(starter_symbol_entry.parent) : undefined
-								if (starter_symbol_entry.parent && !parent) {
-									throw new Error('No parent symbol entry')
-								}
-
-								const entry = SiteSymbolEntries.create({
-									...starter_symbol_entry.values(),
-									id: undefined,
-									field: field.id,
-									parent: parent?.id
-								})
-								symbol_entry_map.set(starter_symbol_entry.id, entry)
-								create_symbol_entries(starter_symbol_entry)
-							}
-						}
-						create_symbol_entries()
-
 						create_symbol_fields(starter_symbol_field)
 					}
 				}
 				create_symbol_fields()
+
+				const symbol_entry_map = new Map<string, SiteSymbolEntry>()
+				const create_symbol_entries = (starter_parent_entry?: SiteSymbolEntry) => {
+					for (const starter_symbol_entry of data.symbol_entries) {
+						if (starter_parent_entry ? starter_symbol_entry.parent !== starter_parent_entry.id : starter_symbol_entry.parent) {
+							continue
+						}
+
+						const field = symbol_field_map.get(starter_symbol_entry.field)
+						if (!field) {
+							throw new Error('No symbol field for symbol entry')
+						}
+
+						const parent = starter_symbol_entry.parent ? symbol_entry_map.get(starter_symbol_entry.parent) : undefined
+						if (starter_symbol_entry.parent && !parent) {
+							throw new Error('No parent symbol entry')
+						}
+
+						const entry = SiteSymbolEntries.create({
+							...starter_symbol_entry.values(),
+							id: undefined,
+							field: field.id,
+							parent: parent?.id
+						})
+						symbol_entry_map.set(starter_symbol_entry.id, entry)
+						create_symbol_entries(starter_symbol_entry)
+					}
+				}
+				create_symbol_entries()
 			}
 
 			const page_type_map = new Map<string, PageType>()
@@ -213,37 +214,39 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 							parent: parent?.id
 						})
 						page_type_field_map.set(starter_page_type_field.id, field)
-
-						const page_type_entry_map = new Map<string, PageTypeEntry>()
-						const create_page_type_entries = (starter_parent_entry?: PageTypeEntry) => {
-							for (const starter_page_type_entry of data.page_type_entries) {
-								if (starter_parent_entry ? starter_page_type_entry.parent !== starter_parent_entry.id : starter_page_type_entry.parent) {
-									continue
-								}
-
-								if (starter_page_type_entry.field !== starter_page_type_field.id) {
-									continue
-								}
-
-								const parent = starter_page_type_entry.parent ? page_type_entry_map.get(starter_page_type_entry.parent) : undefined
-								if (starter_page_type_entry.parent && !parent) {
-									throw new Error('No parent page type entry')
-								}
-
-								const entry = PageTypeEntries.create({
-									...starter_page_type_entry.values(),
-									id: undefined,
-									field: field.id,
-									parent: parent?.id
-								})
-								page_type_entry_map.set(starter_page_type_entry.id, entry)
-								create_page_type_entries(starter_page_type_entry)
-							}
-						}
-						create_page_type_entries()
+						create_page_type_fields(starter_page_type_field)
 					}
 				}
 				create_page_type_fields()
+
+				const page_type_entry_map = new Map<string, PageTypeEntry>()
+				const create_page_type_entries = (starter_parent_entry?: PageTypeEntry) => {
+					for (const starter_page_type_entry of data.page_type_entries) {
+						if (starter_parent_entry ? starter_page_type_entry.parent !== starter_parent_entry.id : starter_page_type_entry.parent) {
+							continue
+						}
+
+						const field = page_type_field_map.get(starter_page_type_entry.field)
+						if (!field) {
+							throw new Error('No page type field for page type entry')
+						}
+
+						const parent = starter_page_type_entry.parent ? page_type_entry_map.get(starter_page_type_entry.parent) : undefined
+						if (starter_page_type_entry.parent && !parent) {
+							throw new Error('No parent page type entry')
+						}
+
+						const entry = PageTypeEntries.create({
+							...starter_page_type_entry.values(),
+							id: undefined,
+							field: field.id,
+							parent: parent?.id
+						})
+						page_type_entry_map.set(starter_page_type_entry.id, entry)
+						create_page_type_entries(starter_page_type_entry)
+					}
+				}
+				create_page_type_entries()
 
 				for (const starter_page_type_symbol of data.page_type_symbols) {
 					if (starter_page_type_symbol.page_type !== starter_page_type.id) {
@@ -368,8 +371,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 								...starter_page_entry.values(),
 								id: undefined,
 								page: page.id,
-								field: field.id,
-								parent: null
+								field: field.id
 							})
 							page_entry_map.set(starter_page_entry.id, entry)
 							create_page_entries(starter_page_entry)

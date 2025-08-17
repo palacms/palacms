@@ -41,16 +41,18 @@
 	let going_up = $state(false)
 	let going_down = $state(false)
 
-	// Get all pages for navigation
-	const all_pages = $derived(resolved_site?.pages() ?? [])
-	const current_page_index = $derived(all_pages.findIndex((p) => p.id === page?.id))
+	// Get root-level pages for navigation (homepage + direct children)
+	const home_page = $derived(resolved_site?.homepage())
+	const child_pages = $derived(home_page?.children() ?? [])
+	const root_pages = $derived(home_page ? [home_page, ...child_pages] : [])
+	const current_page_index = $derived(root_pages.findIndex((p) => p.id === page?.id))
 	const can_navigate_up = $derived(current_page_index > 0)
-	const can_navigate_down = $derived(current_page_index < all_pages.length - 1 && current_page_index !== -1)
+	const can_navigate_down = $derived(current_page_index < root_pages.length - 1 && current_page_index !== -1)
 
 	// Navigation functions
 	function navigate_up() {
 		if (can_navigate_up) {
-			const prev_page = all_pages[current_page_index - 1]
+			const prev_page = root_pages[current_page_index - 1]
 			const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${resolved_site?.id}` : '/admin/site'
 			goto(`${base_path}/${prev_page.slug}`)
 		}
@@ -58,7 +60,7 @@
 
 	function navigate_down() {
 		if (can_navigate_down) {
-			const next_page = all_pages[current_page_index + 1]
+			const next_page = root_pages[current_page_index + 1]
 			const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${resolved_site?.id}` : '/admin/site'
 			goto(`${base_path}/${next_page.slug}`)
 		}
@@ -173,22 +175,24 @@
 				{:else}
 					<div class="flex rounded" style="border: 1px solid #222" bind:this={customAnchor}>
 						<ToolbarButton label="Pages" icon="iconoir:multiple-pages" on:click={() => (editing_pages = true)} />
-						<DropdownMenu.Root>
-							<DropdownMenu.Trigger>
-								{#snippet child({ props })}
-									<button {...props} class="hover:bg-[var(--primo-color-codeblack)]" style="border-left: 1px solid #222">
-										<ChevronDown class="h-4" />
-										<span class="sr-only">More</span>
-									</button>
-								{/snippet}
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Content side="bottom" class="z-[999]" align="start" sideOffset={4} {customAnchor}>
-								<DropdownMenu.Item onclick={() => (editing_page_types = true)} class="text-xs cursor-pointer">
-									<LayoutTemplate style="width: .75rem" />
-									<span>Page Types</span>
-								</DropdownMenu.Item>
-							</DropdownMenu.Content>
-						</DropdownMenu.Root>
+						{#if $current_user?.siteRole === 'developer' || $current_user?.serverRole === 'developer'}
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger>
+									{#snippet child({ props })}
+										<button {...props} class="hover:bg-[var(--primo-color-codeblack)]" style="border-left: 1px solid #222">
+											<ChevronDown class="h-4" />
+											<span class="sr-only">More</span>
+										</button>
+									{/snippet}
+								</DropdownMenu.Trigger>
+								<DropdownMenu.Content side="bottom" class="z-[999]" align="start" sideOffset={4} {customAnchor}>
+									<DropdownMenu.Item onclick={() => (editing_page_types = true)} class="text-xs cursor-pointer">
+										<LayoutTemplate style="width: .75rem" />
+										<span>Page Types</span>
+									</DropdownMenu.Item>
+								</DropdownMenu.Content>
+							</DropdownMenu.Root>
+						{/if}
 					</div>
 				{/if}
 			</div>

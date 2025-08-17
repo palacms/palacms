@@ -44,11 +44,11 @@
 		await oncreate(new_page)
 	}}
 	in:fade={{ duration: 100 }}
-	class:has-page-types={!!page_types?.length}
+	class:has-page-types={page_types && page_types.length > 1}
 >
 	<UI.TextInput autofocus={true} bind:value={new_page.name} id="page-label" label="Page Name" placeholder="About Us" />
 	<UI.TextInput bind:value={new_page.slug} id="page-slug" label="Page Slug" oninput={() => (page_label_edited = true)} placeholder="about-us" />
-	{#if site?.page_types()}
+	{#if page_types && page_types.length > 1}
 		<UI.Select
 			fullwidth={true}
 			label="Page Type"
