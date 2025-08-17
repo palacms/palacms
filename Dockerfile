@@ -15,7 +15,7 @@ FROM --platform=$BUILDPLATFORM alpine:3 AS downloader
 # These arguments can be overridden on build
 ARG TARGETOS
 ARG TARGETARCH
-ARG PB_VERSION=0.26.6
+ARG PB_VERSION=0.29.2
 ARG PB_PLATFORM=${TARGETOS}_${TARGETARCH}
 
 # Add dependencies needed from downloading and unzipping
