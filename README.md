@@ -1,8 +1,35 @@
-# PalaCMS V3 (Work in Progress)
+# PalaCMS (formerly Primo) V3 Beta
 
-> PalaCMS V3 is currently in active development. We're working toward a stable beta release with significant improvements over V2. The codebase is functional but features are still being implemented and refined.
+**The modern CMS that gives developers the control they need and content editors the simplicity they've always wanted.**
 
-## ✨ V3 Features & Improvements
+## ✨ Why Pala?
+
+### ✍️ **Content Management Simplicity**
+
+- Visual, on-page content editing
+- Custom page types and dynamic fields
+- Real-time collaboration
+
+### ⚡️ **Developer Control**
+
+- Reusable component library
+- Direct access to component HTML, CSS, and JavaScript (powered by Svelte)
+- Works with any CSS framework (Tailwind, Bootstrap, etc.)
+
+### 🏠 **Self-Hosted Freedom**
+
+- Run on your own infrastructure with PocketBase
+- No vendor lock-in or monthly fees
+- Your data stays under your control
+
+## 🎯 Perfect For
+
+- **Agencies** building custom sites for clients
+- **Developers** who want visual editing without sacrificing control
+- **Teams** collaborating on content and design
+- **Anyone** tired of WordPress limitations or locked-in SaaS platforms
+
+## 🔥 V3 Features & Improvements
 
 ### New in V3
 
@@ -10,9 +37,6 @@
 - **Custom Page Types** - Create flexible content types for different kinds of pages
 - **Dynamic Content Fields** - Site fields, page fields, and relational content that updates across pages
 - **Block/Starter Library** - Reusable components and starter templates
-- **Design System Editor** - Built-in tools for managing your site's design system
-- **Real-time Collaboration** - Multiple users can edit simultaneously (in development)
-- **10x Faster Builds** - Incremental page generation instead of rebuilding everything
 
 ### Enhanced User Experience
 
@@ -25,6 +49,22 @@
 
 ### Coming in Beta
 
+- **Framework Integration** - Embed PalaCMS content in your existing Next.js, SvelteKit, or other apps
+- **AI Block Generation** - Generate blocks with AI assistance
+- **Local Development Tools** - Full local development environment and CLI tools
 - **Marketplace Integration** - Browse and install community blocks and starters
-- **Plugin API** - Easily create custom plugins to extend Pala's functionality.
-- **Enhanced Deployment** - Streamlined publishing workflow
+- **Plugin API** - Extend functionality with custom plugins
+
+### Getting Started
+Host Pala on any host that supports Docker: Railway, Fly.io, Hetzner. Railway template coming soon. 
+
+## 📚 Documentation
+
+- **Getting Started**: [Coming Soon]
+- **Developer Guide**: See [DEVELOPERS.md](DEVELOPERS.md) for architecture and development setup
+
+## 🆘 Support & Community
+
+- **Issues**: [GitHub Issues](https://github.com/palacms/palacms/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/palacms/palacms/discussions)
+- **Website**: [palacms.com](https://palacms.com)
