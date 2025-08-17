@@ -135,8 +135,8 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 						}
 
 						// import x from './file.js' (via a 'svelte' or 'svelte/x' package)
-						if (importer && importer.startsWith(CDN_URL)) {
-							if (importee.startsWith(CDN_URL)) {
+						if (importer && importer.startsWith(CDN_URL + '/')) {
+							if (importee.startsWith(CDN_URL + '/')) {
 								return importee
 							}
 

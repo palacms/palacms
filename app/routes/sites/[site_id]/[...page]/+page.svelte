@@ -1,6 +1,6 @@
 <script>
 	import { compilers_registered } from '$lib/stores'
-	import PrimoPage from '$lib/builder/views/editor/Page.svelte'
+	import PalaPage from '$lib/builder/views/editor/Page.svelte'
 	import { page as pageState } from '$app/state'
 	import { Sites, Pages } from '$lib/pocketbase/collections'
 
@@ -12,5 +12,6 @@
 </script>
 
 {#if $compilers_registered && current_page}
-	<PrimoPage page={current_page} />
+	<PalaPage page={current_page} />
 {/if}
+

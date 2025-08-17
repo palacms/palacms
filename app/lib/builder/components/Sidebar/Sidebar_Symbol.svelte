@@ -58,30 +58,29 @@
 
 	let height = $state(0)
 
+	const code = $derived({
+		html: symbol.html,
+		css: symbol.css,
+		js: symbol.js
+	})
+	const fields = $derived(symbol.fields())
+	const entries = $derived(symbol.entries())
+	const data = $derived(fields && entries && (getContent(symbol, fields, entries)[$locale] ?? {}))
+
 	let componentCode = $state()
 	let component_error = $state()
-	onMount(() => {
-		if (!symbol) return
-
-		const code = $derived({
-			html: symbol.html,
-			css: symbol.css,
-			js: symbol.js
+	$effect(() => {
+		if (!data) return
+		block_html({
+			code,
+			data
 		})
-		const fields = $derived(symbol.fields())
-		const entries = $derived(symbol.entries())
-		const data = $derived(fields && entries && (getContent(symbol, fields, entries)[$locale] ?? {}))
-
-		$effect(() => {
-			if (!data) return
-			block_html({
-				code,
-				data,
-				head
-			}).then((res) => {
+			.then((res) => {
 				componentCode = res
 			})
-		})
+			.catch((error) => {
+				component_error = error
+			})
 	})
 
 	let element = $state()

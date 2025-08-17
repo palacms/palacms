@@ -7,7 +7,7 @@
 	import { LayoutTemplate, Trash2, ChevronDown } from 'lucide-svelte'
 	import ToolbarButton from './ToolbarButton.svelte'
 	import Letter from '$lib/builder/ui/Letter.svelte'
-	import { PrimoButton } from '$lib/builder/components/buttons'
+	import { PalaButton } from '$lib/builder/components/buttons'
 	import { mod_key_held } from '$lib/builder/stores/app/misc'
 	import { onNavigate, goto } from '$app/navigation'
 	import { active_users } from '$lib/builder/stores/app/misc'
@@ -158,7 +158,7 @@
 	<div class="menu-container">
 		<div class="left">
 			{#if $current_user?.serverRole}
-				<PrimoButton />
+				<PalaButton />
 			{/if}
 			<div class="button-group">
 				<div class="flex rounded" style="border: 1px solid #222">
@@ -175,22 +175,24 @@
 				{:else}
 					<div class="flex rounded" style="border: 1px solid #222" bind:this={customAnchor}>
 						<ToolbarButton label="Pages" icon="iconoir:multiple-pages" on:click={() => (editing_pages = true)} />
-						<DropdownMenu.Root>
-							<DropdownMenu.Trigger>
-								{#snippet child({ props })}
-									<button {...props} class="hover:bg-[var(--primo-color-codeblack)]" style="border-left: 1px solid #222">
-										<ChevronDown class="h-4" />
-										<span class="sr-only">More</span>
-									</button>
-								{/snippet}
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Content side="bottom" class="z-[999]" align="start" sideOffset={4} {customAnchor}>
-								<DropdownMenu.Item onclick={() => (editing_page_types = true)} class="text-xs cursor-pointer">
-									<LayoutTemplate style="width: .75rem" />
-									<span>Page Types</span>
-								</DropdownMenu.Item>
-							</DropdownMenu.Content>
-						</DropdownMenu.Root>
+						{#if $current_user?.siteRole === 'developer' || $current_user?.serverRole === 'developer'}
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger>
+									{#snippet child({ props })}
+										<button {...props} class="hover:bg-[var(--primo-color-codeblack)]" style="border-left: 1px solid #222">
+											<ChevronDown class="h-4" />
+											<span class="sr-only">More</span>
+										</button>
+									{/snippet}
+								</DropdownMenu.Trigger>
+								<DropdownMenu.Content side="bottom" class="z-[999]" align="start" sideOffset={4} {customAnchor}>
+									<DropdownMenu.Item onclick={() => (editing_page_types = true)} class="text-xs cursor-pointer">
+										<LayoutTemplate style="width: .75rem" />
+										<span>Page Types</span>
+									</DropdownMenu.Item>
+								</DropdownMenu.Content>
+							</DropdownMenu.Root>
+						{/if}
 					</div>
 				{/if}
 			</div>

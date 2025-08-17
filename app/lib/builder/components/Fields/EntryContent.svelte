@@ -16,7 +16,8 @@
 		fields,
 		entries,
 		level,
-		onchange
+		onchange,
+		minimal
 	}: {
 		entity: Entity
 		parent?: Entry
@@ -25,6 +26,7 @@
 		entries: Entry[]
 		level: number
 		onchange: FieldValueHandler
+		minimal?: boolean
 	} = $props()
 
 	const field_type = $derived($fieldTypes.find((ft) => ft.id === field.type))
@@ -77,15 +79,15 @@
 		<div class="dynamic-header">
 			{#if field.type === 'site-field'}
 				<Icon icon="gg:website" />
-				<span>Site Content</span>
+				<span>Site Field</span>
 			{:else if field.type === 'page-field'}
 				<!-- {@const content_entry = getDirectEntries(entity, field, entries)[0]} -->
 				<!-- <Icon icon={content_entry?.value.page.page_type.icon} /> -->
-				<span>Page Content</span>
+				<span>Page Field</span>
 			{/if}
 		</div>
 	{/if}
-	<Card {title} {icon}>
+	<Card {title} {icon} {minimal}>
 		<Field_Component {entity} {field} {fields} {entries} {entry} {level} {onchange} />
 	</Card>
 {:else if $current_user?.siteRole === 'developer' && !is_visible}

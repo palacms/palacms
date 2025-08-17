@@ -66,11 +66,7 @@ export function content_editable(element, params) {
 export function hovering_outside(event, element) {
 	if (!element) return false
 	const rect = element.getBoundingClientRect()
-	const is_outside =
-		event.x >= Math.floor(rect.right) ||
-		event.y >= Math.floor(rect.bottom) ||
-		event.x <= Math.floor(rect.left) ||
-		event.y <= Math.floor(rect.top)
+	const is_outside = event.x >= Math.floor(rect.right) || event.y >= Math.floor(rect.bottom) || event.x <= Math.floor(rect.left) || event.y <= Math.floor(rect.top)
 	return is_outside
 }
 

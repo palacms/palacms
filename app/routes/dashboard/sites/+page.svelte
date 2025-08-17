@@ -33,7 +33,6 @@
 	const active_site_group = $derived(site_group_id ? SiteGroups.one(site_group_id) : undefined)
 	const all_sites = $derived(Sites.list() ?? [])
 	const sites = $derived(site_group_id ? all_sites.filter((site) => site.group === site_group_id) : [])
-	const site = $derived(all_sites.find((site) => site.host === page.url.host))
 
 	let is_rename_group_open = $state(false)
 	let new_group_name = $state('')
@@ -123,6 +122,8 @@
 		await manager.commit()
 		is_move_site_open = false
 	}
+
+	let is_create_site_instructions_open = $state(false)
 </script>
 
 <header class="flex h-14 shrink-0 items-center gap-2">
@@ -153,14 +154,12 @@
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
 	</div>
-	{#if !site}
-		<div class="ml-auto mr-4">
-			<Button size="sm" variant="outline" href="/admin/site">
-				<CirclePlus class="h-4 w-4" />
-				Create Site
-			</Button>
-		</div>
-	{/if}
+	<div class="ml-auto mr-4">
+		<Button size="sm" variant="outline" onclick={() => (is_create_site_instructions_open = true)}>
+			<CirclePlus class="h-4 w-4" />
+			Create Site
+		</Button>
+	</div>
 </header>
 <div class="flex flex-1 flex-col gap-4 px-4 pb-4">
 	{#if sites?.length}
@@ -327,3 +326,40 @@
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
+
+<Dialog.Root bind:open={is_create_site_instructions_open}>
+	<Dialog.Content class="sm:max-w-[525px] pt-12 gap-0">
+		<h2 class="text-lg font-semibold leading-none tracking-tight">Create a New Site</h2>
+		<p class="text-muted-foreground text-sm mb-6">Follow these steps to create a new site:</p>
+
+		<div class="space-y-4">
+			<div class="flex gap-4">
+				<div class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">1</div>
+				<div>
+					<h3 class="font-medium text-sm mb-1">Connect a new domain name to the server</h3>
+					<p class="text-muted-foreground text-sm">Point your domain's DNS records to this server or configure your hosting provider to route traffic here.</p>
+				</div>
+			</div>
+
+			<div class="flex gap-4">
+				<div class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">2</div>
+				<div>
+					<h3 class="font-medium text-sm mb-1">Access the server from that domain name</h3>
+					<p class="text-muted-foreground text-sm">Once the domain is connected, visit your new domain in a web browser. You'll be prompted to create a new site automatically.</p>
+				</div>
+			</div>
+
+			<div class="flex gap-4">
+				<div class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">3</div>
+				<div>
+					<h3 class="font-medium text-sm mb-1">Create the site</h3>
+					<p class="text-muted-foreground text-sm">Complete the site creation process and it will automatically be connected to your domain name.</p>
+				</div>
+			</div>
+		</div>
+
+		<Dialog.Footer class="mt-6">
+			<Button type="button" onclick={() => (is_create_site_instructions_open = false)}>Got it</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

@@ -111,7 +111,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 								lists.set(listId, { invalidated: false, ids: fetchedRecords.map(({ id }) => id) })
 							})
 							.catch(() => {
-								lists.set(listId, { invalidated: false, ids: [] })
+								lists.set(listId, undefined)
 							})
 					})
 				}

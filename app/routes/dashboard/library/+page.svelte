@@ -266,7 +266,7 @@
 			<ul>
 				{#each group_symbols as symbol (symbol.id)}
 					<li>
-						<SymbolButton symbol_id={symbol.id} onclick={() => begin_symbol_edit(symbol)}>
+						<SymbolButton {symbol} onclick={() => begin_symbol_edit(symbol)}>
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
 									<EllipsisVertical size={14} />

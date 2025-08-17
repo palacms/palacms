@@ -1,10 +1,10 @@
 <script>
-	import Primo from '$lib/builder/Primo.svelte'
+	import Pala from '$lib/builder/Pala.svelte'
 	import { checkSession, self } from '$lib/pocketbase/PocketBase'
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
 	import { page } from '$app/state'
-	import { Sites } from '$lib/pocketbase/collections'
+	import { manager, Sites } from '$lib/pocketbase/collections'
 	import CreateSite from '$lib/components/CreateSite.svelte'
 	import { current_user, set_current_user } from '$lib/pocketbase/user'
 	import { Loader } from 'lucide-svelte'
@@ -34,9 +34,9 @@
 {#if creating_site}
 	<CreateSite />
 {:else if site}
-	<Primo {site}>
+	<Pala {site}>
 		{@render children?.()}
-	</Primo>
+	</Pala>
 {:else}
 	<div class="placeholder">
 		<Loader />

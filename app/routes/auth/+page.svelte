@@ -10,6 +10,9 @@
 		if ($page.url.searchParams.has('reset')) {
 			stage = 'confirm_reset'
 		}
+		if ($page.url.searchParams.has('create')) {
+			stage = 'create_password'
+		}
 	})
 </script>
 
@@ -30,6 +33,8 @@
 				<AuthForm action="reset_password" title="Reset Password" bind:email />
 			{:else if stage === 'confirm_reset'}
 				<AuthForm action="confirm_password_reset" title="Reset Password" />
+			{:else if stage === 'create_password'}
+				<AuthForm action="confirm_password_reset" title="Create Password" />
 			{/if}
 		</div>
 	</div>

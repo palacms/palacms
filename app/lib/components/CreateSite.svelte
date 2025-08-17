@@ -14,8 +14,8 @@
 	import { useCloneSite } from '$lib/CloneSite.svelte'
 	import { convert_markdown_to_html } from '$lib/builder/utils'
 
-	const site_groups = $derived(SiteGroups.list({ filter: `name = "Default"` }))
-	const site_group = $derived(site_groups?.[0])
+	const all_site_groups = $derived(SiteGroups.list() ?? [])
+	const site_group = $derived(all_site_groups?.find((g) => g.name === 'Default') || all_site_groups?.[0])
 
 	const starter_sites = $derived(Sites.list() ?? [])
 
@@ -60,8 +60,8 @@
 	let loading = $state(false)
 	async function create_site() {
 		if (!selected_starter_id) return
-
 		loading = true
+
 		if (selected_starter_id === 'blank') {
 			// Create default site group if it doesn't exist for blank sites
 			let group_id = site_group?.id

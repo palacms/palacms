@@ -3,7 +3,7 @@
 	import Icon from '@iconify/svelte'
 	import { page as page_store } from '$app/stores'
 
-	let { locked } = $props();
+	let { locked } = $props()
 </script>
 
 <div class="locked-overlay primo-reset" transition:fade={{ duration: 200 }}>

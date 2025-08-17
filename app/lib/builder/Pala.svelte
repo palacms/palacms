@@ -14,6 +14,7 @@
 	import { site_html } from '$lib/builder/stores/app/page'
 	import { processCode } from '$lib/builder/utils.js'
 	import { page } from '$app/state'
+	import { getContent } from '$lib/pocketbase/content.js'
 	import type { Pages, Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
@@ -111,7 +112,6 @@
 			hotkey_events.dispatch('down')
 		})
 		Mousetrap.bind('mod+e', (e) => {
-			console.log('dispatching e')
 			e.preventDefault()
 			hotkey_events.dispatch('e')
 		})
@@ -119,35 +119,35 @@
 
 	let sidebar_pane = $state<ReturnType<typeof Pane>>()
 
-	// Generate <head> tag code
-	let previous
-	$effect.pre(() => {
-		if (!site) return
-		if (_.isEqual(previous, { head: site.head })) return
-		compile_component_head(`<svelte:head>${site.head}</svelte:head>`).then((generated_code) => {
-			$site_html = generated_code
-			previous = _.cloneDeep({ head: site.head })
-		})
-	})
-
 	// reset site html to avoid issues when navigating to new site
 	onDestroy(() => {
 		$site_html = null
 	})
 
-	async function compile_component_head(html) {
+	const site_data = $derived(site ? getContent(site, site.fields() || [], site.entries() || [])['en'] : {})
+	async function compile_component_head({ html, data }) {
 		const compiled = await processCode({
 			component: {
-				html,
+				html: `<svelte:head>${html}</svelte:head>`,
 				css: '',
 				js: '',
-				data: {}
+				data: data ?? {}
 			}
 		})
 		if (!compiled.error) {
 			return compiled.head
 		} else return ''
 	}
+
+	// Generate <head> tag code
+	$effect(() => {
+		compile_component_head({
+			html: site.head,
+			data: site_data
+		}).then((generated_code) => {
+			$site_html = generated_code
+		})
+	})
 </script>
 
 <div class="h-screen flex flex-col">

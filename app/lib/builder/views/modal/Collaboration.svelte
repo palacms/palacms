@@ -8,15 +8,17 @@
 
 	let { site }: { site: ObjectOf<typeof Sites> } = $props()
 
-	let loading = $state(false)
+	let sending = $state(false)
 	let email = $state('')
 	let role = $state<SiteRoleAssignment['role']>('developer')
 
 	async function invite_collaborator() {
-		const loading = !users || !server_members || !site_collborators
-		if (loading) {
+		const stillLoading = !users || !server_members || !site_collborators
+		if (stillLoading) {
 			throw new Error('Still loading')
 		}
+
+		sending = true
 
 		const hasSiteAccess = [...server_members, ...site_collborators.map(({ user }) => user)].some((user) => user?.email === email)
 		if (hasSiteAccess) {
@@ -39,6 +41,9 @@
 		})
 
 		await manager.commit()
+		email = ''
+		role = 'developer'
+		sending = false
 	}
 
 	let users = $derived(Users.list())
@@ -77,7 +82,7 @@
 					</select>
 				</div>
 				<button type="submit">
-					{#if loading}
+					{#if sending}
 						<Icon icon="eos-icons:three-dots-loading" />
 					{:else}
 						Send invite
@@ -104,6 +109,11 @@
 						<li>
 							<span class="letter">{user?.email[0]}</span>
 							<span class="email">{user?.email}</span>
+							{#if user?.invite === 'pending'}
+								<span class="status-pill pending">Invitation pending</span>
+							{:else if user?.invite === 'sent'}
+								<span class="status-pill sent">Invitation sent</span>
+							{/if}
 							<span class="role">
 								{role_names[assignment.role]}
 							</span>
@@ -199,6 +209,24 @@
 		}
 		.email {
 			flex: 1;
+		}
+		.status-pill {
+			padding: 2px 8px;
+			border-radius: 12px;
+			font-size: 0.625rem;
+			font-weight: 500;
+			text-transform: uppercase;
+			letter-spacing: 0.025em;
+
+			&.pending {
+				background: rgba(251, 191, 36, 0.2);
+				color: #fbbf24;
+			}
+
+			&.sent {
+				background: rgba(129, 140, 248, 0.2);
+				color: #818cf8;
+			}
 		}
 	}
 </style>
