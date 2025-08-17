@@ -1,6 +1,8 @@
-# PalaCMS (formerly Primo) V3 Beta
+# PalaCMS V3 Beta
 
-**The modern CMS that gives developers the control they need and content editors the simplicity they've always wanted.**
+**Pala is a modern monolithic CMS that gives developers the control they need and content editors the simplicity they've always wanted.** 
+
+![screenshot](https://cdn.primo.page/f52960e1-0bb0-4c64-9f70-5a9994ce95fc/staging/_images/1739675414227Screenshot%202025-02-15%20at%2010.10.10%E2%80%AFPM.png)
 
 ## ✨ Why Pala?
 
@@ -19,8 +21,8 @@
 ### 🏠 **Self-Hosted Freedom**
 
 - Run on your own infrastructure with PocketBase
-- No vendor lock-in or monthly fees
 - Your data stays under your control
+- Site served as static files
 
 ## 🎯 Perfect For
 
@@ -56,12 +58,9 @@
 - **Plugin API** - Extend functionality with custom plugins
 
 ### Getting Started
-Host Pala on any host that supports Docker: Railway, Fly.io, Hetzner. Railway template coming soon. 
+Host Pala on any host that supports Docker: Railway, Fly.io, Hetzner. 
 
-## 📚 Documentation
-
-- **Getting Started**: [Coming Soon]
-- **Developer Guide**: See [DEVELOPERS.md](DEVELOPERS.md) for architecture and development setup
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/palacms?referralCode=RCPU7k)
 
 ## 🆘 Support & Community
 
