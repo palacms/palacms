@@ -60,7 +60,7 @@
 ### Getting Started
 Host Pala on any host that supports Docker: Railway, Fly.io, Hetzner. 
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/fgvYxT?referralCode=RCPU7k)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/palacms?referralCode=RCPU7k)
 
 ## 🆘 Support & Community
 
