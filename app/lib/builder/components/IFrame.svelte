@@ -69,7 +69,7 @@
 		active_code = _.cloneDeep(componentCode)
 		generated_srcdoc = static_iframe_srcdoc({
 			head: componentCode.head,
-			html: componentCode.html,
+			html: componentCode.body,
 			css: componentCode.css,
 			foot: append
 		})

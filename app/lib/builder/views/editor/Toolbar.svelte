@@ -7,7 +7,7 @@
 	import { LayoutTemplate, Trash2, ChevronDown } from 'lucide-svelte'
 	import ToolbarButton from './ToolbarButton.svelte'
 	import Letter from '$lib/builder/ui/Letter.svelte'
-	import { PrimoButton } from '$lib/builder/components/buttons'
+	import { PalaButton } from '$lib/builder/components/buttons'
 	import { mod_key_held } from '$lib/builder/stores/app/misc'
 	import { onNavigate, goto } from '$app/navigation'
 	import { active_users } from '$lib/builder/stores/app/misc'
@@ -158,7 +158,7 @@
 	<div class="menu-container">
 		<div class="left">
 			{#if $current_user?.serverRole}
-				<PrimoButton />
+				<PalaButton />
 			{/if}
 			<div class="button-group">
 				<div class="flex rounded" style="border: 1px solid #222">

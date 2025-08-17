@@ -11,7 +11,7 @@
 
 <div class="Content">
 	{#each fields as field (field.id)}
-		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} />
+		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} minimal={true} />
 	{:else}
 		<p class="empty-description">
 			{#if $current_user?.siteRole === 'developer'}

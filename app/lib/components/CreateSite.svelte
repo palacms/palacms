@@ -17,25 +17,8 @@
 
 	const { oncreated }: { oncreated?: () => void } = $props()
 
-	const site_groups = $derived(SiteGroups.list({ filter: `name = "Default"` }))
-	const site_group = $derived(site_groups?.[0])
-	$effect(() => {
-		// Create default site group if it does not exist
-		if (site_groups?.length !== 0) {
-			return
-		}
-
-		const currentUser = $current_user
-		if (!currentUser) {
-			return
-		}
-
-		SiteGroups.create({
-			name: 'Default',
-			index: 0
-		})
-		manager.commit()
-	})
+	const all_site_groups = $derived(SiteGroups.list() ?? [])
+	const site_group = $derived(all_site_groups?.find((g) => g.name === 'Default') || all_site_groups?.[0])
 
 	const starter_sites = $derived(Sites.list() ?? [])
 
@@ -79,15 +62,24 @@
 	let completed = $derived(!!site_name && selected_starter_id)
 	let loading = $state(false)
 	async function create_site() {
-		if (!selected_starter_id || !site_group) return
+		if (!selected_starter_id) return
 		loading = true
+
+		// Create default site group if no groups exist
+		let target_site_group = site_group
+		if (!target_site_group) {
+			target_site_group = SiteGroups.create({
+				name: 'Default',
+				index: 0
+			})
+		}
 		if (selected_starter_id === 'blank') {
 			const site = Sites.create({
 				...blank_site,
 				name: site_name,
 				description: '',
 				host: pageState.url.host,
-				group: site_group.id,
+				group: target_site_group.id,
 				index: 0
 			})
 			const page_type = PageTypes.create({

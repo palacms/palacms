@@ -19,16 +19,6 @@
 	const marketplace_symbols = $derived(marketplace_symbol_group?.symbols() ?? [])
 	const library_symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
 
-	let head_code = $state('')
-	let generated_head_code = $state('')
-
-	// Generate <head> tag code
-	$effect.pre(() => {
-		compile_component_head(`<svelte:head>${head_code}</svelte:head>`).then((generated) => {
-			generated_head_code = generated
-		})
-	})
-
 	async function compile_component_head(html) {
 		const compiled = await processCode({
 			component: {
@@ -68,7 +58,7 @@
 		<ul class="blocks">
 			{#each marketplace_symbols as symbol (symbol.id)}
 				<li>
-					<SymbolButton symbol={symbol.data} preview={symbol.preview} head={generated_head_code}>
+					<SymbolButton {symbol}>
 						<Popover.Root bind:open={is_popover_open}>
 							<Popover.Trigger class={buttonVariants({ variant: 'ghost', class: 'h-4 p-0' })}>
 								{#if added_to_library}

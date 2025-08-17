@@ -5,6 +5,7 @@
 	import Fields, { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
 	import * as _ from 'lodash-es'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
+	import { getContent } from '$lib/pocketbase/content'
 	import { setContext } from 'svelte'
 	import { page } from '$app/state'
 	import { Sites, SiteFields, SiteEntries, manager } from '$lib/pocketbase/collections'
@@ -17,20 +18,24 @@
 	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
+	const site_data = $derived(fields && entries && (getContent(site, fields, entries)['en'] ?? {}))
 
 	setContext('hide_dynamic_field_types', true)
 
-	let head = $state('')
-	let foot = $state('')
-
-	$effect.pre(() => {
-		if (site) {
-			head = site.head
-			foot = site.foot
-		}
-	})
+	const initial_code = { head: site?.head, foot: site?.foot }
+	const initial_data = _.cloneDeep(site_data)
+	
+	let head = $state(site?.head || '')
+	let foot = $state(site?.foot || '')
 
 	let disableSave = $state(false)
+
+	// Compare current state to initial data
+	$effect(() => {
+		const code_changed = head !== initial_code.head || foot !== initial_code.foot
+		const data_changed = !_.isEqual(initial_data, site_data)
+		has_unsaved_changes = code_changed || data_changed
+	})
 
 	// Add beforeunload listener to warn about unsaved changes
 	$effect(() => {
@@ -96,7 +101,6 @@
 							const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 							const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
 
-							has_unsaved_changes = true
 							return SiteFields.create({
 								type: 'text',
 								key: '',
@@ -108,7 +112,6 @@
 							})
 						}}
 						oninput={(values) => {
-							has_unsaved_changes = true
 							setFieldEntries({
 								fields,
 								entries,
@@ -118,11 +121,9 @@
 							})
 						}}
 						onchange={({ id, data }) => {
-							has_unsaved_changes = true
 							SiteFields.update(id, data)
 						}}
 						ondelete={(field_id) => {
-							has_unsaved_changes = true
 							// PocketBase cascade deletion will automatically clean up all associated entries
 							SiteFields.delete(field_id)
 						}}
@@ -138,7 +139,7 @@
 						<Pane>
 							<div class="container" style="margin-bottom: 1rem">
 								<span class="primo--field-label">Head</span>
-								<CodeEditor mode="html" bind:value={head} on:save={saveComponent} oninput={() => (has_unsaved_changes = true)} />
+								<CodeEditor mode="html" bind:value={head} on:save={saveComponent} />
 							</div>
 						</Pane>
 						<PaneResizer class="PaneResizer-secondary">
@@ -149,7 +150,7 @@
 						<Pane>
 							<div class="container">
 								<span class="primo--field-label">Foot</span>
-								<CodeEditor mode="html" bind:value={foot} on:save={saveComponent} oninput={() => (has_unsaved_changes = true)} />
+								<CodeEditor mode="html" bind:value={foot} on:save={saveComponent} />
 							</div>
 						</Pane>
 					</PaneGroup>

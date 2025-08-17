@@ -1,4 +1,4 @@
-import PrimoButton from './PrimoButton.svelte'
+import PalaButton from './PalaButton.svelte'
 import SaveButton from './SaveButton.svelte'
 
-export { PrimoButton, SaveButton }
+export { PalaButton, SaveButton }

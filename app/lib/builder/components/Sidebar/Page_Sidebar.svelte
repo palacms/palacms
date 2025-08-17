@@ -18,11 +18,10 @@
 	import { getContext } from 'svelte'
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user'
-
-	let active_tab = $state((browser && localStorage.getItem('page-tab')) || 'BLOCKS')
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const context_site = getContext('site')
+	const context_site = getContext<ObjectOf<typeof Sites>>('site')
 	const host = $derived(pageState.url.host)
 	const fallback_site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
 	const site = $derived(context_site || fallback_site)
@@ -32,12 +31,8 @@
 	const page_type_fields = $derived(page_type?.fields())
 	const page_entries = $derived(page?.entries())
 	const page_type_symbols = $derived(page_type?.symbols() ?? [])
-	const has_symbols = $derived(!!page_type_symbols?.length)
-
-	$effect(() => {
-		if (!has_symbols) active_tab = 'CONTENT'
-		else active_tab = 'BLOCKS'
-	})
+	const available_symbols = $derived(page_type_symbols.map(({ symbol }) => SiteSymbols.one(symbol)).filter((symbol) => !!symbol))
+	const has_symbols = $derived(available_symbols?.length !== 0)
 
 	function drag_target(element, block) {
 		dropTargetForElements({
@@ -89,105 +84,77 @@
 				</Tabs.Trigger>
 			</Tabs.List>
 			<Tabs.Content value="blocks">
-				<div class="symbols">
-					{#if site_html !== null}
-						{#each page_type_symbols ?? [] as symbol (symbol.id)}
-							<div animate:flip={{ duration: 200 }} use:drag_target={symbol}>
-								{#await SiteSymbols.one(symbol.symbol) then newsymbol}
-									{#if newsymbol}
-										<Sidebar_Symbol symbol={newsymbol} controls_enabled={false} head={site_html} />
-									{/if}
-								{/await}
-							</div>
-						{/each}
-					{:else}
-						<div style="display: flex;justify-content: center;font-size: 2rem;color:var(--color-gray-6)">
-							<UI.Spinner variant="loop" />
-						</div>
-					{/if}
-				</div>
-				{#if $current_user?.siteRole === 'developer'}
-					<button
-						onclick={() => {
-							const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
-							goto(`${base_path}/page-type--${page_type?.id}?tab=blocks`)
-						}}
-						class="footer-link"
-					>
-						Manage Blocks
-					</button>
-				{/if}
+				{@render symbols()}
 			</Tabs.Content>
 			<Tabs.Content value="content">
-				{#if page && page_type_fields && page_entries}
-					<div class="page-type-fields">
-						<Content
-							minimal={true}
-							entity={page}
-							fields={page_type_fields}
-							entries={page_entries}
-							oninput={(values) => {
-								setFieldEntries({
-									fields: page_type_fields,
-									entries: page_entries,
-									updateEntry: PageEntries.update,
-									createEntry: (data) => PageEntries.create({ ...data, page: page.id }),
-									values
-								})
-								clearTimeout(commit_task)
-								commit_task = setTimeout(() => manager.commit(), 500)
-							}}
-						/>
-					</div>
-				{/if}
-				{#if $current_user?.siteRole === 'developer'}
-					<button
-						onclick={() => {
-							const base_path = pageState.url.pathname.startsWith('/admin/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
-							goto(`${base_path}/page-type--${page_type?.id}?tab=fields`)
-						}}
-						class="footer-link"
-					>
-						Manage Fields
-					</button>
-				{/if}
+				{@render content()}
 			</Tabs.Content>
 		</Tabs.Root>
 	{:else}
-		{#if page && page_type_fields && page_entries}
-			<div class="p-4 page-type-fields">
-				<Content
-					minimal={true}
-					entity={page}
-					fields={page_type_fields}
-					entries={page_entries}
-					oninput={(values) => {
-						setFieldEntries({
-							fields: page_type_fields,
-							entries: page_entries,
-							updateEntry: PageEntries.update,
-							createEntry: (data) => PageEntries.create({ ...data, page: page.id }),
-							values
-						})
-						clearTimeout(commit_task)
-						commit_task = setTimeout(() => manager.commit(), 500)
-					}}
-				/>
-			</div>
-		{/if}
-		{#if $current_user?.siteRole === 'developer'}
-			<button
-				onclick={() => {
-					const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
-					goto(`${base_path}/page-type--${page_type?.id}?tab=fields`)
-				}}
-				class="footer-link mb-2 mr-2"
-			>
-				Manage Fields
-			</button>
-		{/if}
+		{@render content()}
 	{/if}
 </div>
+
+{#snippet symbols()}
+	<div class="symbols">
+		{#if $site_html !== null}
+			{#each available_symbols ?? [] as symbol (symbol.id)}
+				<div animate:flip={{ duration: 200 }} use:drag_target={symbol}>
+					<Sidebar_Symbol {symbol} controls_enabled={false} head={$site_html} />
+				</div>
+			{/each}
+		{:else}
+			<div style="display: flex;justify-content: center;font-size: 2rem;color:var(--color-gray-6)">
+				<UI.Spinner variant="loop" />
+			</div>
+		{/if}
+	</div>
+	{#if $current_user?.siteRole === 'developer'}
+		<button
+			onclick={() => {
+				const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
+				goto(`${base_path}/page-type--${page_type?.id}?tab=blocks`)
+			}}
+			class="footer-link"
+		>
+			Manage Blocks
+		</button>
+	{/if}
+{/snippet}
+
+{#snippet content()}
+	{#if page && page_type_fields && page_entries}
+		<div class="page-type-fields">
+			<Content
+				entity={page}
+				fields={page_type_fields}
+				entries={page_entries}
+				oninput={(values) => {
+					setFieldEntries({
+						fields: page_type_fields,
+						entries: page_entries,
+						updateEntry: PageEntries.update,
+						createEntry: (data) => PageEntries.create({ ...data, page: page.id }),
+						values
+					})
+					clearTimeout(commit_task)
+					commit_task = setTimeout(() => manager.commit(), 500)
+				}}
+			/>
+		</div>
+	{/if}
+	{#if $current_user?.siteRole === 'developer'}
+		<button
+			onclick={() => {
+				const base_path = pageState.url.pathname.startsWith('/admin/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
+				goto(`${base_path}/page-type--${page_type?.id}?tab=fields`)
+			}}
+			class="footer-link"
+		>
+			Manage Fields
+		</button>
+	{/if}
+{/snippet}
 
 <style lang="postcss">
 	.sidebar {

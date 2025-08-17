@@ -22,7 +22,7 @@
 
 	let {
 		block: existing_block,
-		tab = $bindable('content'),
+		tab = $bindable('code'),
 		has_unsaved_changes = $bindable(false),
 		header = {
 			label: 'Create Component',
@@ -163,6 +163,7 @@
 					bind:css
 					bind:js
 					data={component_data}
+					storage_key={block?.id}
 					on:save={save_component}
 					on:mod-e={toggle_tab}
 					oninput={() => {

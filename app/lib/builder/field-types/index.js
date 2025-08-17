@@ -90,13 +90,13 @@ export default [
 	{
 		id: 'page-field',
 		icon: 'iconoir:page',
-		label: 'Page Content',
+		label: 'Page Field',
 		component: PageFieldField
 	},
 	{
 		id: 'site-field',
 		icon: 'gg:website',
-		label: 'Site Content',
+		label: 'Site Field',
 		component: SiteField
 	},
 	{

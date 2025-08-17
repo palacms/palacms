@@ -45,7 +45,7 @@
 					}
 				})
 			}}
-			label="Page Content"
+			label="Page Field"
 			value={field.config?.field || (field_list.length > 0 ? field_list[0].id : '')}
 			options={Array.isArray(field_list)
 				? field_list.map((f) => ({

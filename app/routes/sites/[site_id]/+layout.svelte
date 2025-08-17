@@ -1,5 +1,5 @@
 <script>
-	import Primo from '$lib/builder/Primo.svelte'
+	import Pala from '$lib/builder/Pala.svelte'
 	import { checkSession } from '$lib/pocketbase/PocketBase'
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
@@ -24,9 +24,9 @@
 {#if site && $current_user && !$current_user?.siteRole === null}
 	<div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white;">Forbidden</div>
 {:else if site}
-	<Primo {site}>
+	<Pala {site}>
 		{@render children?.()}
-	</Primo>
+	</Pala>
 {:else}
 	<div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white;">Loading...</div>
 {/if}

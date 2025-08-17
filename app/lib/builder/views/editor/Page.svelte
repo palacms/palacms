@@ -61,7 +61,12 @@
 		}
 	}
 
+	let symbol_to_add = $state<ObjectOf<typeof SiteSymbols>>()
+	let entries_to_add = $derived(symbol_to_add?.entries())
 	async function add_section_to_page({ symbol, position }) {
+		symbol_to_add = symbol
+		await tick()
+
 		// Check if indices need repair
 		const has_incorrect_indices = sections.some((section, i) => section.index !== i)
 		if (has_incorrect_indices) {
@@ -80,7 +85,7 @@
 
 		// Copy only root-level symbol entries to the new section instance
 		// Nested entries will be created on-demand by FieldsContent
-		const rootEntries = symbol.entries()?.filter((e) => !e.parent) ?? []
+		const rootEntries = entries_to_add?.filter((e) => !e.parent) ?? []
 		for (const entry of rootEntries) {
 			PageSectionEntries.create({
 				section: new_section.id,

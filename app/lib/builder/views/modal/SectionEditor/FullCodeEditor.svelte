@@ -7,6 +7,7 @@
 	import { createEventDispatcher, onMount } from 'svelte'
 	import { PaneGroup, Pane, PaneResizer } from 'paneforge'
 	import CodeMirror from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
+	import { get, set } from 'idb-keyval'
 
 	const dispatch = createEventDispatcher()
 
@@ -20,10 +21,11 @@
 	 * @property {string} [html]
 	 * @property {string} [css]
 	 * @property {string} [js]
+	 * @property {string} [storage_key] - Unique key for persisting pane state
 	 */
 
 	/** @type {Props} */
-	let { data = {}, completions, html = $bindable(''), css = $bindable(''), js = $bindable(''), onmod_e = () => {}, onmod_r = () => {}, oninput = () => {} } = $props()
+	let { data = {}, completions, html = $bindable(''), css = $bindable(''), js = $bindable(''), storage_key, onmod_e = () => {}, onmod_r = () => {}, oninput = () => {} } = $props()
 
 	let html_pane_component = $state()
 	let css_pane_component = $state()
@@ -36,6 +38,28 @@
 	})
 
 	let programmaticResize = false
+	let initial_load_complete = $state(false)
+
+	// Storage key for this editor's pane state
+	const idb_key = storage_key ? `fullcodeeditor-panes-${storage_key}` : null
+
+	// Load saved pane sizes (will be merged with the main onMount below)
+
+	// Save pane sizes when they change
+	async function save_pane_sizes() {
+		if (!idb_key || programmaticResize || !initial_load_complete) return
+
+		try {
+			const sizes = {
+				left: $left_pane_size,
+				center: $center_pane_size,
+				right: $right_pane_size
+			}
+			await set(idb_key, sizes)
+		} catch (error) {
+			console.warn('Failed to save pane sizes:', error)
+		}
+	}
 
 	function toggleTab(tab) {
 		const paneSizes = [$left_pane_size, $center_pane_size, $right_pane_size]
@@ -89,6 +113,7 @@
 
 				setTimeout(() => {
 					programmaticResize = false
+					save_pane_sizes()
 				}, 100)
 			})
 		} else {
@@ -142,13 +167,31 @@
 
 				setTimeout(() => {
 					programmaticResize = false
+					save_pane_sizes()
 				}, 100)
 			})
 		}
 	}
 
 	// close empty tabs on mount only
-	onMount(() => {
+	onMount(async () => {
+		// First, try to load saved pane sizes if we have a storage key
+		if (idb_key) {
+			try {
+				const saved_sizes = await get(idb_key)
+				if (saved_sizes) {
+					$left_pane_size = saved_sizes.left || 33
+					$center_pane_size = saved_sizes.center || 33
+					$right_pane_size = saved_sizes.right || 33
+					// Mark initial load as complete and skip empty tab logic
+					initial_load_complete = true
+					return
+				}
+			} catch (error) {
+				console.warn('Failed to load pane sizes:', error)
+			}
+		}
+
 		programmaticResize = true
 
 		// Count tabs with content
@@ -184,12 +227,16 @@
 
 				setTimeout(() => {
 					programmaticResize = false
+					save_pane_sizes()
 				}, 100)
 			})
 		} else {
 			// All tabs have content or no tabs have content, use default sizes
 			programmaticResize = false
 		}
+
+		// Mark initial load as complete to enable saving
+		initial_load_complete = true
 	})
 
 	let showing_local_key_hint = $state(false)
@@ -206,6 +253,7 @@
 			// Only update if user is dragging, not programmatic changes
 			if (!programmaticResize) {
 				$left_pane_size = size
+				save_pane_sizes()
 			}
 		}}
 	>
@@ -264,6 +312,7 @@
 			// Only update if user is dragging, not programmatic changes
 			if (!programmaticResize) {
 				$center_pane_size = size
+				save_pane_sizes()
 			}
 		}}
 	>
@@ -320,6 +369,7 @@
 			// Only update if user is dragging, not programmatic changes
 			if (!programmaticResize) {
 				$right_pane_size = size
+				save_pane_sizes()
 			}
 		}}
 	>
