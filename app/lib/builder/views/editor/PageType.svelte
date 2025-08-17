@@ -92,7 +92,7 @@
 
 	let showing_block_toolbar = $state(false)
 	let hovering_toolbar = $state(false)
-	
+
 	// Handle unsaved changes for section editor
 	let section_has_unsaved_changes = $state(false)
 	async function show_block_toolbar() {

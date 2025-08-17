@@ -230,7 +230,7 @@
 		gap: 1rem;
 		/* padding-top: 0.5rem; */
 		padding-bottom: 1rem;
-		padding-right: 10px;
+		/* padding-right: 10px; */
 		color: var(--color-gray-2);
 		height: 100%;
 		overflow-y: auto;

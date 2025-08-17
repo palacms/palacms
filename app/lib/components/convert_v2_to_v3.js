@@ -19,14 +19,14 @@ export default function convert_v2_to_v3({ sections, symbols, pages, site }) {
 	const standard_page_type = build_standard_page_type(site)
 
 	const extracted_fields = extract_static_fields(symbols, site)
-	console.log({extracted_fields})
+	console.log({ extracted_fields })
 
 	return {
 		site: build_site(site, extracted_fields.site),
 		page_types: [standard_page_type],
 		pages: build_pages(pages, standard_page_type.id),
 		symbols: build_symbols(symbols, site.id, standard_page_type.id, extracted_fields.symbol),
-		sections: build_sections({pages, sections, symbols, standard_page_type_id: standard_page_type.id}),
+		sections: build_sections({ pages, sections, symbols, standard_page_type_id: standard_page_type.id })
 		// fields: fields_with_static_converted_to_site
 	}
 }
@@ -35,25 +35,24 @@ export default function convert_v2_to_v3({ sections, symbols, pages, site }) {
 function extract_static_fields(symbols, site) {
 	const site_fields = []
 	const site_entries = []
-	
+
 	const symbol_fields = []
 	const symbol_entries = []
 
 	for (const symbol of symbols) {
 		// const symbol_fields = flatten_fields(symbol.fields.filter(s => s.is_static))
 		const all_entries = flatten_content(symbol.content, symbol.fields)
-		for (const field of symbol.fields.filter(s => s.is_static)) {
-
+		for (const field of symbol.fields.filter((s) => s.is_static)) {
 			// move symbol field to site
 			const root_site_field = { ...Field({ ...field, type: field.type, site: site.id }), id: field.id }
 			const child_site_fields = flatten_fields(field.fields, root_site_field.id)
 			site_fields.push(root_site_field, ...child_site_fields)
 
 			// move symbol entries to field
-			const root_entry = all_entries.find(e => e.field === root_site_field.id)
-			const child_entries = all_entries.filter(entry => {
-				const belongs_to_field = child_site_fields.some(f => f.id === entry.field) || entry.parent === root_entry.id // repeater containers
-				return belongs_to_field 
+			const root_entry = all_entries.find((e) => e.field === root_site_field.id)
+			const child_entries = all_entries.filter((entry) => {
+				const belongs_to_field = child_site_fields.some((f) => f.id === entry.field) || entry.parent === root_entry.id // repeater containers
+				return belongs_to_field
 			})
 			site_entries.push(root_entry, ...child_entries)
 
@@ -80,7 +79,7 @@ function extract_static_fields(symbols, site) {
 }
 
 /** @returns {Array<import('$lib').Section>} */
-function build_sections({pages, sections, symbols, standard_page_type_id}) {
+function build_sections({ pages, sections, symbols, standard_page_type_id }) {
 	// add palette section for each page (w/ master as pallete master)
 	// attach page sections to palette section
 
@@ -96,7 +95,7 @@ function build_sections({pages, sections, symbols, standard_page_type_id}) {
 			if (!palette) {
 				debugger
 			}
-			const symbol = symbols.find(symbol => symbol.id === s.symbol)
+			const symbol = symbols.find((symbol) => symbol.id === s.symbol)
 			return Section({
 				id: s.id,
 				index: s.index,
@@ -114,8 +113,8 @@ function build_sections({pages, sections, symbols, standard_page_type_id}) {
 /** @returns {Array<import('$lib').Symbol>} */
 function build_symbols(symbols, site_id, standard_page_type_id, extracted) {
 	return symbols.map((s, i) => {
-		const non_static_fields = s.fields.filter(field => !field.is_static)
-		return ({
+		const non_static_fields = s.fields.filter((field) => !field.is_static)
+		return {
 			id: s.id,
 			name: s.name,
 			code: s.code,
@@ -124,21 +123,23 @@ function build_symbols(symbols, site_id, standard_page_type_id, extracted) {
 			page_types: [standard_page_type_id],
 			entries: [...flatten_content(s.content, s.fields), ...extracted.entries],
 			fields: [...flatten_fields(non_static_fields), ...extracted.fields]
-		})
+		}
 	})
 }
 
 /** @returns {Array<import('$lib').Page>} */
 function build_pages(pages, page_master_id) {
-	return pages.map((p, i) => Page({
-		id: p.id,
-		name: p.name,
-		slug: p.url === 'index' ? '' : _.last(_.split(p.url, '/')), // get 'team' from 'about/company/team'
-		parent: p.parent,
-		page_type: page_master_id,
-		index: i,
-		entries: flatten_content(p.content, p.fields)
-	}))
+	return pages.map((p, i) =>
+		Page({
+			id: p.id,
+			name: p.name,
+			slug: p.url === 'index' ? '' : _.last(_.split(p.url, '/')), // get 'team' from 'about/company/team'
+			parent: p.parent,
+			page_type: page_master_id,
+			index: i,
+			entries: flatten_content(p.content, p.fields)
+		})
+	)
 }
 
 /** @returns {import('$lib').Field} */
@@ -300,7 +301,7 @@ export function flatten_content(content, fields) {
 	Object.keys(content).forEach((locale) => {
 		// ensure uncorrupted data
 		if (constants.locales.find((loc) => loc.key === locale)) {
-			console.log({content, locale, fields})
+			console.log({ content, locale, fields })
 			recurse({ content_value: content[locale], locale, fields })
 		}
 	})

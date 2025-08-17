@@ -38,11 +38,18 @@
 				break
 			case 'confirm_password_reset':
 				loading = true
-				const token = page.url.searchParams.get('reset') ?? ''
+				const token = page.url.searchParams.get('reset') || page.url.searchParams.get('create') || ''
 				await Users.confirmPasswordReset(token, password, confirm_password)
 					.then(() => goto('/admin/auth'))
-					.catch(({ message }) => {
-						error = message
+					.catch((err) => {
+						// Extract the actual error message from PocketBase
+						if (err.response?.data?.password) {
+							error = err.response.data.password.message
+						} else if (err.response?.message) {
+							error = err.response.message
+						} else {
+							error = err.message || 'An error occurred'
+						}
 					})
 				loading = false
 				break

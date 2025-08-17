@@ -24,7 +24,7 @@
 	 */
 	async function create_page_with_sections(page_data) {
 		const page = Pages.create(page_data)
-		
+
 		if (page.page_type) {
 			const page_type = PageTypes.one(page.page_type)
 			if (page_type) {
@@ -40,7 +40,7 @@
 					})
 
 					// Find and copy only root-level entries (parent = null/empty)
-					const page_type_section_entries = pts.entries()?.filter(e => !e.parent) ?? []
+					const page_type_section_entries = pts.entries()?.filter((e) => !e.parent) ?? []
 
 					for (const ptse of page_type_section_entries) {
 						PageSectionEntries.create({

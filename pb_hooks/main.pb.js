@@ -1,6 +1,5 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-
 onRecordValidate((e) => {
 	if (!e.record) {
 		e.next()
@@ -126,7 +125,7 @@ routerAdd('GET', '/_preview/{site}', (e) => {
 	let fsys, reader, content
 	try {
 		fsys = $app.newFilesystem()
-		reader = fsys.getFile(fileKey)
+		reader = fsys.getReader(fileKey)
 		content = toString(reader)
 		return e.blob(200, 'text/html', content)
 	} catch {
@@ -154,7 +153,7 @@ routerAdd('GET', '/_symbols/{filename}', (e) => {
 	let fsys, reader, content
 	try {
 		fsys = $app.newFilesystem()
-		reader = fsys.getFile(fileKey)
+		reader = fsys.getReader(fileKey)
 		content = toString(reader)
 		return e.blob(200, 'text/javascript', content)
 	} finally {

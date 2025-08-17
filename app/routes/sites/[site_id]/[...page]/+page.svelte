@@ -14,3 +14,4 @@
 {#if $compilers_registered && current_page}
 	<PalaPage page={current_page} />
 {/if}
+
