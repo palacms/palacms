@@ -15,7 +15,7 @@
 	 */
 
 	/** @type {Props} */
-	let { active_tab_id = $bindable(tabs[0]?.id), variant = 'primary', disable_hotkeys = false, style = '' } = $props()
+	let { active_tab_id = $bindable('content'), variant = 'primary', disable_hotkeys = false, style = '', children } = $props()
 
 	hotkey_events.on('e', toggle_switch)
 
@@ -52,12 +52,25 @@
 		</div>
 		<span class="toggle-back" style:transform={active_tab_id === 'code' ? '' : 'translateX(calc(100% + 6px))'}></span>
 	</button>
+	{#if children}
+		<div class="children">
+			{@render children()}
+		</div>
+	{/if}
 </div>
 
 <style lang="postcss">
 	.LargeSwitch {
 		margin: auto 0.5rem;
 		font-size: 14px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	
+	.children {
+		display: flex;
+		align-items: center;
 	}
 	.toggle-back {
 		position: absolute;

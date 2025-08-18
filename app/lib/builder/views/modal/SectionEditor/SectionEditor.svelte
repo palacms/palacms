@@ -5,6 +5,7 @@
 
 <!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
+	import Icon from '@iconify/svelte'
 	import * as Dialog from '$lib/components/ui/dialog'
 	import { PaneGroup, Pane, PaneResizer } from 'paneforge'
 	import LargeSwitch from '../../../ui/LargeSwitch.svelte'
@@ -14,12 +15,13 @@
 	import { locale } from '../../../stores/app/misc.js'
 	import hotkey_events from '../../../stores/app/hotkey_events.js'
 	import { getContent } from '$lib/pocketbase/content'
-	import * as Mousetrap from 'mousetrap'
 	import { browser } from '$app/environment'
 	import { PageSectionEntries, PageSections, PageEntries, PageTypeSectionEntries, SiteSymbolFields, SiteSymbols, SiteSymbolEntries, SiteEntries, manager } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import type { PageTypeSection } from '$lib/common/models/PageTypeSection'
 	import { current_user } from '$lib/pocketbase/user'
+	import { self as pb } from '$lib/pocketbase/PocketBase'
+	import { Sparkles } from 'lucide-svelte'
 	import _ from 'lodash-es'
 
 	let {
@@ -154,6 +156,84 @@
 	let css = $state(symbol?.css ?? '')
 	let js = $state(symbol?.js ?? '')
 
+	// AI generation state
+	let show_ai_prompt = $state(false)
+	let ai_prompt = $state('')
+	let ai_generating = $state(false)
+
+	// Claude API function to generate Svelte component
+	async function generate_svelte_component() {
+		if (!ai_prompt.trim()) {
+			alert('Please enter a prompt')
+			return
+		}
+
+		ai_generating = true
+
+		try {
+			// Prepare field context for AI
+			const field_context = fields
+				? fields.map((field) => {
+						const base_info = {
+							key: field.key,
+							label: field.label,
+							type: field.type
+						}
+
+						// Add type-specific information
+						if (field.type === 'image') {
+							return { ...base_info, type: { url: 'string', alt: 'string' } }
+						} else if (field.type === 'repeater') {
+							return { ...base_info, type: 'array' }
+						} else if (field.type === 'switch') {
+							return { ...base_info, type: 'boolean' }
+						} else if (field.type === 'number') {
+							return { ...base_info, type: 'number' }
+						} else {
+							return { ...base_info, type: 'string' }
+						}
+					})
+				: []
+
+			// Call PocketBase custom endpoint
+			const data = await pb.send('/api/generate-component', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					prompt: ai_prompt,
+					existing_code: {
+						html: html || '',
+						css: css || '',
+						js: js || ''
+					},
+					fields: field_context
+				})
+			})
+
+			// Update the code editor with generated content
+			if (data.html) {
+				html = data.html
+			}
+			if (data.css) {
+				css = data.css
+			}
+			if (data.js) {
+				js = data.js
+			}
+
+			// Clear prompt and hide dialog
+			ai_prompt = ''
+			show_ai_prompt = false
+		} catch (error) {
+			console.error('Error generating component:', error)
+			alert(`Failed to generate component: ${error.message}`)
+		} finally {
+			ai_generating = false
+		}
+	}
+
 	// Compare current state to initial data
 	$effect(() => {
 		const code_changed = html !== initial_code.html || css !== initial_code.css || js !== initial_code.js
@@ -185,6 +265,32 @@
 	})
 </script>
 
+<!-- AI Prompt Dialog -->
+{#if show_ai_prompt}
+	<div class="ai-prompt-overlay">
+		<div class="ai-prompt-dialog">
+			<div class="ai-prompt-header">
+				<h3>Modify Component with AI</h3>
+				<button class="close-btn" onclick={() => (show_ai_prompt = false)}>
+					<Icon icon="mdi:close" />
+				</button>
+			</div>
+			<div class="ai-prompt-body">
+				<label>
+					<span>Describe what you want to change or add:</span>
+					<textarea bind:value={ai_prompt} placeholder="e.g., Add a subtitle below the title, change the button to be green, make the layout responsive..." rows="4" disabled={ai_generating} />
+				</label>
+			</div>
+			<div class="ai-prompt-footer">
+				<button class="cancel-btn" onclick={() => (show_ai_prompt = false)} disabled={ai_generating}>Cancel</button>
+				<button class="generate-btn" onclick={generate_svelte_component} disabled={ai_generating || !ai_prompt.trim()}>
+					{ai_generating ? 'Modifying...' : 'Modify Component'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <Dialog.Header
 	class="mb-2"
 	title={symbol?.name || 'Block'}
@@ -197,7 +303,14 @@
 	}}
 >
 	{#if $current_user?.siteRole === 'developer'}
-		<LargeSwitch bind:active_tab_id={tab} />
+		<LargeSwitch bind:active_tab_id={tab}>
+			{#if tab === 'code'}
+				<button class="ai-button" onclick={() => (show_ai_prompt = true)} title="Generate with AI">
+					<Sparkles class="w-3" />
+					<span>AI</span>
+				</button>
+			{/if}
+		</LargeSwitch>
 	{/if}
 </Dialog.Header>
 
@@ -289,6 +402,147 @@
 </main>
 
 <style lang="postcss">
+	.ai-button {
+		border: 1px solid #222;
+		padding: 4px 10px;
+		border-radius: 4px;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 0.75rem;
+		font-weight: 600;
+		transition: opacity 0.2s;
+		margin-left: 8px;
+
+		&:hover {
+			opacity: 0.9;
+		}
+	}
+
+	.ai-prompt-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.7);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+	}
+
+	.ai-prompt-dialog {
+		background: var(--color-gray-9);
+		border-radius: 8px;
+		width: 90%;
+		max-width: 600px;
+		color: var(--primo-color-white);
+	}
+
+	.ai-prompt-header {
+		padding: 20px;
+		border-bottom: 1px solid var(--color-gray-8);
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+
+		h3 {
+			margin: 0;
+			font-size: 18px;
+		}
+
+		.close-btn {
+			background: transparent;
+			color: var(--color-gray-4);
+			padding: 4px;
+			transition: color 0.2s;
+
+			&:hover {
+				color: var(--primo-color-white);
+			}
+		}
+	}
+
+	.ai-prompt-body {
+		padding: 20px;
+
+		label {
+			display: block;
+			margin-bottom: 16px;
+
+			span {
+				display: block;
+				margin-bottom: 8px;
+				font-size: 14px;
+				color: var(--color-gray-4);
+			}
+
+			textarea {
+				width: 100%;
+				background: var(--color-gray-8);
+				border: 1px solid var(--color-gray-7);
+				color: var(--primo-color-white);
+				padding: 10px;
+				border-radius: 4px;
+				font-size: 14px;
+
+				&:focus {
+					outline: none;
+					border-color: var(--weave-primary-color);
+				}
+
+				&:disabled {
+					opacity: 0.5;
+				}
+			}
+
+			textarea {
+				resize: vertical;
+				min-height: 100px;
+			}
+		}
+	}
+
+	.ai-prompt-footer {
+		padding: 20px;
+		border-top: 1px solid var(--color-gray-8);
+		display: flex;
+		justify-content: flex-end;
+		gap: 10px;
+
+		button {
+			padding: 8px 16px;
+			border-radius: 4px;
+			font-size: 14px;
+			font-weight: 500;
+			transition: opacity 0.2s;
+
+			&:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+		}
+
+		.cancel-btn {
+			background: var(--color-gray-8);
+			color: var(--color-gray-4);
+
+			&:hover:not(:disabled) {
+				background: var(--color-gray-7);
+			}
+		}
+
+		.generate-btn {
+			background: var(--weave-primary-color);
+			color: var(--primo-color-codeblack);
+
+			&:hover:not(:disabled) {
+				opacity: 0.9;
+			}
+		}
+	}
+
 	main {
 		display: flex; /* to help w/ positioning child items in code view */
 		background: var(--primo-color-black);
