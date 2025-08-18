@@ -5,13 +5,9 @@ onBootstrap((e) => {
 	// https://github.com/pocketbase/pocketbase/discussions/7091#discussioncomment-14085548
 	// TODO: Use provided typings after the Pocketbase update.
 	$app.onServe().bindFunc((/** @type {core.ServeEvent} */ e) => {
-		e.installerFunc = (_app, systemSuperuser, baseURL) => {
-			/** 30 minutes in nanoseconds (1 min = 60 s; 1 s = 10^9 ns) */
-			const tokenDuration = 30 * 60 * 10 ** 9
-			const token = systemSuperuser.newStaticAuthToken(tokenDuration)
-			baseURL = baseURL.replace(/\/$/, '') // Remove trailing slash
-			const url = `${baseURL}/admin/setup#${token}`
-			$app.logger().info('Launch the URL below in the browser to start PalaCMS setup:\n' + url)
+		e.installerFunc = (app, systemSuperuser) => {
+			systemSuperuser.setPassword('public-secret')
+			app.save(systemSuperuser)
 		}
 
 		e.next()
@@ -91,7 +87,29 @@ onRecordAfterUpdateSuccess((e) => {
 }, 'users')
 
 // Serve admin pages
-routerAdd('GET', '/admin/{path...}', $apis.static('./pb_public', true))
+routerAdd('GET', '/admin/{path...}', (e) => {
+	const next = $apis.static('./pb_public', true)
+	const isFile = /\.\w+$/.test(e.request.url.path)
+	if (isFile || e.request.url.path === '/admin/setup') {
+		next(e)
+		return
+	}
+
+	const superuserCount = $app.countRecords(
+		'_superusers',
+		$dbx.not(
+			$dbx.hashExp({
+				email: '__pbinstaller@example.com'
+			})
+		)
+	)
+	const setupRequired = superuserCount === 0
+	if (setupRequired) {
+		e.redirect(302, '/admin/setup')
+	} else {
+		next(e)
+	}
+})
 
 // Serve sites
 routerAdd('GET', '/{path...}', (e) => {

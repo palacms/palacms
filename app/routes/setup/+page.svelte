@@ -4,7 +4,6 @@
 	import { Loader } from 'lucide-svelte'
 	import ServerLogo from '$lib/components/ui/ServerLogo.svelte'
 	import { self } from '$lib/pocketbase/PocketBase'
-	import { page } from '$app/state'
 
 	let current_step = $state(1)
 	let email = $state('')
@@ -15,8 +14,6 @@
 	let checking_setup = $state(true)
 	let error = $state('')
 	const is_form_valid = $derived(email.trim() !== '' && password.length >= 8 && confirm_password !== '' && password === confirm_password)
-	const token = $derived(page.url.hash.slice(1))
-	const authOpts = $derived({ headers: { Authorization: token } })
 
 	const users = self.collection('users')
 	const superusers = self.collection('_superusers')
@@ -26,25 +23,14 @@
 		checking_setup = true
 		error = ''
 
-		if (!token) {
-			error = 'Missing the access token. Is the URL correct?'
-			return
-		}
-
 		superusers
-			.getList(0, 0, { ...authOpts, filter: 'email != "__pbinstaller@example.com"' })
+			.authWithPassword('__pbinstaller@example.com', 'public-secret')
 			.catch((err) => {
-				error = 'Authentication failed! Is the URL correct? Setup URL is generated when starting up PalaCMS and is valid for 30 minutes.'
+				error = 'Authentication failed! Setup may have been completed already.'
 				throw err
 			})
-			.then(({ totalItems: userCount }) => {
-				if (userCount > 0) {
-					// Setup already complete
-					error = 'Setup is already completed! Redirecting...'
-					return goto('/admin', { replaceState: true })
-				} else {
-					checking_setup = false
-				}
+			.then(() => {
+				checking_setup = false
 			})
 			.catch((err) => {
 				console.error('Setup failed:', err)
@@ -63,24 +49,18 @@
 		error = ''
 
 		try {
-			await users.create(
-				{
-					email,
-					password,
-					passwordConfirm: password,
-					serverRole: 'developer'
-				},
-				authOpts
-			)
+			await users.create({
+				email,
+				password,
+				passwordConfirm: password,
+				serverRole: 'developer'
+			})
 
-			await superusers.create(
-				{
-					email,
-					password,
-					passwordConfirm: password
-				},
-				authOpts
-			)
+			await superusers.create({
+				email,
+				password,
+				passwordConfirm: password
+			})
 
 			// Authenticate the user immediately after creation
 			try {
