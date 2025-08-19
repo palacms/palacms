@@ -8,12 +8,10 @@
 	import { Sites, PageTypes, manager } from '$lib/pocketbase/collections'
 	import type { PageType } from '$lib/common/models/PageType'
 	import { getContext } from 'svelte'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const context_site = getContext('site')
-	const host = $derived(page.url.host)
-	const fallback_site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
-	const site = $derived(context_site || fallback_site)
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 
 	async function create_page_type(new_page_type) {
 		if (!site) return

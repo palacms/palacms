@@ -3,9 +3,10 @@
 	import type { PageListField } from '$lib/common/models/fields/PageListField.js'
 	import { page } from '$app/state'
 	import { Sites } from '$lib/pocketbase/collections'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
+	import { getContext } from 'svelte'
 
-	const host = $derived(page.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const { field }: { field: PageListField } = $props()
 </script>
 
@@ -19,7 +20,7 @@
 			label="Page Type"
 			value={field.page_type}
 			fullwidth={true}
-			options={site?.page_types().map((page_type) => ({
+			options={site.page_types()?.map((page_type) => ({
 				label: page_type.name,
 				value: page_type,
 				icon: page_type.icon

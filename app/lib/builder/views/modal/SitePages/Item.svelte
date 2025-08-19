@@ -19,10 +19,7 @@
 	let { parent, page, active, oncreate }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function } = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const context_site = getContext('site')
-	const host = $derived(pageState.url.host)
-	const fallback_site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
-	const site = $derived(context_site || fallback_site)
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const full_url = $derived(() => {
 		const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 		return `${base_path}/${page.slug}`

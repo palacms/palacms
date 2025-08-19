@@ -20,6 +20,7 @@
 	import { page } from '$app/state'
 	import pluralize from 'pluralize'
 	import { get_empty_value } from '../../utils.js'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let {
 		field,
@@ -43,8 +44,7 @@
 		onmove: (id: string, direction: 'up' | 'down') => void
 	} = $props()
 
-	const host = $derived(page.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const page_types = $derived(site?.page_types() ?? [])
 
 	const visible_field_types = getContext('hide_dynamic_field_types') ? $fieldTypes.filter((ft) => !dynamic_field_types.includes(ft.id)) : $fieldTypes

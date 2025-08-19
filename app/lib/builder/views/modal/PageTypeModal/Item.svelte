@@ -8,14 +8,11 @@
 	import { page } from '$app/state'
 	import { goto } from '$app/navigation'
 	import { getContext } from 'svelte'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let { active, page_type }: { active: boolean; page_type: PageType } = $props()
 
-	// Get site from context (preferred) or fallback to hostname lookup
-	const context_site = getContext('site')
-	const host = $derived(page.url.host)
-	const fallback_site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
-	const site = $derived(context_site || fallback_site)
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 
 	let editing_page = $state(false)
 

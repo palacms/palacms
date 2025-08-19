@@ -151,7 +151,7 @@
 </script>
 
 <div class="h-screen flex flex-col">
-	<Toolbar {site}>
+	<Toolbar>
 		{@render toolbar?.()}
 	</Toolbar>
 	<PaneGroup direction="horizontal" autoSaveId="page-view" style="height:initial;flex:1;">

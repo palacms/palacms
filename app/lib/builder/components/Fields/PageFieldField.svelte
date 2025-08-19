@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/state'
-	import { createEventDispatcher } from 'svelte'
+	import { createEventDispatcher, getContext } from 'svelte'
 	import type { PageFieldField } from '$lib/common/models/fields/PageFieldField.js'
 	import UI from '../../ui/index.js'
 	import { Sites } from '$lib/pocketbase/collections'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
 
-	const host = $derived(page.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const { field }: { field: PageFieldField } = $props()
 
 	const dispatch = createEventDispatcher()

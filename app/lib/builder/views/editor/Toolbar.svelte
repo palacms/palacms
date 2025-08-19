@@ -21,28 +21,26 @@
 	import Collaboration from '$lib/builder/views/modal/Collaboration.svelte'
 	import Deploy from '$lib/components/Modals/Deploy/Deploy.svelte'
 	import { usePublishSite } from '$lib/Publish.svelte'
-	import type { Snippet } from 'svelte'
+	import { getContext, type Snippet } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { current_user } from '$lib/pocketbase/user'
 
-	let { children, site }: { children: Snippet; site?: ObjectOf<typeof Sites> } = $props()
+	let { children }: { children: Snippet } = $props()
 
-	const host = $derived(pageState.url.host)
-	const fallback_site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
-	const resolved_site = $derived(site || fallback_site)
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const page_slug = $derived(pageState.params.page || '')
 	const page_type_id = $derived(pageState.params.page_type)
-	const page = $derived(resolved_site && page_slug ? Pages.list({ filter: `site = "${resolved_site.id}" && slug = "${page_slug}"` })?.[0] : undefined)
+	const page = $derived(site && page_slug ? Pages.list({ filter: `site = "${site.id}" && slug = "${page_slug}"` })?.[0] : undefined)
 	const page_type = $derived(page_type_id && PageTypes.one(page_type_id))
 	const page_page_type = $derived(page && PageTypes.one(page.page_type))
 
-	const publish = $derived(usePublishSite(resolved_site?.id))
+	const publish = $derived(usePublishSite(site?.id))
 
 	let going_up = $state(false)
 	let going_down = $state(false)
 
 	// Get root-level pages for navigation (homepage + direct children)
-	const home_page = $derived(resolved_site?.homepage())
+	const home_page = $derived(site?.homepage())
 	const child_pages = $derived(home_page?.children() ?? [])
 	const root_pages = $derived(home_page ? [home_page, ...child_pages] : [])
 	const current_page_index = $derived(root_pages.findIndex((p) => p.id === page?.id))
@@ -53,7 +51,7 @@
 	function navigate_up() {
 		if (can_navigate_up) {
 			const prev_page = root_pages[current_page_index - 1]
-			const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${resolved_site?.id}` : '/admin/site'
+			const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 			goto(`${base_path}/${prev_page.slug}`)
 		}
 	}
@@ -61,7 +59,7 @@
 	function navigate_down() {
 		if (can_navigate_down) {
 			const next_page = root_pages[current_page_index + 1]
-			const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${resolved_site?.id}` : '/admin/site'
+			const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 			goto(`${base_path}/${next_page.slug}`)
 		}
 	}
@@ -145,7 +143,7 @@
 			bind:stage={publish_stage}
 			publish_fn={publish.publish}
 			loading={publish.status !== 'standby'}
-			site_host={resolved_site?.host}
+			site_host={site?.host}
 			onClose={() => {
 				publishing = false
 				publish_stage = 'INITIAL'
@@ -198,7 +196,7 @@
 			</div>
 		</div>
 		<div class="site-name">
-			<span class="site">{resolved_site?.name}</span>
+			<span class="site">{site?.name}</span>
 			{#if page_type}
 				<span class="separator">/</span>
 				<div class="page-type" style:background={page_type.color}>
@@ -210,7 +208,7 @@
 				<span class="page">{page.name}</span>
 				{#if page_page_type}
 					{#if $current_user?.siteRole === 'developer'}
-						{@const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${resolved_site?.id}` : '/admin/site'}
+						{@const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}
 						<a class="page-type-badge" style="background-color: {page_page_type.color};" href="{base_path}/page-type--{page_page_type.id}">
 							<Icon icon={page_page_type.icon} />
 						</a>

@@ -6,16 +6,16 @@
 	import * as _ from 'lodash-es'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
 	import { getContent } from '$lib/pocketbase/content'
-	import { setContext } from 'svelte'
+	import { getContext, setContext } from 'svelte'
 	import { page } from '$app/state'
 	import { Sites, SiteFields, SiteEntries, manager } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
 	import { browser } from '$app/environment'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let { onClose, has_unsaved_changes = $bindable(false) } = $props()
 
-	const host = $derived(page.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
 	const site_data = $derived(fields && entries && (getContent(site, fields, entries)['en'] ?? {}))
@@ -24,7 +24,7 @@
 
 	const initial_code = { head: site?.head, foot: site?.foot }
 	const initial_data = _.cloneDeep(site_data)
-	
+
 	let head = $state(site?.head || '')
 	let foot = $state(site?.foot || '')
 

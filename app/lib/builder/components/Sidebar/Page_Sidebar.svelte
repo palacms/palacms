@@ -21,10 +21,7 @@
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const context_site = getContext<ObjectOf<typeof Sites>>('site')
-	const host = $derived(pageState.url.host)
-	const fallback_site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
-	const site = $derived(context_site || fallback_site)
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const slug = $derived(pageState.params.page)
 	const page = $derived(site && slug ? Pages.list({ filter: `site = "${site.id}" && slug = "${slug}"` })?.[0] : site?.homepage())
 	const page_type = $derived(page && PageTypes.one(page.page_type))

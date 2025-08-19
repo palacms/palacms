@@ -7,11 +7,12 @@
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
 	import { page } from '$app/state'
 	import { manager, PageTypeEntries, PageTypeFields, PageTypes } from '$lib/pocketbase/collections'
+	import { getContext } from 'svelte'
+	import { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let { onClose }: { onClose?: () => void } = $props()
 
-	const page_type_id = page.params.page_type
-	const page_type = $derived(PageTypes.one(page_type_id))
+	const page_type = getContext<ObjectOf<typeof PageTypes>>('page_type')
 	const fields = $derived(page_type?.fields() ?? [])
 	const entries = $derived(page_type?.entries() ?? [])
 
