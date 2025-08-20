@@ -76,7 +76,7 @@
 
 <style lang="postcss">
 	.Card {
-		/* background: #1a1a1a; */
+		background: #1a1a1a;
 		display: grid;
 		position: relative; /* for absolutelty positioned button in top right corner */
 	}
