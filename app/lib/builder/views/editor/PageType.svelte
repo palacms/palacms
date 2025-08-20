@@ -132,12 +132,10 @@
 		if (hide_toolbar_timeout) {
 			clearTimeout(hide_toolbar_timeout)
 		}
-		// Increase delay to prevent toolbar flicker when moving between sections
-		hide_toolbar_timeout = setTimeout(() => {
-			if (!hovering_toolbar) {
-				showing_block_toolbar = false
-			}
-		}, 300)
+		// Hide immediately without delay
+		if (!hovering_toolbar) {
+			showing_block_toolbar = false
+		}
 	}
 
 	let editing_section_tab = $state('code')
