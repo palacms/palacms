@@ -1,6 +1,11 @@
 /// <reference path="../pb_data/types.d.ts" />
 migrate((app) => {
 	const settings = app.settings()
+	const appURL = $os.getenv('PALA_APP_URL')
+	if (appURL) {
+		settings.meta.appURL = appURL
+	}
+
 	settings.meta.appName = 'PalaCMS'
 	app.save(settings)
 

@@ -29,8 +29,8 @@ export type StagedOperation<T extends ObjectWithId> =
 	| { operation: 'delete'; processed: boolean }
 
 export type CollectionMapping<T extends ObjectWithId, Options extends CollectionMappingOptions<T>> = {
-	one: (id: string) => MappedObject<T, Options> | undefined
-	list: (options?: ListOptions) => MappedObjectList<T, Options> | undefined
+	one: (id: string) => MappedObject<T, Options> | undefined | null
+	list: (options?: ListOptions) => MappedObjectList<T, Options> | undefined | null
 	create: (values: Omit<T, 'id'> & { id?: string }) => MappedObject<T, Options>
 	update: (id: string, values: Partial<T>) => MappedObject<T, Options>
 	delete: (id: string) => void
@@ -77,13 +77,19 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 					if (!records.has(id)) {
 						untrack(() => {
 							records.set(id, undefined)
-							collection.getOne(id).then((record) => {
-								records.set(id, record as unknown as T)
-							})
+							collection
+								.getOne(id)
+								.then((record) => {
+									records.set(id, record as unknown as T)
+								})
+								.catch((error) => {
+									console.error(error)
+									records.set(id, null)
+								})
 						})
 					}
 				})
-				return undefined
+				return data
 			}
 
 			return mapObject(data)
@@ -110,8 +116,9 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 								// Store the list of IDs
 								lists.set(listId, { invalidated: false, ids: fetchedRecords.map(({ id }) => id) })
 							})
-							.catch(() => {
-								lists.set(listId, undefined)
+							.catch((error) => {
+								console.error(error)
+								lists.set(listId, null)
 							})
 					})
 				}
@@ -130,8 +137,11 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 				}
 			}
 
-			const objects = list.map((id) => collectionMapping.one(id)).filter((object) => object !== undefined)
-			if ((!lists.has(listId) || lists.get(listId) === undefined) && objects.length === 0) {
+			const originalList = lists.get(listId)
+			const objects = list.map((id) => collectionMapping.one(id)).filter((object) => !!object)
+			if (lists.has(listId) && !originalList) {
+				return originalList
+			} else if (!originalList && objects.length === 0) {
 				return undefined
 			} else {
 				return objects

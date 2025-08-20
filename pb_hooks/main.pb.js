@@ -1,5 +1,22 @@
 /// <reference path="../pb_data/types.d.ts" />
 
+onBootstrap((e) => {
+	// Some typings for this should be availabe in next Pocketbase update.
+	// https://github.com/pocketbase/pocketbase/discussions/7091#discussioncomment-14085548
+	// TODO: Use provided typings after the Pocketbase update.
+	$app.onServe().bindFunc((/** @type {core.ServeEvent} */ e) => {
+		e.installerFunc = (app, systemSuperuser) => {
+			systemSuperuser.setPassword('public-secret')
+			app.save(systemSuperuser)
+		}
+
+		e.next()
+	})
+
+	e.next()
+})
+
+// Validate records
 onRecordValidate((e) => {
 	if (!e.record) {
 		e.next()
@@ -41,6 +58,7 @@ onRecordValidate((e) => {
 	e.next()
 })
 
+// Send email invitations
 onRecordAfterCreateSuccess((e) => {
 	if (e.record.get('invite') === 'pending') {
 		try {
@@ -54,6 +72,7 @@ onRecordAfterCreateSuccess((e) => {
 	e.next()
 }, 'users')
 
+// Send email invitations
 onRecordAfterUpdateSuccess((e) => {
 	if (e.record.get('invite') === 'pending') {
 		try {
@@ -67,8 +86,32 @@ onRecordAfterUpdateSuccess((e) => {
 	e.next()
 }, 'users')
 
-routerAdd('GET', '/admin/{path...}', $apis.static('./pb_public', true))
+// Serve admin pages
+routerAdd('GET', '/admin/{path...}', (e) => {
+	const next = $apis.static('./pb_public', true)
+	const isFile = /\.\w+$/.test(e.request.url.path)
+	if (isFile || e.request.url.path === '/admin/setup') {
+		next(e)
+		return
+	}
 
+	const superuserCount = $app.countRecords(
+		'_superusers',
+		$dbx.not(
+			$dbx.hashExp({
+				email: '__pbinstaller@example.com'
+			})
+		)
+	)
+	const setupRequired = superuserCount === 0
+	if (setupRequired) {
+		e.redirect(302, '/admin/setup')
+	} else {
+		next(e)
+	}
+})
+
+// Serve sites
 routerAdd('GET', '/{path...}', (e) => {
 	// Handle missing trailing slash
 	if (e.request.url.path.slice(-1) !== '/') {
@@ -111,6 +154,7 @@ routerAdd('GET', '/{path...}', (e) => {
 	}
 })
 
+// Serve site previews
 routerAdd('GET', '/_preview/{site}', (e) => {
 	const siteId = e.request.pathValue('site')
 	let site
@@ -136,6 +180,7 @@ routerAdd('GET', '/_preview/{site}', (e) => {
 	}
 })
 
+// Serve compiled symbol JavaScript
 routerAdd('GET', '/_symbols/{filename}', (e) => {
 	const filename = e.request.pathValue('filename')
 

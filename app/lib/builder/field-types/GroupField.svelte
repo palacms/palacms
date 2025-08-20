@@ -55,6 +55,7 @@
 						{fields}
 						{entries}
 						level={level + 1}
+						minimal={true}
 						onchange={(values) => onchange({ [field.key]: { 0: { value: null, subValues: values } } })}
 					/>
 				{/each}

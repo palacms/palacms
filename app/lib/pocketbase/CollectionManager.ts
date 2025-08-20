@@ -16,8 +16,8 @@ export type CollectionManager = ReturnType<typeof createCollectionManager>
 
 export const createCollectionManager = () => {
 	const staged = new OrderedSvelteMap<string, StagedOperation<ObjectWithId>>()
-	const records = new OrderedSvelteMap<string, ObjectWithId | undefined>()
-	const lists = new OrderedSvelteMap<string, RecordIdList | undefined>()
+	const records = new OrderedSvelteMap<string, ObjectWithId | undefined | null>()
+	const lists = new OrderedSvelteMap<string, RecordIdList | undefined | null>()
 
 	let commitsInProgress = 0
 
