@@ -15,7 +15,7 @@
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import * as Tabs from '$lib/components/ui/tabs'
-	import { Cuboid, SquarePen } from 'lucide-svelte'
+	import { Cuboid, SquarePen, Loader } from 'lucide-svelte'
 	import { page } from '$app/state'
 	import { Sites, PageTypes, SiteSymbols, PageTypeSymbols, PageTypeFields, PageTypeEntries, manager } from '$lib/pocketbase/collections'
 	import { site_html } from '$lib/builder/stores/app/page.js'
@@ -54,12 +54,14 @@
 	let upload_file_invalid = $state(false)
 
 	let file = $state<File>()
+	let is_importing = $state(false)
 	const importSiteSymbol = $derived(useImportSiteSymbol(file, site?.id))
 	async function upload_block(newFile: File) {
 		file = newFile
 		await tick()
 
 		if (!file || !site) return
+		is_importing = true
 		try {
 			console.log('Importing file:', file.name, 'Size:', file.size)
 			await importSiteSymbol.run()
@@ -72,6 +74,8 @@
 			console.error('Error details:', error.message, error.stack)
 			upload_file_invalid = true
 			file = undefined
+		} finally {
+			is_importing = false
 		}
 	}
 
@@ -411,7 +415,16 @@
 		<h2 class="text-lg font-semibold leading-none tracking-tight">Import Block</h2>
 		<p class="text-muted-foreground text-sm mb-4">Import a block from a JSON file exported from another site.</p>
 
-		<DropZone onupload={upload_block} invalid={upload_file_invalid} drop_text="Drop your block file here or click to browse" accept=".json" class="mb-4" />
+		{#if is_importing}
+			<div class="flex items-center justify-center py-8">
+				<div class="animate-spin">
+					<Loader class="h-8 w-8" />
+				</div>
+				<span class="ml-3">Importing block...</span>
+			</div>
+		{:else}
+			<DropZone onupload={upload_block} invalid={upload_file_invalid} drop_text="Drop your block file here or click to browse" accept=".json" class="mb-4" />
+		{/if}
 
 		<Dialog.Footer>
 			<Button
@@ -421,6 +434,7 @@
 					upload_dialog_open = false
 					upload_file_invalid = false
 				}}
+				disabled={is_importing}
 			>
 				Cancel
 			</Button>
