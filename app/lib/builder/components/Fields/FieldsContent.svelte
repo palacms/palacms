@@ -49,7 +49,6 @@
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entity } from '$lib/pocketbase/content'
 	import type { Entry } from '$lib/common/models/Entry'
-	import type { Component } from 'svelte'
 	import EntryContent from './EntryContent.svelte'
 	import { current_user } from '$lib/pocketbase/user'
 

@@ -46,7 +46,11 @@
 	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const page_types = $derived(site?.page_types() ?? [])
 
-	const visible_field_types = getContext('hide_dynamic_field_types') ? $fieldTypes.filter((ft) => !dynamic_field_types.includes(ft.id)) : $fieldTypes
+	const visible_field_types = getContext('hide_dynamic_field_types')
+		? $fieldTypes.filter((ft) => !dynamic_field_types.includes(ft.id))
+		: getContext('hide_page_field_field_type')
+			? $fieldTypes.filter((ft) => ft.id !== 'page-field')
+			: $fieldTypes
 
 	let comparable_fields = $derived(
 		fields
@@ -200,7 +204,9 @@
 					value: ft.id,
 					label: ft.label
 				}))}
-				dividers={[1, 8, 10, 12]}
+				dividers={(() => {
+					return getContext('hide_dynamic_field_types') ? [1, 8] : getContext('hide_page_field_field_type') ? [1, 8, 9, 11] : [1, 8, 10, 12]
+				})()}
 				on:input={({ detail: field_type_id }) => {
 					field_type_changed = true
 					selected_field_type_id = field_type_id
