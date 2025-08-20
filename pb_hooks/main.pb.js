@@ -102,7 +102,7 @@ routerAdd('GET', '/{path...}', (e) => {
 	let fsys, reader, content
 	try {
 		fsys = $app.newFilesystem()
-		reader = fsys.getFile(fileKey)
+		reader = fsys.getReader(fileKey)
 		content = toString(reader)
 		return e.blob(200, 'text/html', content)
 	} finally {
