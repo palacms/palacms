@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { watch } from 'runed'
 	import { getIcon, loadIcon, buildIcon } from '@iconify/svelte'
 	import IconPicker from '../components/IconPicker.svelte'
 	import axios from 'axios'
@@ -24,16 +25,14 @@
 
 	let searched = $state(false)
 
-	$effect(() => {
-		if (!getIcon(value) && !value.startsWith('<svg')) {
-			// reset value when invalid (i.e. when switching field type)
-			onchange({ [field.key]: { 0: { value: '' } } })
-		} else if (getIcon(value)) {
-			// convert icon-id to icon-svg
-			select_icon(value)
+	watch(
+		() => value,
+		() => {
+			if (!value.startsWith('<svg') || value !== '') {
+				onchange({ [field.key]: { 0: { value: '' } } })
+			}
 		}
-	})
-
+	)
 	// search immediately when passed a query
 	if (search_query) {
 		search()
