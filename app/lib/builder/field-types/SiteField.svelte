@@ -6,6 +6,8 @@
 	import { setFieldEntries, type FieldValueHandler, type FieldValueMap } from '../components/Fields/FieldsContent.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import { page } from '$app/state'
+	import { getContext } from 'svelte'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	const {
 		entity,
@@ -34,8 +36,7 @@
 		return $fieldTypes.find((ft) => ft.id === resolvedField.type)
 	})
 
-	const host = $derived(page.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
 	const entry = $derived(resolvedField && getDirectEntries(entity, resolvedField, entries)[0])

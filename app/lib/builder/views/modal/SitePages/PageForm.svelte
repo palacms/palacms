@@ -7,11 +7,11 @@
 	import { page } from '$app/state'
 	import { Sites, PageTypes, Pages } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { getContext } from 'svelte'
 
 	let { parent, oncreate }: { parent?: ObjectOf<typeof Pages>; oncreate: (new_page: Omit<Page, 'id' | 'parent' | 'site'>) => void | Promise<void> } = $props()
 
-	const host = $derived(page.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const page_types = $derived(site?.page_types())
 
 	// set page type equal to the last type used under this parent

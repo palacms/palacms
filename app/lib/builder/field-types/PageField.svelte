@@ -6,10 +6,11 @@
 	import type { Entity } from '$lib/pocketbase/content.js'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
+	import { getContext } from 'svelte'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
 
 	const { entity, field, entry, onchange }: { entity: Entity; field: PageField; entry?: Entry; onchange: FieldValueHandler } = $props()
-	const host = $derived(page.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const selectable_pages = $derived.by(() => {
 		const pages = site?.pages() ?? []
 		const filtered = pages.filter((p) => p.page_type === field.config.page_type)

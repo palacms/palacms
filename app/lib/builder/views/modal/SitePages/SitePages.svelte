@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import * as Dialog from '$lib/components/ui/dialog'
 	import Item from './Item.svelte'
 	import PageForm from './PageForm.svelte'
@@ -6,12 +6,10 @@
 	import { page } from '$app/state'
 	import { Sites, Pages, PageTypes, PageSections, PageSectionEntries, manager } from '$lib/pocketbase/collections'
 	import { getContext } from 'svelte'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const context_site = getContext('site')
-	const host = $derived(page.url.host)
-	const fallback_site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
-	const site = $derived(context_site || fallback_site)
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const all_pages = $derived(site?.pages() ?? [])
 	const home_page = $derived(site?.homepage())
 	const child_pages = $derived(home_page?.children() ?? [])

@@ -8,8 +8,8 @@
 	export const refresh_preview = writable(() => {})
 </script>
 
-<script>
-	import { onMount, tick, untrack } from 'svelte'
+<script lang="ts">
+	import { getContext, onMount, tick, untrack } from 'svelte'
 	import { slide, fade } from 'svelte/transition'
 	import { dynamic_iframe_srcdoc } from './misc.js'
 	import { highlightedElement } from '../stores/app/misc'
@@ -17,9 +17,9 @@
 	import Icon from '@iconify/svelte'
 	import { content_editable } from '../utilities'
 	import { processCode } from '../utils.js'
-	import { page } from '$app/state'
 	import { debounce } from 'lodash-es'
 	import { Sites } from '$lib/pocketbase/collections'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	/**
 	 * @typedef {Object} Props
@@ -51,8 +51,7 @@
 		append = ''
 	} = $props()
 
-	const host = $derived(page.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = getContext<ObjectOf<typeof Sites>>('site')
 
 	$preview_updated = false
 

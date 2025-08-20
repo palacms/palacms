@@ -7,6 +7,8 @@
 	import { setFieldEntries, type FieldValueHandler, type FieldValueMap } from '../components/Fields/FieldsContent.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import { page as pageState } from '$app/state'
+	import { getContext } from 'svelte'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	const {
 		entity,
@@ -35,14 +37,11 @@
 		return $fieldTypes.find((ft) => ft.id === resolvedField.type)
 	})
 
-	const host = $derived(pageState.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
-	const slug = $derived(pageState.params.page)
-	const page = $derived(site && slug ? Pages.list({ filter: `site = "${site.id}" && slug = "${slug}"` })?.[0] : undefined)
-	const page_type = $derived(page && PageTypes.one(page.page_type))
+	const page = getContext<ObjectOf<typeof Pages>>('page')
+	const page_type = $derived(PageTypes.one(page.page_type))
 	const fields = $derived(page_type?.fields() ?? [])
-	const entries = $derived(page_type?.entries() ?? [])
-	const entry = $derived(resolvedField && getDirectEntries(entity, resolvedField, entries)[0])
+	const entries = $derived(page?.entries() ?? [])
+	const entry = $derived(page && resolvedField && getDirectEntries(page, resolvedField, entries)[0])
 
 	// Handle changes to the page field by updating the entry
 	function handleFieldChange(values: FieldValueMap) {
