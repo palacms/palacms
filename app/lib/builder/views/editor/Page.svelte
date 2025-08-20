@@ -178,13 +178,10 @@
 		if (hide_toolbar_timeout) {
 			clearTimeout(hide_toolbar_timeout)
 		}
-		// Increase delay to prevent toolbar flicker when moving between sections
-		hide_toolbar_timeout = setTimeout(() => {
-			if (!hovering_toolbar) {
-				showing_block_toolbar = false
-				page_el.removeEventListener('scroll', position_block_toolbar)
-			}
-		}, 300)
+		if (!hovering_toolbar) {
+			showing_block_toolbar = false
+			page_el.removeEventListener('scroll', position_block_toolbar)
+		}
 	}
 
 	////////////////////////////
