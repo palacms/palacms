@@ -15,29 +15,29 @@ services:
       - traefik.http.services.production-palacms.loadbalancer.server.port=8080
       - traefik.http.routers.production-palacms-http.entrypoints=http
       - traefik.http.routers.production-palacms-http.middlewares=https-redirect
-      - traefik.http.routers.production-palacms-http.rule=Host(`palacms.org`) || Host(`marketplace.palacms.org`)
+      - traefik.http.routers.production-palacms-http.rule=Host(`palacms.com`) || Host(`marketplace.palacms.com`)
 
       - traefik.http.routers.production-palacms-https.entrypoints=https
-      - traefik.http.routers.production-palacms-https.rule=Host(`palacms.org`)
+      - traefik.http.routers.production-palacms-https.rule=Host(`palacms.com`)
       - traefik.http.routers.production-palacms-https.service=production-palacms
       - traefik.http.routers.production-palacms-https.tls=true
       - traefik.http.routers.production-palacms-https.tls.certresolver=le
 
       - traefik.http.routers.marketplace-palacms-https.entrypoints=https
-      - traefik.http.routers.marketplace-palacms-https.rule=Host(`marketplace.palacms.org`)
+      - traefik.http.routers.marketplace-palacms-https.rule=Host(`marketplace.palacms.com`)
       - traefik.http.routers.marketplace-palacms-https.tls=true
       - traefik.http.routers.marketplace-palacms-https.tls.certresolver=le
       - traefik.http.routers.marketplace-palacms-https.middlewares=marketplace-palacms-redirect
 
       - traefik.http.routers.marketplace-palacms-https-api.entrypoints=https
-      - traefik.http.routers.marketplace-palacms-https-api.rule=Host(`marketplace.palacms.org`) && PathPrefix(`/api`)
+      - traefik.http.routers.marketplace-palacms-https-api.rule=Host(`marketplace.palacms.com`) && PathPrefix(`/api`)
       - traefik.http.routers.marketplace-palacms-https-api.service=production-palacms
       - traefik.http.routers.marketplace-palacms-https-api.tls=true
       - traefik.http.routers.marketplace-palacms-https-api.tls.certresolver=le
       - traefik.http.routers.marketplace-palacms-https-api.middlewares=marketplace-palacms-cors
 
       - traefik.http.middlewares.marketplace-palacms-redirect.redirectregex.regex=.*
-      - traefik.http.middlewares.marketplace-palacms-redirect.redirectregex.replacement=https://palacms.org
+      - traefik.http.middlewares.marketplace-palacms-redirect.redirectregex.replacement=https://palacms.com
       - traefik.http.middlewares.marketplace-palacms-cors.headers.accesscontrolalloworiginlist=*
 
 volumes:
