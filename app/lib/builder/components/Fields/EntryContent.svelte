@@ -81,8 +81,7 @@
 				<Icon icon="gg:website" />
 				<span>Site Field</span>
 			{:else if field.type === 'page-field'}
-				<!-- {@const content_entry = getDirectEntries(entity, field, entries)[0]} -->
-				<!-- <Icon icon={content_entry?.value.page.page_type.icon} /> -->
+				<Icon icon="iconoir:page" />
 				<span>Page Field</span>
 			{/if}
 		</div>

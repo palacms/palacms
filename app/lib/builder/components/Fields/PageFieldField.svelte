@@ -1,25 +1,32 @@
 <script lang="ts">
-	import { page } from '$app/state'
 	import { createEventDispatcher, getContext } from 'svelte'
 	import type { PageFieldField } from '$lib/common/models/fields/PageFieldField.js'
 	import UI from '../../ui/index.js'
 	import { Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
+	import { watch } from 'runed'
 
 	const site = getContext<ObjectOf<typeof Sites>>('site')
 	const { field }: { field: PageFieldField } = $props()
 
 	const dispatch = createEventDispatcher()
 
+	function validate_field_key(key) {
+		// replace dash and space with underscore
+		return key.replace(/-/g, '_').replace(/ /g, '_').toLowerCase()
+	}
+
 	// Get page type fields
 	const allFields = $derived.by(() => {
 		const pageTypes = site?.page_types() ?? []
 		return pageTypes.flatMap((pageType) => {
 			const fields = pageType.fields() || []
-			return fields.map((f) => ({
-				...f,
-				pageTypeName: pageType.name
-			}))
+			return fields
+				.filter((f) => !f.parent)
+				.map((f) => ({
+					...f,
+					pageTypeName: pageType.name
+				}))
 		})
 	})
 
@@ -30,6 +37,23 @@
 			value: f.id
 		}))
 	})
+
+	// auto-select first option (wait for field_list to populate)
+	watch(
+		() => field_list,
+		() => {
+			const first_option = field_list[0]
+			if (field_list.length === 0 || field.config.field) return
+			dispatch('input', {
+				label: first_option.label,
+				key: validate_field_key(first_option.label),
+				config: {
+					...field.config,
+					field: first_option.id
+				}
+			})
+		}
+	)
 </script>
 
 <div class="PageFieldField">
@@ -38,10 +62,13 @@
 		<UI.Select
 			fullwidth={true}
 			on:input={({ detail }) => {
+				const page_field = field_list.find((f) => f.id === detail)
 				dispatch('input', {
+					label: page_field?.label,
+					key: validate_field_key(page_field?.label),
 					config: {
 						...field.config,
-						field: detail
+						field: page_field?.id
 					}
 				})
 			}}

@@ -27,3 +27,15 @@
 		<UI.TextInput type="number" label="Max Dimension (px)" bind:value={field.config.maxWidthOrHeight} on:input={handle_change} />
 	</div>
 </div>
+
+<style>
+	.ImageFieldOptions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.option-group {
+		flex: 1;
+		min-width: 100px;
+	}
+</style>

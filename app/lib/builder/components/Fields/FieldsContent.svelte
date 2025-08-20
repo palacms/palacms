@@ -71,24 +71,6 @@
 		ondelete: (field_id: string) => void
 	} = $props()
 
-	function get_component(field: Field) {
-		const fieldType = $fieldTypes.find((ft) => ft.id === field.type)
-		if (fieldType) {
-			return fieldType.component as Component<{
-				entity: Entity
-				field: Field
-				entry?: Entry
-				fields: Field[]
-				entries: Entry[]
-				onchange: FieldValueHandler
-				level: number
-			}>
-		} else {
-			console.warn(`Field type '${field.type}' no longer exists, removing '${field.label}' field`)
-			return null
-		}
-	}
-
 	// TABS
 	let selected_tabs = $state<Record<string, 'field' | 'entry'>>(Object.fromEntries(fields.map((f) => [f.id, f.key === '' ? 'field' : 'entry'])))
 
@@ -182,6 +164,7 @@
 							}
 						}}
 					>
+						<Icon icon={$fieldTypes.find((f) => f.id === field.type)?.icon} />
 						{#if field.type === 'repeater'}
 							<span>Entries</span>
 						{:else}

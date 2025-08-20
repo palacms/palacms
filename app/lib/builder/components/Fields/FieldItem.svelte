@@ -17,7 +17,6 @@
 	import { getContext } from 'svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import { Sites } from '$lib/pocketbase/collections'
-	import { page } from '$app/state'
 	import pluralize from 'pluralize'
 	import { get_empty_value } from '../../utils.js'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
