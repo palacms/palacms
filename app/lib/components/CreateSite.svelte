@@ -19,6 +19,11 @@
 	const all_site_groups = $derived(SiteGroups.list() ?? [])
 	const site_group = $derived(all_site_groups?.find((g) => g.name === 'Default') || all_site_groups?.[0])
 
+	// WORKAROUND: For some reason Svelte does not track site_group if it's not a dependency for an effect.
+	$effect(() => {
+		site_group
+	})
+
 	const starter_sites = $derived(Sites.list() ?? [])
 
 	let site_name = $state(``)
