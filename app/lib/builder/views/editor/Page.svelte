@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
-	import { setContext, tick } from 'svelte'
+	import { tick } from 'svelte'
 	import { flip } from 'svelte/animate'
 	import UI from '$lib/builder/ui'
 	import * as Dialog from '$lib/components/ui/dialog'
@@ -16,11 +16,12 @@
 	import { Pages, Sites, SiteSymbols, PageSections, PageTypes, PageSectionEntries, manager } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import hotkey_events from '$lib/builder/stores/app/hotkey_events'
+	import { page_context } from '$lib/builder/stores/context'
 
 	let { page }: { page: ObjectOf<typeof Pages> } = $props()
 
 	// Set context so child components can access the page
-	setContext('page', page)
+	page_context.set(page)
 
 	const site = $derived(Sites.one(page.site))
 	const page_type = $derived(page.page_type ? PageTypes.one(page.page_type) : null)
@@ -178,13 +179,10 @@
 		if (hide_toolbar_timeout) {
 			clearTimeout(hide_toolbar_timeout)
 		}
-		// Increase delay to prevent toolbar flicker when moving between sections
-		hide_toolbar_timeout = setTimeout(() => {
-			if (!hovering_toolbar) {
-				showing_block_toolbar = false
-				page_el.removeEventListener('scroll', position_block_toolbar)
-			}
-		}, 300)
+		if (!hovering_toolbar) {
+			showing_block_toolbar = false
+			page_el.removeEventListener('scroll', position_block_toolbar)
+		}
 	}
 
 	////////////////////////////

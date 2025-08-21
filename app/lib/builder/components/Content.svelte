@@ -10,8 +10,8 @@
 </script>
 
 <div class="Content">
-	{#each fields as field (field.id)}
-		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} minimal={true} />
+	{#each fields.filter((f) => !f.parent) as field (field.id)}
+		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} />
 	{:else}
 		<p class="empty-description">
 			{#if $current_user?.siteRole === 'developer'}

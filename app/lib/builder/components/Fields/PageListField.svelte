@@ -1,12 +1,9 @@
 <script lang="ts">
 	import UI from '../../ui/index.js'
 	import type { PageListField } from '$lib/common/models/fields/PageListField.js'
-	import { page } from '$app/state'
-	import { Sites } from '$lib/pocketbase/collections'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
-	import { getContext } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const { field }: { field: PageListField } = $props()
 </script>
 

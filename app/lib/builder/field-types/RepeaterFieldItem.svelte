@@ -44,26 +44,25 @@
 		onchange: FieldValueHandler
 	} = $props()
 
-	function get_image() {
-		const [first_subfield] = fields
+	function get_image(subfields) {
+		const [first_subfield] = subfields
 		if (first_subfield && first_subfield.type === 'image') {
 			const [ent] = getResolvedEntries(entity, first_subfield, entries).filter((ent) => ent.parent === entry.id)
 			return ent?.value?.url
 		} else return null
 	}
 
-	function get_icon() {
-		const [first_subfield] = fields
+	function get_icon(subfields) {
+		const [first_subfield] = subfields
 		if (first_subfield && first_subfield.type === 'icon') {
 			const [ent] = getResolvedEntries(entity, first_subfield, entries).filter((ent) => ent.parent === entry.id)
 			return ent?.value
 		} else return null
 	}
 
-	function get_title() {
-		const first_subfield = fields.find((subfield) => ['text', 'markdown', 'link', 'number'].includes(subfield.type))
+	function get_title(subfields) {
+		const first_subfield = subfields.find((subfield) => ['text', 'markdown', 'link', 'number'].includes(subfield.type))
 		if (first_subfield) {
-			// let { value } = subfields[0]
 			const [ent] = getResolvedEntries(entity, first_subfield, entries).filter((ent) => ent.parent === entry.id)
 			if (first_subfield.type === 'link') return ent?.value?.label
 			else if (first_subfield.type === 'markdown') return ent?.value?.markdown
@@ -118,9 +117,9 @@
 		})
 	})
 	let singular_label = $derived(pluralize.singular(field.label))
-	let item_image = $derived(get_image())
-	let item_icon = $derived(get_icon())
-	let item_title = $derived(get_title())
+	let item_image = $derived(get_image(subfields))
+	let item_icon = $derived(get_icon(subfields))
+	let item_title = $derived(get_title(subfields))
 </script>
 
 <div

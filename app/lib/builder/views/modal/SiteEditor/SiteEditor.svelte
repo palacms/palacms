@@ -6,21 +6,20 @@
 	import * as _ from 'lodash-es'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
 	import { getContent } from '$lib/pocketbase/content'
-	import { getContext, setContext } from 'svelte'
+	import { site_context, hide_dynamic_field_types_context } from '$lib/builder/stores/context'
 	import { page } from '$app/state'
 	import { Sites, SiteFields, SiteEntries, manager } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
 	import { browser } from '$app/environment'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let { onClose, has_unsaved_changes = $bindable(false) } = $props()
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
 	const site_data = $derived(fields && entries && (getContent(site, fields, entries)['en'] ?? {}))
 
-	setContext('hide_dynamic_field_types', true)
+	hide_dynamic_field_types_context.set(true)
 
 	const initial_code = { head: site?.head, foot: site?.foot }
 	const initial_data = _.cloneDeep(site_data)

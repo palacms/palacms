@@ -5,14 +5,12 @@
 	import Fields, { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
 	import * as _ from 'lodash-es'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
-	import { page } from '$app/state'
 	import { manager, PageTypeEntries, PageTypeFields, PageTypes } from '$lib/pocketbase/collections'
-	import { getContext } from 'svelte'
-	import { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { page_type_context } from '$lib/builder/stores/context'
 
 	let { onClose }: { onClose?: () => void } = $props()
 
-	const page_type = getContext<ObjectOf<typeof PageTypes>>('page_type')
+	const page_type = page_type_context.get()
 	const fields = $derived(page_type?.fields() ?? [])
 	const entries = $derived(page_type?.entries() ?? [])
 

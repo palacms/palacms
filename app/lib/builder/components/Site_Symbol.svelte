@@ -9,12 +9,12 @@
 	import { Sites } from '$lib/pocketbase/collections'
 	import type { LibrarySymbol } from '$lib/common/models/LibrarySymbol'
 	import type { Symbol } from '$lib/common/models/Symbol'
-	import { getContext } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let { symbol = $bindable(), checked = false, onclick }: { symbol: SiteSymbol | LibrarySymbol; checked?: boolean; onclick?: () => void } = $props()
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 
 	let name_el
 

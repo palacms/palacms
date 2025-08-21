@@ -39,6 +39,7 @@
 	}
 
 	let file = $state<File>()
+	let is_importing = $state(false)
 	const importLibrarySymbol = $derived(useImportLibrarySymbol(file, active_symbol_group_id ?? undefined))
 	async function upload_block_file(newFile) {
 		file = newFile
@@ -50,6 +51,7 @@
 			return
 		}
 
+		is_importing = true
 		try {
 			await importLibrarySymbol.run()
 			upload_dialog_open = false
@@ -65,6 +67,8 @@
 
 			upload_file_invalid = true
 			file = undefined
+		} finally {
+			is_importing = false
 		}
 	}
 
@@ -441,7 +445,16 @@
 		<h2 class="text-lg font-semibold leading-none tracking-tight">Import Block</h2>
 		<p class="text-muted-foreground text-sm mb-4">Import a block from a JSON file exported from another site.</p>
 
-		<DropZone onupload={upload_block_file} invalid={upload_file_invalid} drop_text="Drop your block file here or click to browse" accept=".json" class="mb-4" />
+		{#if is_importing}
+			<div class="flex items-center justify-center py-8">
+				<div class="animate-spin">
+					<Loader class="h-8 w-8" />
+				</div>
+				<span class="ml-3">Importing block...</span>
+			</div>
+		{:else}
+			<DropZone onupload={upload_block_file} invalid={upload_file_invalid} drop_text="Drop your block file here or click to browse" accept=".json" class="mb-4" />
+		{/if}
 
 		<Dialog.Footer>
 			<Button
@@ -451,6 +464,7 @@
 					upload_dialog_open = false
 					upload_file_invalid = false
 				}}
+				disabled={is_importing}
 			>
 				Cancel
 			</Button>

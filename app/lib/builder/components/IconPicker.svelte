@@ -11,7 +11,7 @@
 
 	/**
 	 * @typedef {Object} Props
-	 * @property {any} icon
+	 * @property {any} [icon]
 	 * @property {string} [search_query]
 	 * @property {string} [variant]
 	 * @property {any} [svg_preview]

@@ -14,25 +14,28 @@
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import * as Tabs from '$lib/components/ui/tabs'
-	import { Cuboid, SquarePen } from 'lucide-svelte'
+	import { Cuboid, SquarePen, Loader } from 'lucide-svelte'
 	import { page } from '$app/state'
-	import { Sites, PageTypes, SiteSymbols, PageTypeSymbols, SiteSymbolFields, SiteSymbolEntries, PageTypeFields, PageTypeEntries, manager } from '$lib/pocketbase/collections'
+	import { PageTypes, SiteSymbols, PageTypeSymbols, PageTypeFields, PageTypeEntries, manager } from '$lib/pocketbase/collections'
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import DropZone from '$lib/components/DropZone.svelte'
 	import { Button } from '$lib/components/ui/button'
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user.js'
 	import { useImportSiteSymbol } from '$lib/ImportSymbol.svelte.js'
-	import { getContext, tick } from 'svelte'
+	import { site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
+	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const page_type_id = $derived(page.params.page_type)
 	const page_type = $derived(PageTypes.one(page_type_id))
 	const fields = $derived(page_type?.fields() ?? [])
 	const entries = $derived(page_type?.entries() ?? [])
 	const page_type_symbols = $derived(page_type?.symbols() ?? [])
 	const site_symbols = $derived(site?.symbols() ?? [])
+
+	hide_page_field_field_type_context.set(true)
 
 	// get the query param to set the tab when navigating from page (i.e. 'Manage Fields')
 	let active_tab = $state(page.url.searchParams.get('tab') === 'fields' ? 'CONTENT' : 'BLOCKS')
@@ -52,6 +55,7 @@
 
 	let file = $state<File>()
 	const importSiteSymbol = $derived(useImportSiteSymbol(file, site?.id))
+	let is_importing = $derived(['loading', 'working'].includes(importSiteSymbol.status))
 	async function upload_block(newFile: File) {
 		file = newFile
 		await tick()
@@ -408,7 +412,16 @@
 		<h2 class="text-lg font-semibold leading-none tracking-tight">Import Block</h2>
 		<p class="text-muted-foreground text-sm mb-4">Import a block from a JSON file exported from another site.</p>
 
-		<DropZone onupload={upload_block} invalid={upload_file_invalid} drop_text="Drop your block file here or click to browse" accept=".json" class="mb-4" />
+		{#if is_importing}
+			<div class="flex items-center justify-center py-8">
+				<div class="animate-spin">
+					<Loader class="h-8 w-8" />
+				</div>
+				<span class="ml-3">Importing block...</span>
+			</div>
+		{:else}
+			<DropZone onupload={upload_block} invalid={upload_file_invalid} drop_text="Drop your block file here or click to browse" accept=".json" class="mb-4" />
+		{/if}
 
 		<Dialog.Footer>
 			<Button
@@ -418,6 +431,7 @@
 					upload_dialog_open = false
 					upload_file_invalid = false
 				}}
+				disabled={is_importing}
 			>
 				Cancel
 			</Button>

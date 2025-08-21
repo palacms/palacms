@@ -9,7 +9,7 @@
 	import { page as pageState } from '$app/state'
 	import { manager, Pages, PageTypes, Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { getContext } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
 	import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 
@@ -19,7 +19,7 @@
 	let { parent, page, active, oncreate }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function } = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const full_url = $derived(() => {
 		const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 		return `${base_path}/${page.slug}`

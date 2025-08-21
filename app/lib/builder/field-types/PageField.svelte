@@ -1,16 +1,13 @@
 <script lang="ts">
-	import { page } from '$app/state'
 	import type { PageField } from '$lib/common/models/fields/PageField'
 	import UI from '../ui/index.js'
-	import { Sites } from '$lib/pocketbase/collections'
 	import type { Entity } from '$lib/pocketbase/content.js'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
-	import { getContext } from 'svelte'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
+	import { site_context } from '$lib/builder/stores/context'
 
 	const { entity, field, entry, onchange }: { entity: Entity; field: PageField; entry?: Entry; onchange: FieldValueHandler } = $props()
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const selectable_pages = $derived.by(() => {
 		const pages = site?.pages() ?? []
 		const filtered = pages.filter((p) => p.page_type === field.config.page_type)

@@ -3,13 +3,12 @@
 	import Item from './Item.svelte'
 	import PageForm from './PageForm.svelte'
 	import Icon from '@iconify/svelte'
-	import { page } from '$app/state'
-	import { Sites, Pages, PageTypes, PageSections, PageSectionEntries, manager } from '$lib/pocketbase/collections'
-	import { getContext } from 'svelte'
+	import { Pages, PageTypes, PageSections, PageSectionEntries, manager } from '$lib/pocketbase/collections'
+	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const all_pages = $derived(site?.pages() ?? [])
 	const home_page = $derived(site?.homepage())
 	const child_pages = $derived(home_page?.children() ?? [])

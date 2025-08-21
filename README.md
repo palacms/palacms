@@ -58,12 +58,11 @@
 - **Plugin API** - Extend functionality with custom plugins
 
 ### Getting Started
-Host Pala on any host that supports Docker: Railway, Fly.io, Hetzner. 
+Host Pala on any host that supports Docker: Railway, Fly.io, Hetzner. Deployment takes minutes. 
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/palacms?referralCode=RCPU7k)
 
 ## 🆘 Support & Community
 
 - **Issues**: [GitHub Issues](https://github.com/palacms/palacms/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/palacms/palacms/discussions)
 - **Website**: [palacms.com](https://palacms.com)

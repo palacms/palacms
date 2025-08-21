@@ -4,12 +4,9 @@
 	import UI from '../ui'
 	import { locale } from '../stores/app'
 	import type { LinkField } from '$lib/common/models/fields/LinkField'
-	import { page } from '$app/state'
-	import { Sites } from '$lib/pocketbase/collections'
 	import { type Entity } from '$lib/pocketbase/content'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
-	import { getContext } from 'svelte'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { site_context } from '$lib/builder/stores/context'
 
 	const { entity, field, entry: passedEntry, onchange }: { entity: Entity; field: LinkField; entry?: any; onchange: FieldValueHandler } = $props()
 
@@ -21,7 +18,7 @@
 
 	const default_entry = { value: default_value }
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const entry = $derived(passedEntry || default_entry)
 	const selectable_pages = $derived(site?.pages() ?? [])
 

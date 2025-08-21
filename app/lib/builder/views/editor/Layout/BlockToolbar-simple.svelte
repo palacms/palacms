@@ -1,6 +1,7 @@
 <script>
 	import { browser } from '$app/environment'
-	import { createEventDispatcher, getContext } from 'svelte'
+	import { createEventDispatcher } from 'svelte'
+	import { debugging_context } from '$lib/builder/stores/context'
 	import { fade } from 'svelte/transition'
 	import { mod_key_held } from '../../../stores/app/misc'
 	import { click_to_copy } from '../../../utilities'
@@ -24,7 +25,7 @@
 	let isFirst = $derived(i === 0)
 
 	let DEBUGGING = $state()
-	if (browser) DEBUGGING = getContext('DEBUGGING')
+	if (browser) DEBUGGING = debugging_context.getOr(false)
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->

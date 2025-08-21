@@ -1,13 +1,11 @@
 <script lang="ts">
 	import { fieldTypes } from '../stores/app'
-	import { SiteFields, SiteEntries, Sites } from '$lib/pocketbase/collections'
+	import { SiteFields, SiteEntries } from '$lib/pocketbase/collections'
 	import type { Entry } from '$lib/common/models/Entry'
 	import { getDirectEntries, type Entity } from '$lib/pocketbase/content'
 	import { setFieldEntries, type FieldValueHandler, type FieldValueMap } from '../components/Fields/FieldsContent.svelte'
 	import type { Field } from '$lib/common/models/Field'
-	import { page } from '$app/state'
-	import { getContext } from 'svelte'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { site_context } from '$lib/builder/stores/context'
 
 	const {
 		entity,
@@ -36,7 +34,7 @@
 		return $fieldTypes.find((ft) => ft.id === resolvedField.type)
 	})
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
 	const entry = $derived(resolvedField && getDirectEntries(entity, resolvedField, entries)[0])

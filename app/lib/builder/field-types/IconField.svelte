@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { getIcon, loadIcon, buildIcon } from '@iconify/svelte'
+	import { watch } from 'runed'
+	import { loadIcon, buildIcon } from '@iconify/svelte'
 	import IconPicker from '../components/IconPicker.svelte'
 	import axios from 'axios'
 	import type { Entity } from '$lib/pocketbase/content'
@@ -24,15 +25,15 @@
 
 	let searched = $state(false)
 
-	$effect(() => {
-		if (!getIcon(value) && !value.startsWith('<svg')) {
-			// reset value when invalid (i.e. when switching field type)
-			onchange({ [field.key]: { 0: { value: '' } } })
-		} else if (getIcon(value)) {
-			// convert icon-id to icon-svg
-			select_icon(value)
+	// ensure value is valid
+	watch(
+		() => value,
+		() => {
+			if (!value.startsWith('<svg')) {
+				onchange({ [field.key]: { 0: { value: '' } } })
+			}
 		}
-	})
+	)
 
 	// search immediately when passed a query
 	if (search_query) {
@@ -66,7 +67,7 @@
 		if (icon_data) {
 			const { attributes } = buildIcon(icon_data)
 			const svg = `<svg xmlns="http://www.w3.org/2000/svg" data-key="${field.key}" data-icon="${icon}" aria-hidden="true" role="img" height="${attributes.height}" width="${attributes.width}" viewBox="${attributes.viewBox}" preserveAspectRatio="${attributes.preserveAspectRatio}">${icon_data.body}</svg>`
-			onchange({ [field.key]: { value: svg } })
+			onchange({ [field.key]: { 0: { value: svg } } })
 		}
 	}
 </script>
@@ -77,6 +78,3 @@
 	{/if}
 	<IconPicker svg_preview={value} {search_query} on:input={({ detail: icon }) => select_icon(icon)} />
 </div>
-
-<style lang="postcss">
-</style>

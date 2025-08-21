@@ -9,7 +9,8 @@
 </script>
 
 <script lang="ts">
-	import { getContext, onMount, tick, untrack } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
+	import { onMount, tick, untrack } from 'svelte'
 	import { slide, fade } from 'svelte/transition'
 	import { dynamic_iframe_srcdoc } from './misc.js'
 	import { highlightedElement } from '../stores/app/misc'
@@ -51,7 +52,7 @@
 		append = ''
 	} = $props()
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 
 	$preview_updated = false
 

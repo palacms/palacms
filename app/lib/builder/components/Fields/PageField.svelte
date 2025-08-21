@@ -1,12 +1,10 @@
 <script lang="ts">
-	import { page } from '$app/state'
-	import { createEventDispatcher, getContext } from 'svelte'
-	import { Sites } from '$lib/pocketbase/collections'
+	import { createEventDispatcher } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
 	import type { PageField } from '$lib/common/models/fields/PageField'
 	import UI from '../../ui/index.js'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const { field }: { field: PageField } = $props()
 
 	const dispatch = createEventDispatcher()
