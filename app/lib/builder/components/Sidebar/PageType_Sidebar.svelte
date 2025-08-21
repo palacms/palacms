@@ -5,7 +5,6 @@
 	import { browser } from '$app/environment'
 	import UI from '../../ui/index.js'
 	// Icon component removed to prevent stack overflow issues
-	import { setContext } from 'svelte'
 	import Icon from '@iconify/svelte'
 	import BlockEditor from '$lib/builder/views/modal/BlockEditor.svelte'
 	import BlockPicker from '$lib/builder/views/modal/BlockPicker.svelte'
@@ -24,7 +23,7 @@
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user.js'
 	import { useImportSiteSymbol } from '$lib/ImportSymbol.svelte.js'
-	import { site_context } from '$lib/builder/stores/context'
+	import { site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
 
@@ -36,7 +35,7 @@
 	const page_type_symbols = $derived(page_type?.symbols() ?? [])
 	const site_symbols = $derived(site?.symbols() ?? [])
 
-	setContext('hide_page_field_field_type', true)
+	hide_page_field_field_type_context.set(true)
 
 	// get the query param to set the tab when navigating from page (i.e. 'Manage Fields')
 	let active_tab = $state(page.url.searchParams.get('tab') === 'fields' ? 'CONTENT' : 'BLOCKS')

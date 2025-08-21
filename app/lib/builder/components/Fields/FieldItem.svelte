@@ -14,7 +14,7 @@
 	import ImageFieldOptions from './ImageFieldOptions.svelte'
 	import fieldTypes from '../../stores/app/fieldTypes.js'
 	import { dynamic_field_types } from '$lib/builder/field-types'
-	import { site_context } from '$lib/builder/stores/context'
+	import { site_context, hide_dynamic_field_types_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import type { Field } from '$lib/common/models/Field'
 	import { Sites } from '$lib/pocketbase/collections'
 	import pluralize from 'pluralize'
@@ -46,9 +46,9 @@
 	const site = site_context.get()
 	const page_types = $derived(site?.page_types() ?? [])
 
-	const visible_field_types = getContext('hide_dynamic_field_types')
+	const visible_field_types = hide_dynamic_field_types_context.getOr(false)
 		? $fieldTypes.filter((ft) => !dynamic_field_types.includes(ft.id))
-		: getContext('hide_page_field_field_type')
+		: hide_page_field_field_type_context.getOr(false)
 			? $fieldTypes.filter((ft) => ft.id !== 'page-field')
 			: $fieldTypes
 
@@ -205,7 +205,7 @@
 					label: ft.label
 				}))}
 				dividers={(() => {
-					return getContext('hide_dynamic_field_types') ? [1, 8] : getContext('hide_page_field_field_type') ? [1, 8, 9, 11] : [1, 8, 10, 12]
+					return hide_dynamic_field_types_context.getOr(false) ? [1, 8] : hide_page_field_field_type_context.getOr(false) ? [1, 8, 9, 11] : [1, 8, 10, 12]
 				})()}
 				on:input={({ detail: field_type_id }) => {
 					field_type_changed = true

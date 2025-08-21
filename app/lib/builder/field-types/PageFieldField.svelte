@@ -7,8 +7,8 @@
 	import { setFieldEntries, type FieldValueHandler, type FieldValueMap } from '../components/Fields/FieldsContent.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import { page as pageState } from '$app/state'
-	import { getContext } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { page_context } from '$lib/builder/stores/context'
 
 	const {
 		entity,
@@ -37,7 +37,7 @@
 		return $fieldTypes.find((ft) => ft.id === resolvedField.type)
 	})
 
-	const page = getContext<ObjectOf<typeof Pages>>('page')
+	const page = page_context.get()
 	const page_type = $derived(PageTypes.one(page.page_type))
 	const fields = $derived(page_type?.fields() ?? [])
 	const entries = $derived(page?.entries() ?? [])
