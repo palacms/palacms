@@ -6,7 +6,8 @@
 	import * as _ from 'lodash-es'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
 	import { getContent } from '$lib/pocketbase/content'
-	import { getContext, setContext } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
+	import { setContext } from 'svelte'
 	import { page } from '$app/state'
 	import { Sites, SiteFields, SiteEntries, manager } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
@@ -15,7 +16,7 @@
 
 	let { onClose, has_unsaved_changes = $bindable(false) } = $props()
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
 	const site_data = $derived(fields && entries && (getContent(site, fields, entries)['en'] ?? {}))

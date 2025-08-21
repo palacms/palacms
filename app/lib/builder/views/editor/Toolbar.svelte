@@ -21,13 +21,14 @@
 	import Collaboration from '$lib/builder/views/modal/Collaboration.svelte'
 	import Deploy from '$lib/components/Modals/Deploy/Deploy.svelte'
 	import { usePublishSite } from '$lib/Publish.svelte'
-	import { getContext, type Snippet } from 'svelte'
+	import { type Snippet } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { current_user } from '$lib/pocketbase/user'
 
 	let { children }: { children: Snippet } = $props()
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const page_slug = $derived(pageState.params.page || '')
 	const page_type_id = $derived(pageState.params.page_type)
 	const page = $derived(site && page_slug ? Pages.list({ filter: `site = "${site.id}" && slug = "${page_slug}"` })?.[0] : undefined)

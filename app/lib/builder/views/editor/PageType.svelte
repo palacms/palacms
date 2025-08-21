@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
-	import { getContext, setContext, tick, untrack } from 'svelte'
+	import { tick, untrack } from 'svelte'
+	import { site_context, page_type_context } from '$lib/builder/stores/context'
 	import { fade } from 'svelte/transition'
 	import { flip } from 'svelte/animate'
 	import UI from '../../ui/index.js'
@@ -15,15 +16,14 @@
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import { manager, PageTypes, PageTypeSections, Sites } from '$lib/pocketbase/collections'
-	import { page } from '$app/state'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
 
 	// Set context so child components can access the page type
-	setContext('page_type', page_type)
+	page_type_context.set(page_type)
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const site_symbols = $derived(site?.symbols() ?? [])
 	const page_type_sections = $derived(page_type?.sections() ?? [])
 	const page_type_symbols = $derived(page_type?.symbols() ?? [])

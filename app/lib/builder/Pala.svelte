@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, setContext, type Snippet } from 'svelte'
+	import { onDestroy, type Snippet } from 'svelte'
 	import * as _ from 'lodash-es'
 	import Icon, { loadIcons } from '@iconify/svelte'
 	import { browser } from '$app/environment'
@@ -18,6 +18,7 @@
 	import { getContent } from '$lib/pocketbase/content.js'
 	import type { Pages, Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { site_context } from './stores/context'
 
 	let {
 		site,
@@ -30,7 +31,7 @@
 	} = $props()
 
 	// Set context so child components can access the site
-	setContext('site', site)
+	site_context.set(site)
 
 	let showing_sidebar = $state(true)
 

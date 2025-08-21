@@ -6,13 +6,11 @@
 	import type { PageType } from '$lib/common/models/PageType'
 	import { Sites, PageTypes, manager } from '$lib/pocketbase/collections'
 	import { page } from '$app/state'
-	import { goto } from '$app/navigation'
-	import { getContext } from 'svelte'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { site_context } from '$lib/builder/stores/context'
 
 	let { active, page_type }: { active: boolean; page_type: PageType } = $props()
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 
 	let editing_page = $state(false)
 

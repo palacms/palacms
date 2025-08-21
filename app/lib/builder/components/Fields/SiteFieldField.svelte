@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { createEventDispatcher, getContext } from 'svelte'
+	import { createEventDispatcher } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
 	import UI from '../../ui/index.js'
 	import { Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
 	import { watch } from 'runed'
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	let { field } = $props()
 
 	const dispatch = createEventDispatcher()

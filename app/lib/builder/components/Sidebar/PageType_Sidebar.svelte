@@ -17,17 +17,18 @@
 	import * as Tabs from '$lib/components/ui/tabs'
 	import { Cuboid, SquarePen, Loader } from 'lucide-svelte'
 	import { page } from '$app/state'
-	import { Sites, PageTypes, SiteSymbols, PageTypeSymbols, PageTypeFields, PageTypeEntries, manager } from '$lib/pocketbase/collections'
+	import { PageTypes, SiteSymbols, PageTypeSymbols, PageTypeFields, PageTypeEntries, manager } from '$lib/pocketbase/collections'
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import DropZone from '$lib/components/DropZone.svelte'
 	import { Button } from '$lib/components/ui/button'
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user.js'
 	import { useImportSiteSymbol } from '$lib/ImportSymbol.svelte.js'
-	import { getContext, tick } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
+	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const page_type_id = $derived(page.params.page_type)
 	const page_type = $derived(PageTypes.one(page_type_id))
 	const fields = $derived(page_type?.fields() ?? [])

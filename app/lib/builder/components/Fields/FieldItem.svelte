@@ -14,7 +14,7 @@
 	import ImageFieldOptions from './ImageFieldOptions.svelte'
 	import fieldTypes from '../../stores/app/fieldTypes.js'
 	import { dynamic_field_types } from '$lib/builder/field-types'
-	import { getContext } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
 	import type { Field } from '$lib/common/models/Field'
 	import { Sites } from '$lib/pocketbase/collections'
 	import pluralize from 'pluralize'
@@ -43,7 +43,7 @@
 		onmove: (id: string, direction: 'up' | 'down') => void
 	} = $props()
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 	const page_types = $derived(site?.page_types() ?? [])
 
 	const visible_field_types = getContext('hide_dynamic_field_types')

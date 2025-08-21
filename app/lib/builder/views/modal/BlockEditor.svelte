@@ -21,7 +21,7 @@
 	import { getContent } from '$lib/pocketbase/content'
 	import { browser } from '$app/environment'
 	import _ from 'lodash-es'
-	import { getContext } from 'svelte'
+	import { site_context } from '$lib/builder/stores/context'
 
 	let {
 		block: existing_block,
@@ -52,7 +52,7 @@
 	const FieldCollection = $derived(symbol_type === 'library' ? LibrarySymbolFields : SiteSymbolFields)
 	const EntryCollection = $derived(symbol_type === 'library' ? LibrarySymbolEntries : SiteSymbolEntries)
 
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 
 	const active_symbol_group_id = $derived(page.url.searchParams.get('group'))
 	const active_symbol_group = $derived(symbol_type === 'library' && active_symbol_group_id ? LibrarySymbolGroups.one(active_symbol_group_id) : undefined)

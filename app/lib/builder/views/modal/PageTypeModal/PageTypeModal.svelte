@@ -1,17 +1,13 @@
 <script lang="ts">
 	import * as Dialog from '$lib/components/ui/dialog'
-	import { goto } from '$app/navigation'
 	import Item from './Item.svelte'
 	import Button from '$lib/builder/ui/Button.svelte'
 	import PageForm from './PageTypeForm.svelte'
-	import { page } from '$app/state'
-	import { Sites, PageTypes, manager } from '$lib/pocketbase/collections'
-	import type { PageType } from '$lib/common/models/PageType'
-	import { getContext } from 'svelte'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { PageTypes, manager } from '$lib/pocketbase/collections'
+	import { site_context } from '$lib/builder/stores/context'
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const site = getContext<ObjectOf<typeof Sites>>('site')
+	const site = site_context.get()
 
 	async function create_page_type(new_page_type) {
 		if (!site) return
