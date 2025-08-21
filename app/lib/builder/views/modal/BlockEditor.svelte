@@ -13,6 +13,8 @@
 	import Fields, { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
 	import { locale } from '$lib/builder/stores/app/misc.js'
 	import hotkey_events from '$lib/builder/stores/app/hotkey_events.js'
+	import { PressedKeys } from 'runed'
+	import { onModKey } from '$lib/builder/utils/keyboard'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, Sites, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '$lib/pocketbase/collections'
 	import { page } from '$app/state'
@@ -76,7 +78,16 @@
 
 	let loading = $state(false)
 
-	// Set up hotkey listeners with cleanup
+	// Set up hotkey listeners for modal
+	const modalKeys = new PressedKeys()
+	
+	// Toggle between code and content tabs
+	onModKey(modalKeys, 'e', toggle_tab)
+	
+	// Save component
+	onModKey(modalKeys, 's', save_component)
+	
+	// Also keep listening to global hotkey events for compatibility
 	$effect(() => {
 		const unsubscribe_e = hotkey_events.on('e', toggle_tab)
 		const unsubscribe_save = hotkey_events.on('save', save_component)

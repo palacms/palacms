@@ -98,6 +98,10 @@
 			setTimeout(() => (going_down = false), 150)
 		}
 	})
+
+	hotkey_events.on('publish', () => {
+		publishing = true
+	})
 </script>
 
 <Dialog.Root
@@ -244,7 +248,7 @@
 			{/if}
 			{@render children?.()}
 			<!-- <LocaleSelector /> -->
-			<ToolbarButton type="primo" icon="entypo:publish" label="Publish" loading={publish.status !== 'standby'} on:click={() => (publishing = true)} />
+			<ToolbarButton type="primo" icon="entypo:publish" label="Publish" key="p" loading={publish.status !== 'standby'} on:click={() => (publishing = true)} />
 		</div>
 	</div>
 </nav>

@@ -1,6 +1,8 @@
 <script>
 	import Icon from '@iconify/svelte'
 	import { page } from '$app/state'
+	import { PressedKeys } from 'runed'
+	import { onModKey, isModKeyPressed } from '$lib/builder/utils/keyboard'
 
 	let { stage = $bindable(), publish_fn, loading, site_host, onClose } = $props()
 
@@ -19,6 +21,16 @@
 	}
 
 	stage = stage || 'INITIAL'
+
+	// Set up hotkey listener for Cmd+P to confirm publish
+	const modalKeys = new PressedKeys()
+	const modKeyHeld = $derived(isModKeyPressed(modalKeys))
+	
+	onModKey(modalKeys, 'p', () => {
+		if (stage === 'INITIAL' && !loading) {
+			handle_publish()
+		}
+	})
 </script>
 
 <div class="Deploy primo-reset">
@@ -38,8 +50,11 @@
 					<span>Cancel</span>
 				</button>
 				<button class="primo-button primary" onclick={handle_publish} disabled={loading}>
-					<Icon icon={loading ? 'line-md:loading-twotone-loop' : 'entypo:publish'} />
-					<span>{loading ? 'Publishing...' : 'Publish Changes'}</span>
+					<Icon icon={loading ? 'line-md:loading-twotone-loop' : 'entypo:publish'} class={modKeyHeld && !loading ? 'invisible' : ''} />
+					<span class:invisible={modKeyHeld && !loading}>{loading ? 'Publishing...' : 'Publish Changes'}</span>
+					{#if modKeyHeld && !loading}
+						<span class="key-hint">⌘P</span>
+					{/if}
 				</button>
 			</div>
 		</div>
@@ -147,6 +162,24 @@
 	.primo-button:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
+	}
+	.primo-button.primary {
+		background: var(--weave-primary-color, #4F46E5);
+		border-color: var(--weave-primary-color, #4F46E5);
+		position: relative;
+	}
+	.primo-button.primary:hover {
+		background: var(--weave-primary-color-dark, #4338CA);
+		border-color: var(--weave-primary-color-dark, #4338CA);
+	}
+	.key-hint {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.75rem;
+		pointer-events: none;
 	}
 	.primo-button:disabled:hover {
 		background: var(--primo-color-codeblack);

@@ -62,27 +62,27 @@
 	}}
 >
 	{#if icon || svg}
-		{#if key}
-			<span class="key-hint" class:active={$mod_key_held} aria-hidden>
-				&#8984;{key.toUpperCase()}
-			</span>
-		{/if}
 		{#if loading}
 			<UI.Spinner />
 		{:else if label && svg}
-			<div class="svg">
+			<div class="svg" class:invisible={key && $mod_key_held}>
 				{@html svg}
 			</div>
-			<span class="label">{label}</span>
+			<span class="label" class:invisible={key && $mod_key_held}>{label}</span>
 		{:else if label && icon}
-			<Icon {icon} />
-			<span class="label">{label}</span>
+			<Icon {icon} class={key && $mod_key_held ? 'invisible' : ''} />
+			<span class="label" class:invisible={key && $mod_key_held}>{label}</span>
 		{:else if svg}
-			<div class="svg">
+			<div class="svg" class:invisible={key && $mod_key_held}>
 				{@html svg}
 			</div>
 		{:else if icon}
-			<Icon {icon} />
+			<Icon {icon} class={key && $mod_key_held ? 'invisible' : ''} />
+		{/if}
+		{#if key && $mod_key_held && !loading}
+			<span class="key-hint" aria-hidden>
+				&#8984;{key.toUpperCase()}
+			</span>
 		{/if}
 	{:else if children}{@render children()}{:else}
 		<span>{label}</span>
@@ -185,5 +185,16 @@
 		to {
 			transform: rotate(360deg);
 		}
+	}
+
+	.key-hint {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.75rem;
+		pointer-events: none;
+		white-space: nowrap;
 	}
 </style>

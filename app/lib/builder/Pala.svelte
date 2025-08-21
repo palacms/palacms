@@ -5,7 +5,8 @@
 	import { browser } from '$app/environment'
 	import IconButton from './ui/IconButton.svelte'
 	import Toolbar from './views/editor/Toolbar.svelte'
-	import * as Mousetrap from 'mousetrap'
+	import { PressedKeys } from 'runed'
+	import { onModKey, isModKeyPressed } from './utils/keyboard'
 	import hotkey_events from './stores/app/hotkey_events'
 	import { onMobile, mod_key_held } from './stores/app/misc'
 	import Page_Sidebar from './components/Sidebar/Page_Sidebar.svelte'
@@ -72,48 +73,53 @@
 		'lsicon:marketplace-filled'
 	])
 
-	// listen for Cmd/Ctrl key to show key hint
-	if (browser) {
-		Mousetrap.bind('mod', () => ($mod_key_held = true), 'keydown')
-		Mousetrap.bind('mod', () => ($mod_key_held = false), 'keyup')
-		// sometimes keyup doesn't fire
-		window.addEventListener('mousemove', _.throttle(handle_mouse_move, 100))
-		function handle_mouse_move(e) {
-			if (!e.metaKey && $mod_key_held) {
-				$mod_key_held = false
-			}
-		}
+	// Initialize keyboard tracking
+	const keys = new PressedKeys()
 
-		Mousetrap.bind(['mod+1'], (e) => {
-			e.preventDefault()
+	// Track Cmd/Ctrl key to show key hint
+	$effect(() => {
+		$mod_key_held = isModKeyPressed(keys)
+	})
+
+	// Set up hotkey listeners
+	if (browser) {
+		// Tab switching
+		onModKey(keys, '1', () => {
 			hotkey_events.dispatch('tab-switch', 1)
 		})
-		Mousetrap.bind(['mod+2'], (e) => {
-			e.preventDefault()
+		onModKey(keys, '2', () => {
 			hotkey_events.dispatch('tab-switch', 2)
 		})
-		Mousetrap.bind(['mod+3'], (e) => {
-			e.preventDefault()
+		onModKey(keys, '3', () => {
 			hotkey_events.dispatch('tab-switch', 3)
 		})
-		Mousetrap.bind('escape', (e) => {
+
+		// Escape
+		keys.onKeys(['escape'], () => {
 			hotkey_events.dispatch('escape')
 		})
-		Mousetrap.bind('mod+s', (e) => {
-			e.preventDefault()
+
+		// Save
+		onModKey(keys, 's', () => {
 			hotkey_events.dispatch('save')
 		})
-		Mousetrap.bind('mod+up', (e) => {
-			e.preventDefault()
+
+		// Navigation
+		onModKey(keys, 'arrowup', () => {
 			hotkey_events.dispatch('up')
 		})
-		Mousetrap.bind('mod+down', (e) => {
-			e.preventDefault()
+		onModKey(keys, 'arrowdown', () => {
 			hotkey_events.dispatch('down')
 		})
-		Mousetrap.bind('mod+e', (e) => {
-			e.preventDefault()
+
+		// Edit mode
+		onModKey(keys, 'e', () => {
 			hotkey_events.dispatch('e')
+		})
+
+		// Publish
+		onModKey(keys, 'p', () => {
+			hotkey_events.dispatch('publish')
 		})
 	}
 

@@ -14,7 +14,8 @@
 	import { locale } from '../../../stores/app/misc.js'
 	import hotkey_events from '../../../stores/app/hotkey_events.js'
 	import { getContent } from '$lib/pocketbase/content'
-	import * as Mousetrap from 'mousetrap'
+	import { PressedKeys } from 'runed'
+	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { browser } from '$app/environment'
 	import { PageSectionEntries, PageSections, PageEntries, PageTypeSectionEntries, SiteSymbolFields, SiteSymbols, SiteSymbolEntries, SiteEntries, manager } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
@@ -92,7 +93,16 @@
 			: []
 	)
 
-	// Set up hotkey listeners with cleanup
+	// Set up hotkey listeners for modal
+	const modalKeys = new PressedKeys()
+	
+	// Toggle between code and content tabs
+	onModKey(modalKeys, 'e', toggle_tab)
+	
+	// Save component
+	onModKey(modalKeys, 's', save_component)
+	
+	// Also keep listening to global hotkey events for compatibility
 	$effect.pre(() => {
 		const unsubscribe_e = hotkey_events.on('e', toggle_tab)
 		const unsubscribe_save = hotkey_events.on('save', save_component)
