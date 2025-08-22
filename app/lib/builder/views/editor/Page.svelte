@@ -371,6 +371,7 @@
 				// 	inline: 'center'
 				// })
 				reset_drag()
+				$dragging_symbol = false
 			}
 		})
 	}

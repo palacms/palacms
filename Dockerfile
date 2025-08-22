@@ -20,8 +20,8 @@ ARG PB_PLATFORM=${TARGETOS}_${TARGETARCH}
 
 # Add dependencies needed from downloading and unzipping
 RUN apk add --no-cache \
-  unzip \
-  ca-certificates
+    unzip \
+    ca-certificates
 
 # Download and unzip PocketBase
 ADD https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_${PB_PLATFORM}.zip /tmp/pb.zip
@@ -29,6 +29,9 @@ RUN unzip /tmp/pb.zip -d /app/
 
 FROM alpine:3 AS runtime
 
+ARG PALA_VERSION
+
+ENV PALA_VERSION=${PALA_VERSION}
 ENV PALA_SUPERUSER_EMAIL=
 ENV PALA_SUPERUSER_PASSWORD=
 ENV PALA_USER_EMAIL=

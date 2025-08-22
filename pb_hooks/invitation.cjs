@@ -1,9 +1,14 @@
 /// <reference path="../pb_data/types.d.ts" />
+// @ts-check
 
 /**
  * @param {core.RecordEvent} e
  */
 const sendInvitation = (e) => {
+	if (!e.record) {
+		throw new Error('No record')
+	}
+
 	const { meta } = e.app.settings()
 	const token = e.record.newPasswordResetToken()
 	const siteName = meta.appName

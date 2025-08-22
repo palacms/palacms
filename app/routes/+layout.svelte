@@ -4,10 +4,6 @@
 	import { compilers_registered } from '$lib/stores'
 	import { registerProcessors } from '$lib/builder/component'
 	import { Toaster } from '$lib/components/ui/sonner'
-	import { goto } from '$app/navigation'
-	import { page } from '$app/stores'
-	import { Users } from '$lib/pocketbase/collections'
-	import { onMount } from 'svelte'
 
 	let { children } = $props()
 
