@@ -23,7 +23,7 @@
 		"@replit/codemirror-lang-svelte": "^6.0.0",
 		"@rollup/browser": "^4.46.3",
 		"@sveltejs/adapter-static": "^3.0.9",
-		"@sveltejs/kit": "^2.34.0",
+		"@sveltejs/kit": "^2.36.1",
 		"@tailwindcss/postcss": "^4.1.12",
 		"@tiptap/core": "^3.2.0",
 		"@tiptap/extension-bubble-menu": "^3.2.0",
