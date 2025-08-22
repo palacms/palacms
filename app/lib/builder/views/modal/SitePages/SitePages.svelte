@@ -14,46 +14,47 @@
 	const child_pages = $derived(home_page?.children() ?? [])
 
 	let creating_page = $state(false)
+	let new_page = $state<ObjectOf<typeof Pages>>()
+	let new_page_page_type = $derived(new_page && PageTypes.one(new_page.page_type))
+	let new_page_page_type_sections = $derived(new_page_page_type?.sections())
+	let new_page_page_type_section_entries = $derived(new_page_page_type_sections?.every((section) => section.entries()) && new_page_page_type_sections?.flatMap((section) => section.entries() ?? []))
+
+	$effect(() => {
+		if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries) {
+			return
+		}
+
+		for (const pts of new_page_page_type_sections) {
+			// Create the page section
+			const page_section = PageSections.create({
+				page: new_page.id,
+				symbol: pts.symbol,
+				index: pts.index
+			})
+
+			// Find and copy only root-level entries (parent = null/empty)
+			const page_type_section_entries = new_page_page_type_section_entries.filter((e) => !e.parent).filter((e) => e.section === pts.id)
+			for (const ptse of page_type_section_entries) {
+				PageSectionEntries.create({
+					section: page_section.id,
+					field: ptse.field,
+					locale: ptse.locale,
+					value: ptse.value,
+					index: ptse.index
+				})
+			}
+		}
+
+		new_page = undefined
+		manager.commit()
+	})
 
 	/**
 	 * Create a page and copy all page type sections to it
 	 * Note: Only copies root-level entries for now, nested entries are handled on-demand
 	 */
 	async function create_page_with_sections(page_data) {
-		const page = Pages.create(page_data)
-
-		if (page.page_type) {
-			const page_type = PageTypes.one(page.page_type)
-			if (page_type) {
-				const page_type_sections = page_type.sections() ?? []
-
-				// Copy each page type section to the new page
-				for (const pts of page_type_sections) {
-					// Create the page section
-					const page_section = PageSections.create({
-						page: page.id,
-						symbol: pts.symbol,
-						index: pts.index
-					})
-
-					// Find and copy only root-level entries (parent = null/empty)
-					const page_type_section_entries = pts.entries()?.filter((e) => !e.parent) ?? []
-
-					for (const ptse of page_type_section_entries) {
-						PageSectionEntries.create({
-							section: page_section.id,
-							field: ptse.field,
-							locale: ptse.locale,
-							value: ptse.value,
-							index: ptse.index
-						})
-					}
-				}
-			}
-		}
-
-		await manager.commit()
-		return page
+		new_page = Pages.create(page_data)
 	}
 </script>
 
