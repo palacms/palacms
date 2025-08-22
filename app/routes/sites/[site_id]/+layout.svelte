@@ -6,6 +6,7 @@
 	import { page } from '$app/state'
 	import { Sites } from '$lib/pocketbase/collections'
 	import { current_user, set_current_user } from '$lib/pocketbase/user'
+	import { Loader } from 'lucide-svelte'
 
 	onMount(async () => {
 		if (!(await checkSession())) {
@@ -16,17 +17,29 @@
 	let { children } = $props()
 
 	const site_id = $derived(page.params.site_id)
-	const site = $derived(site_id && Sites.one(site_id))
+	const site = $derived(site_id ? Sites.one(site_id) : null)
 
 	$effect(() => set_current_user(site || undefined))
 </script>
 
-{#if site && $current_user && !$current_user?.siteRole === null}
-	<div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white;">Forbidden</div>
+{#if site === null}
+	<div class="placeholder">Site not found</div>
 {:else if site}
 	<Pala {site}>
 		{@render children?.()}
 	</Pala>
 {:else}
-	<div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white;">Loading...</div>
+	<div class="placeholder">
+		<Loader />
+	</div>
 {/if}
+
+<style>
+	.placeholder {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 100vh;
+		color: white;
+	}
+</style>

@@ -155,7 +155,18 @@
 		</DropdownMenu.Root>
 	</div>
 	<div class="ml-auto mr-4">
-		<Button size="sm" variant="outline" onclick={() => (is_create_site_instructions_open = true)}>
+		<Button
+			size="sm"
+			variant="outline"
+			onclick={() => {
+				if (all_sites.some((site) => site.host === page.url.host)) {
+					is_create_site_instructions_open = true
+				} else {
+					// No site for the current host, let's create one
+					goto('/admin/site')
+				}
+			}}
+		>
 			<CirclePlus class="h-4 w-4" />
 			Create Site
 		</Button>

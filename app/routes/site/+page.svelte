@@ -11,6 +11,4 @@
 
 {#if $compilers_registered && page}
 	<PalaPage {page} />
-{:else}
-	<div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white;">Loading...</div>
 {/if}

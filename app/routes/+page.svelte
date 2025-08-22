@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation'
 	import { checkSession } from '$lib/pocketbase/PocketBase'
 	import { onMount } from 'svelte'
+	import axios from 'axios'
 
 	onMount(async () => {
 		if (await checkSession()) {

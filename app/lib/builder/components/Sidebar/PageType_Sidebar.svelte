@@ -54,14 +54,13 @@
 	let upload_file_invalid = $state(false)
 
 	let file = $state<File>()
-	let is_importing = $state(false)
 	const importSiteSymbol = $derived(useImportSiteSymbol(file, site?.id))
+	let is_importing = $derived(['loading', 'working'].includes(importSiteSymbol.status))
 	async function upload_block(newFile: File) {
 		file = newFile
 		await tick()
 
 		if (!file || !site) return
-		is_importing = true
 		try {
 			console.log('Importing file:', file.name, 'Size:', file.size)
 			await importSiteSymbol.run()
@@ -74,8 +73,6 @@
 			console.error('Error details:', error.message, error.stack)
 			upload_file_invalid = true
 			file = undefined
-		} finally {
-			is_importing = false
 		}
 	}
 

@@ -15,9 +15,9 @@ services:
       - traefik.http.services.testing-palacms.loadbalancer.server.port=8080
       - traefik.http.routers.testing-palacms-http.entrypoints=http
       - traefik.http.routers.testing-palacms-http.middlewares=https-redirect
-      - traefik.http.routers.testing-palacms-http.rule=Host(`testing.palacms.org`)
+      - traefik.http.routers.testing-palacms-http.rule=Host(`testing.palacms.com`)
       - traefik.http.routers.testing-palacms-https.entrypoints=https
-      - traefik.http.routers.testing-palacms-https.rule=Host(`testing.palacms.org`)
+      - traefik.http.routers.testing-palacms-https.rule=Host(`testing.palacms.com`)
       - traefik.http.routers.testing-palacms-https.service=testing-palacms
       - traefik.http.routers.testing-palacms-https.tls=true
       - traefik.http.routers.testing-palacms-https.tls.certresolver=le

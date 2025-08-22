@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
-	import { Building2, LayoutTemplate, Check } from 'lucide-svelte'
+	import { Building2, LayoutTemplate, Check, Loader } from 'lucide-svelte'
 	import SitePreview from '$lib/components/SitePreview.svelte'
 	import * as Tabs from '$lib/components/ui/tabs'
 	import { Input } from '$lib/components/ui/input/index.js'
@@ -13,12 +13,16 @@
 	import Button from './ui/button/button.svelte'
 	import { useCloneSite } from '$lib/CloneSite.svelte'
 	import { convert_markdown_to_html } from '$lib/builder/utils'
-	import { current_user } from '$lib/pocketbase/user'
 
 	const { oncreated }: { oncreated?: () => void } = $props()
 
 	const all_site_groups = $derived(SiteGroups.list() ?? [])
 	const site_group = $derived(all_site_groups?.find((g) => g.name === 'Default') || all_site_groups?.[0])
+
+	// WORKAROUND: For some reason Svelte does not track site_group if it's not a dependency for an effect.
+	$effect(() => {
+		site_group
+	})
 
 	const starter_sites = $derived(Sites.list() ?? [])
 
@@ -65,21 +69,22 @@
 		if (!selected_starter_id) return
 		loading = true
 
-		// Create default site group if no groups exist
-		let target_site_group = site_group
-		if (!target_site_group) {
-			target_site_group = SiteGroups.create({
-				name: 'Default',
-				index: 0
-			})
-		}
 		if (selected_starter_id === 'blank') {
+			// Create default site group if it doesn't exist for blank sites
+			let group_id = site_group?.id
+			if (!group_id) {
+				const newGroup = SiteGroups.create({
+					name: 'Default',
+					index: 0
+				})
+				group_id = newGroup.id
+			}
 			const site = Sites.create({
 				...blank_site,
 				name: site_name,
 				description: '',
 				host: pageState.url.host,
-				group: target_site_group.id,
+				group: group_id,
 				index: 0
 			})
 			const page_type = PageTypes.create({
@@ -207,7 +212,13 @@
 	<div class="grid grid-cols-3 items-center mb-2">
 		<div class="ml-4"></div>
 		<h1 class="font-semibold leading-none tracking-tight text-center">Create Site</h1>
-		<Button onclick={create_site} disabled={loading || !completed} class="justify-self-end inline-flex justify-center items-center">Done</Button>
+		<Button onclick={create_site} disabled={loading || !completed} class="justify-self-end inline-flex justify-center items-center relative">
+			{#if loading}
+				<Loader class="h-4 w-4 animate-spin" />
+			{:else}
+				Done
+			{/if}
+		</Button>
 	</div>
 
 	<Tabs.Root value="identity" class="w-full flex-1 flex flex-col gap-2 overflow-hidden">
