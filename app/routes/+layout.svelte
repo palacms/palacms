@@ -4,7 +4,7 @@
 	import { compilers_registered } from '$lib/stores'
 	import { registerProcessors } from '$lib/builder/component'
 	import { Toaster } from '$lib/components/ui/sonner'
-	import { set_current_user } from '$lib/pocketbase/user'
+	import { init_usage_stats, start_heartbeat } from '$lib/usage-stats.js'
 
 	let { children } = $props()
 
@@ -12,6 +12,11 @@
 		import('$lib/compiler/processors').then(({ html, css }) => {
 			registerProcessors({ html, css })
 			$compilers_registered = true
+		})
+
+		// Initialize usage statistics
+		init_usage_stats().then(() => {
+			start_heartbeat()
 		})
 	}
 </script>
