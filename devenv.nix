@@ -1,4 +1,4 @@
-{ pkgs, lib, config, inputs, ... }:
+{ pkgs, ... }:
 
 {
   packages = with pkgs; [
@@ -10,10 +10,12 @@
     npm.install.enable = true;
   };
   env = {
+    PALA_VERSION = "dev";
     PALA_SUPERUSER_EMAIL = "admin@palacms.internal";
     PALA_SUPERUSER_PASSWORD = "test1234";
     PALA_USER_EMAIL = "user@palacms.internal";
     PALA_USER_PASSWORD = "test1234";
+    PALA_DISABLE_USAGE_STATS = "true";
   };
   processes = {
     app-dev.exec = "vite --config app.config.js dev";
