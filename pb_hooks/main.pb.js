@@ -1,4 +1,5 @@
 /// <reference path="../pb_data/types.d.ts" />
+// @ts-check
 
 onBootstrap((e) => {
 	// Some typings for this should be availabe in next Pocketbase update.
@@ -60,7 +61,7 @@ onRecordValidate((e) => {
 
 // Send email invitations
 onRecordAfterCreateSuccess((e) => {
-	if (e.record.get('invite') === 'pending') {
+	if (e.record?.get('invite') === 'pending') {
 		try {
 			const { sendInvitation } = require(`${__hooks}/invitation.cjs`)
 			sendInvitation(e)
@@ -74,7 +75,7 @@ onRecordAfterCreateSuccess((e) => {
 
 // Send email invitations
 onRecordAfterUpdateSuccess((e) => {
-	if (e.record.get('invite') === 'pending') {
+	if (e.record?.get('invite') === 'pending') {
 		try {
 			const { sendInvitation } = require(`${__hooks}/invitation.cjs`)
 			sendInvitation(e)
@@ -88,6 +89,10 @@ onRecordAfterUpdateSuccess((e) => {
 
 // Serve admin pages
 routerAdd('GET', '/admin/{path...}', (e) => {
+	if (!e.request?.url) {
+		throw new Error('No request URL')
+	}
+
 	const next = $apis.static('./pb_public', true)
 	const isFile = /\.\w+$/.test(e.request.url.path)
 	if (isFile || e.request.url.path === '/admin/setup') {
@@ -113,6 +118,10 @@ routerAdd('GET', '/admin/{path...}', (e) => {
 
 // Serve sites
 routerAdd('GET', '/{path...}', (e) => {
+	if (!e.request?.url) {
+		throw new Error('No request URL')
+	}
+
 	// Handle missing trailing slash
 	if (e.request.url.path.slice(-1) !== '/') {
 		return e.redirect(301, e.request.url.path + '/')
@@ -128,7 +137,7 @@ routerAdd('GET', '/{path...}', (e) => {
 		// Homepage not found, redirect to site editor
 		return e.redirect(302, '/admin')
 	} else if (!page) {
-		return e.notFoundError('Page not found')
+		throw new NotFoundError('Page not found')
 	}
 
 	// Check that path is correct
@@ -136,7 +145,7 @@ routerAdd('GET', '/{path...}', (e) => {
 	for (const segment of [...path].reverse().slice(1)) {
 		current = $app.findRecordById('pages', current.get('parent'))
 		if (current.get('slug') !== segment) {
-			return e.notFoundError('Page not found')
+			throw new NotFoundError('Page not found')
 		}
 	}
 
@@ -156,12 +165,16 @@ routerAdd('GET', '/{path...}', (e) => {
 
 // Serve site previews
 routerAdd('GET', '/_preview/{site}', (e) => {
+	if (!e.request) {
+		throw new Error('No request')
+	}
+
 	const siteId = e.request.pathValue('site')
 	let site
 	try {
 		site = $app.findRecordById('sites', siteId)
 	} catch {
-		return e.string(404, 'Site not found')
+		throw new NotFoundError('Site not found')
 	}
 
 	// Respond with compiled HTML
@@ -182,11 +195,15 @@ routerAdd('GET', '/_preview/{site}', (e) => {
 
 // Serve compiled symbol JavaScript
 routerAdd('GET', '/_symbols/{filename}', (e) => {
+	if (!e.request?.url) {
+		throw new Error('No request URL')
+	}
+
 	const filename = e.request.pathValue('filename')
 
 	// Filename must end with .js
 	if (!filename.endsWith('.js')) {
-		return e.notFoundError('File not found')
+		throw new NotFoundError('File not found')
 	}
 
 	// Find symbol
