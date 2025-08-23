@@ -15,7 +15,8 @@
 	import { locale } from '../../stores/app/misc.js'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
-	import { manager, PageTypes, PageTypeSections, Sites } from '$lib/pocketbase/collections'
+	import { manager, PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
+	import { self as pb } from '$lib/pocketbase/PocketBase'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
@@ -256,11 +257,13 @@
 		hide_drop_indicator()
 		drop_handled = false // Reset the drop flag when drag ends
 		active_drop_zone = null // Reset active drop zone
+		hovering_over_zone = null // Reset visual feedback
 	}
 
 	let dragging_over_section = false
 	let drop_handled = false
 	let active_drop_zone = null // Track which zone should handle the drop
+	let hovering_over_zone = $state(null) // Track which zone is being hovered for visual feedback
 
 	// detect drags over zones
 	function drag_zone(element, zone) {
@@ -271,6 +274,12 @@
 			},
 			onDrag({ source }) {
 				if (dragging_over_section) return // Don't interfere with section drops
+				hovering_over_zone = zone // Set visual feedback for the zone
+			},
+			onDragLeave() {
+				if (hovering_over_zone === zone) {
+					hovering_over_zone = null // Clear visual feedback when leaving
+				}
 			},
 			async onDrop({ source }) {
 				if (dragging_over_section || !page_type || !source.data.block) return
@@ -279,13 +288,20 @@
 				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === zone)
 				const zone_target_index = zone_sections.length // Add to end of zone
 
-				PageTypeSections.create({
+				const new_section = PageTypeSections.create({
 					page_type: page_type.id,
 					symbol: block_being_dragged.id,
 					index: zone_target_index,
 					zone: zone
 				})
+
+				// Copy root-level symbol entries to the new section
+				if (new_section) {
+					await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+				}
+
 				await manager.commit()
+				hovering_over_zone = null // Clear visual feedback after drop
 			}
 		})
 	}
@@ -335,13 +351,18 @@
 				// Default to body zone with zone-relative index
 				const body_target_index = closestEdgeOfTarget === 'top' ? 0 : body_sections.length
 
-				console.log(`FALLBACK DROP CREATING: zone=body, index=${body_target_index}`)
-				PageTypeSections.create({
+				const new_section = PageTypeSections.create({
 					page_type: page_type.id,
 					symbol: block_being_dragged.id,
 					index: body_target_index,
 					zone: 'body'
 				})
+
+				// Copy root-level symbol entries to the new section
+				if (new_section) {
+					await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+				}
+
 				await manager.commit()
 				reset_drag()
 				active_drop_zone = null
@@ -394,12 +415,18 @@
 				const section_dragged_over_zone_index = zone_sections.findIndex((s) => s.id === section_dragged_over.id)
 				const target_index = closestEdgeOfTarget === 'top' ? section_dragged_over_zone_index : section_dragged_over_zone_index + 1
 
-				PageTypeSections.create({
+				const new_section = PageTypeSections.create({
 					page_type: page_type.id,
 					symbol: block_being_dragged.id,
 					index: target_index,
 					zone: section_zone
 				})
+
+				// Copy root-level symbol entries to the new section
+				if (new_section) {
+					await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+				}
+
 				await manager.commit()
 			}
 		})
@@ -412,6 +439,43 @@
 
 	let editing_section = $state(false)
 	let editing_section_target = $state<ObjectOf<typeof PageTypeSections>>()
+
+	// Helper function to copy symbol entries to page type section (root-level only)
+	async function copy_symbol_entries_to_section(symbol_id: string, section_id: string) {
+		try {
+			// First get the symbol's fields
+			const symbol_fields = await pb.collection('site_symbol_fields').getFullList({
+				filter: `symbol = "${symbol_id}" && parent = ""`
+			})
+
+			// Get the field IDs
+			const field_ids = symbol_fields.map(field => field.id)
+
+			if (field_ids.length === 0) {
+				return
+			}
+
+			// Then get entries for those fields
+			const field_filter = field_ids.map(id => `field = "${id}"`).join(' || ')
+			const symbol_entries = await pb.collection('site_symbol_entries').getFullList({
+				filter: `(${field_filter}) && parent = ""`
+			})
+
+			// Create PageTypeSectionEntries for each root-level entry
+			for (const entry of symbol_entries) {
+				PageTypeSectionEntries.create({
+					section: section_id,
+					field: entry.field,
+					locale: entry.locale,
+					value: entry.value,
+					index: entry.index
+					// No parent since we're only copying root entries
+				})
+			}
+		} catch (error) {
+			console.error('Failed to copy symbol entries:', error)
+		}
+	}
 </script>
 
 <Dialog.Root
@@ -547,7 +611,7 @@
 
 	<!-- Header Zone -->
 	<div class="zone-label">Header</div>
-	<section class="page-zone header-zone" data-zone="header" use:drag_zone={'header'}>
+	<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header" use:drag_zone={'header'}>
 		{#each header_sections as section (section.id)}
 			{@const locked = undefined}
 			{@const in_current_tab = false}
@@ -624,7 +688,7 @@
 			<span class="zone-mode">(Dynamic)</span>
 		{/if}
 	</div>
-	<section class="page-zone body-zone" data-zone="body" use:drag_zone={'body'}>
+	<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body" use:drag_zone={'body'}>
 		{#each body_sections as section (section.id)}
 			{@const locked = undefined}
 			{@const in_current_tab = false}
@@ -698,7 +762,7 @@
 
 	<!-- Footer Zone -->
 	<div class="zone-label">Footer</div>
-	<section class="page-zone footer-zone" data-zone="footer" use:drag_zone={'footer'}>
+	<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer" use:drag_zone={'footer'}>
 		{#each footer_sections as section (section.id)}
 			{@const locked = undefined}
 			{@const in_current_tab = false}
@@ -814,8 +878,18 @@
 		border-radius: 8px;
 	}
 
+	.page-zone.dragging-over {
+		border-color: rgba(59, 130, 246, 0.6);
+		background-color: rgba(59, 130, 246, 0.05);
+		box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+	}
+
 	.page-zone.header-zone {
 		border-style: solid;
+	}
+
+	.page-zone.header-zone.dragging-over {
+		border-color: rgba(59, 130, 246, 0.8);
 	}
 
 	.page-zone.body-zone {
@@ -823,8 +897,16 @@
 		max-height: none; /* Override the general max-height for body zone */
 	}
 
+	.page-zone.body-zone.dragging-over {
+		border-color: rgba(59, 130, 246, 0.8);
+	}
+
 	.page-zone.footer-zone {
 		border-style: solid;
+	}
+
+	.page-zone.footer-zone.dragging-over {
+		border-color: rgba(59, 130, 246, 0.8);
 	}
 
 	.zone-label {
