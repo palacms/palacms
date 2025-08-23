@@ -21,6 +21,8 @@ import { PageTypeField } from './PageTypeField'
 import { PageTypeEntry } from './PageTypeEntry'
 import { PageEntry } from './PageEntry'
 import { SiteRoleAssignment } from './SiteRoleAssignment'
+import { SiteUpload } from './SiteUpload'
+import { LibraryUpload } from './LibraryUpload'
 
 /**
  * Model for each collection. Used in a PocketBase hook to validate records.
@@ -31,6 +33,7 @@ export const models = {
 	library_symbol_fields: LibrarySymbolField,
 	library_symbol_groups: LibrarySymbolGroup,
 	library_symbols: LibrarySymbol,
+	library_upload: LibraryUpload,
 	page_entries: PageEntry,
 	page_section_entries: PageSectionEntry,
 	page_sections: PageSection,
@@ -48,5 +51,6 @@ export const models = {
 	site_symbol_entries: SiteSymbolEntry,
 	site_symbol_fields: SiteSymbolField,
 	site_symbols: SiteSymbol,
+	site_uploads: SiteUpload,
 	sites: Site
 } satisfies Record<string, import('zod').ZodType>
