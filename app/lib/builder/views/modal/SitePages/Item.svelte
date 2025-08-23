@@ -140,9 +140,9 @@
 		<div class="options">
 			<!-- TODO: enable reordering for child pages -->
 			{#if !parent}
-				<button class="drag-handle" bind:this={drag_handle_element} style:visibility={page.slug === '' ? 'hidden' : 'visible'}>
+				<!-- <button class="drag-handle" bind:this={drag_handle_element} style:visibility={page.slug === '' ? 'hidden' : 'visible'}>
 					<Icon icon="material-symbols:drag-handle" />
-				</button>
+				</button> -->
 			{/if}
 			<MenuPopup
 				icon="carbon:overflow-menu-vertical"
@@ -170,9 +170,18 @@
 								{
 									label: 'Delete',
 									icon: 'ic:outline-delete',
-									on_click: () => {
+									on_click: async () => {
+										// Delete the page
 										Pages.delete(page.id)
-										manager.commit()
+
+										// Reindex remaining sibling pages
+										const sibling_pages = allPages.filter((p) => p.parent === page.parent && p.id !== page.id).sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+
+										sibling_pages.forEach((sibling_page, index) => {
+											Pages.update(sibling_page.id, { index })
+										})
+
+										await manager.commit()
 									}
 								}
 							]

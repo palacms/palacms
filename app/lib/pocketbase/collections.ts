@@ -189,7 +189,7 @@ export const PageTypeSectionEntries = createCollectionMapping('page_type_section
 export const Pages = createCollectionMapping('pages', Page, manager, {
 	links: {
 		children() {
-			return this.collection.list({ filter: `parent = "${this.id}"` })?.filter(({ parent }) => parent === this.id)
+			return this.collection.list({ filter: `parent = "${this.id}"` })?.filter(({ parent }) => parent === this.id)?.sort((a, b) => (a.index || 0) - (b.index || 0))
 		},
 		sections() {
 			return PageSections.from(this.collection.instance).list({ filter: `page = "${this.id}"` })

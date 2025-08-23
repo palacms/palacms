@@ -6,6 +6,7 @@
 	import { Pages, PageTypes, PageSections, PageSectionEntries, manager } from '$lib/pocketbase/collections'
 	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { fade } from 'svelte/transition'
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
@@ -54,7 +55,14 @@
 	 * Note: Only copies root-level entries for now, nested entries are handled on-demand
 	 */
 	async function create_page_with_sections(page_data) {
-		new_page = Pages.create(page_data)
+		// Calculate the next index - just use the count of existing siblings
+		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent)
+		const next_index = sibling_pages.length
+
+		new_page = Pages.create({
+			...page_data,
+			index: next_index
+		})
 	}
 </script>
 
@@ -64,8 +72,8 @@
 		<li>
 			<Item page={home_page} active={false} oncreate={create_page_with_sections} />
 		</li>
-		{#each child_pages as child_page}
-			<li>
+		{#each child_pages as child_page (child_page.id)}
+			<li in:fade={{ duration: 200 }}>
 				<Item page={child_page} active={false} oncreate={create_page_with_sections} />
 			</li>
 		{/each}

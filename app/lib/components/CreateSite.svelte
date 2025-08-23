@@ -95,7 +95,8 @@
 			const page = Pages.create({
 				...black_site_home_page,
 				page_type: page_type.id,
-				site: site.id
+				site: site.id,
+				index: 0
 			})
 
 			// Create a default "Welcome" symbol for the homepage
