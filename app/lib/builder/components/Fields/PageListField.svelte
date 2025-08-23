@@ -3,7 +3,7 @@
 	import type { PageListField } from '$lib/common/models/fields/PageListField.js'
 	import { site_context } from '$lib/builder/stores/context'
 
-	const site = site_context.get()
+	const site = site_context.getOr(null)
 	const { field }: { field: PageListField } = $props()
 </script>
 

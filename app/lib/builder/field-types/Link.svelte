@@ -18,7 +18,7 @@
 
 	const default_entry = { value: default_value }
 
-	const site = site_context.get()
+	const site = site_context.getOr(null)
 	const entry = $derived(passedEntry || default_entry)
 	const selectable_pages = $derived(site?.pages() ?? [])
 
