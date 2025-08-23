@@ -294,7 +294,7 @@
 							<div class="block" animate:flip={{ duration: 200 }} use:drag_target={symbol}>
 								<Sidebar_Symbol
 									{symbol}
-									head={$site_html}
+									append={$site_html}
 									show_toggle={true}
 									{toggled}
 									on:toggle={({ detail }) => {

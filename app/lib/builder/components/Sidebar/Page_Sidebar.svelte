@@ -97,7 +97,7 @@
 		{#if $site_html !== null}
 			{#each available_symbols ?? [] as symbol (symbol.id)}
 				<div animate:flip={{ duration: 200 }} use:drag_target={symbol}>
-					<Sidebar_Symbol {symbol} controls_enabled={false} head={$site_html} />
+					<Sidebar_Symbol {symbol} controls_enabled={false} append={$site_html} />
 				</div>
 			{/each}
 		{:else}

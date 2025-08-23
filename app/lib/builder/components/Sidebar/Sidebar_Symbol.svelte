@@ -23,9 +23,8 @@
 		controls_enabled = true,
 		show_toggle = false,
 		toggled = false,
-		head = '',
 		append = ''
-	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; head?: string; append?: string } = $props()
+	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; append?: string } = $props()
 
 	let name_el = $state()
 

@@ -16,12 +16,13 @@
 	import { PressedKeys } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, Sites, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '$lib/pocketbase/collections'
+	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '$lib/pocketbase/collections'
 	import { page } from '$app/state'
 	import { getContent } from '$lib/pocketbase/content'
 	import { browser } from '$app/environment'
 	import _ from 'lodash-es'
 	import { site_context } from '$lib/builder/stores/context'
+	import { site_html, page_html } from '$lib/builder/stores/app/page.js'
 
 	let {
 		block: existing_block,
@@ -80,13 +81,13 @@
 
 	// Set up hotkey listeners for modal
 	const modalKeys = new PressedKeys()
-	
+
 	// Toggle between code and content tabs
 	onModKey(modalKeys, 'e', toggle_tab)
-	
+
 	// Save component
 	onModKey(modalKeys, 's', save_component)
-	
+
 	// Also keep listening to global hotkey events for compatibility
 	$effect(() => {
 		const unsubscribe_e = hotkey_events.on('e', toggle_tab)
@@ -226,7 +227,7 @@
 		<PaneResizer class="PaneResizer" />
 		<Pane defaultSize={50}>
 			{#if component_data}
-				<ComponentPreview bind:orientation={$orientation} view="small" {loading} {code} data={component_data} />
+				<ComponentPreview bind:orientation={$orientation} view="small" {loading} {code} data={component_data} head={$site_html} />
 			{/if}
 		</Pane>
 	</PaneGroup>
