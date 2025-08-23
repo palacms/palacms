@@ -16,7 +16,19 @@
 	import { PressedKeys } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, Sites, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '$lib/pocketbase/collections'
+	import {
+		LibrarySymbolEntries,
+		LibrarySymbolFields,
+		LibrarySymbolGroups,
+		LibrarySymbols,
+		LibraryUploads,
+		manager,
+		Sites,
+		SiteSymbolEntries,
+		SiteSymbolFields,
+		SiteSymbols,
+		SiteUploads
+	} from '$lib/pocketbase/collections'
 	import { page } from '$app/state'
 	import { getContent } from '$lib/pocketbase/content'
 	import { browser } from '$app/environment'
@@ -52,7 +64,7 @@
 	const FieldCollection = $derived(symbol_type === 'library' ? LibrarySymbolFields : SiteSymbolFields)
 	const EntryCollection = $derived(symbol_type === 'library' ? LibrarySymbolEntries : SiteSymbolEntries)
 
-	const site = site_context.get()
+	const site = site_context.getOr(null)
 
 	const active_symbol_group_id = $derived(page.url.searchParams.get('group'))
 	const active_symbol_group = $derived(symbol_type === 'library' && active_symbol_group_id ? LibrarySymbolGroups.one(active_symbol_group_id) : undefined)
@@ -74,19 +86,20 @@
 
 	const fields = $derived('site' in block ? block.fields() : block.fields())
 	const entries = $derived('site' in block ? block.entries() : block.entries())
-	let component_data = $derived(fields && entries && (getContent(block, fields, entries)[$locale] ?? {}))
+	const uploads = $derived('site' in block ? Sites.one(block.site)?.uploads() : LibraryUploads.list())
+	let component_data = $derived(fields && entries && uploads && (getContent(block, fields, entries, uploads)[$locale] ?? {}))
 
 	let loading = $state(false)
 
 	// Set up hotkey listeners for modal
 	const modalKeys = new PressedKeys()
-	
+
 	// Toggle between code and content tabs
 	onModKey(modalKeys, 'e', toggle_tab)
-	
+
 	// Save component
 	onModKey(modalKeys, 's', save_component)
-	
+
 	// Also keep listening to global hotkey events for compatibility
 	$effect(() => {
 		const unsubscribe_e = hotkey_events.on('e', toggle_tab)

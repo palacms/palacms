@@ -17,6 +17,7 @@ import type { PageTypeSymbol } from '$lib/common/models/PageTypeSymbol.js'
 import type { SiteSymbol } from '$lib/common/models/SiteSymbol.js'
 import type { SiteSymbolEntry } from '$lib/common/models/SiteSymbolEntry.js'
 import type { PageEntry } from '$lib/common/models/PageEntry.js'
+import type { SiteUpload } from '$lib/common/models/SiteUpload.js'
 
 export async function block_html({ code, data }) {
 	const { html, css: postcss, js } = code
@@ -44,6 +45,7 @@ export async function page_html({
 	page_type_entries,
 	page_section_entries,
 	page_type_section_entries,
+	site_uploads,
 	locale = 'en',
 	no_js = false
 }: {
@@ -63,11 +65,12 @@ export async function page_html({
 	page_entries: PageEntry[]
 	page_section_entries: PageSectionEntry[]
 	page_type_section_entries: PageTypeSectionEntry[]
+	site_uploads: SiteUpload[]
 	locale?: (typeof locales)[number]
 	no_js?: boolean
 }) {
-	const site_content = getContent(site, site_fields, site_entries)
-	const page_type_content = getContent(page_type, page_type_fields, page_type_entries)
+	const site_content = getContent(site, site_fields, site_entries, site_uploads)
+	const page_type_content = getContent(page_type, page_type_fields, page_type_entries, site_uploads)
 
 	// Flatten the content for template variables (extract from locale structure)
 	const site_data = {
@@ -100,7 +103,7 @@ export async function page_html({
 
 				const { html, css: postcss, js } = symbol
 
-				const data = getContent(section, symbol_fields, section_entries)[locale] ?? {}
+				const data = getContent(section, symbol_fields, section_entries, site_uploads)[locale] ?? {}
 
 				// @ts-ignore
 				const { css, error } = await processors.css(postcss || '')
@@ -155,7 +158,7 @@ export async function page_html({
 					sections
 						.filter((section) => section.symbol === symbol.id)
 						.map((section) => {
-							const instance_content = getContent(section, symbol_fields, section_entries)[locale]
+							const instance_content = getContent(section, symbol_fields, section_entries, site_uploads)[locale]
 							return `hydrate(App, { target: document.querySelector('#section-${section.id}'), props: ${JSON.stringify(instance_content)} });`
 						})
 						.join('') +

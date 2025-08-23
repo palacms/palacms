@@ -9,14 +9,22 @@
 	// Initialize config object if it doesn't exist
 	if (!field.config) field.config = {}
 
-	// Set defaults if values don't exist
-	if (field.config.maxSizeMB === undefined) field.config.maxSizeMB = 1
-	if (field.config.maxWidthOrHeight === undefined) field.config.maxWidthOrHeight = 1920
-
 	// Listen for changes to dispatch updates to parent
 	function handle_change() {
 		dispatch('input', { config: field.config })
 	}
+
+	$effect(() => {
+		// Set defaults if values don't exist
+		if (field.config.maxSizeMB === undefined) {
+			field.config.maxSizeMB = 1
+			handle_change()
+		}
+		if (field.config.maxWidthOrHeight === undefined) {
+			field.config.maxWidthOrHeight = 1920
+			handle_change()
+		}
+	})
 </script>
 
 <div class="ImageFieldOptions">

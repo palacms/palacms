@@ -17,7 +17,8 @@
 	const site = site_context.get()
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
-	const site_data = $derived(fields && entries && (getContent(site, fields, entries)['en'] ?? {}))
+	const uploads = $derived(site.uploads())
+	const site_data = $derived(fields && entries && uploads && (getContent(site, fields, entries, uploads)['en'] ?? {}))
 
 	hide_dynamic_field_types_context.set(true)
 
