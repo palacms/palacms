@@ -616,7 +616,7 @@
 {/if}
 
 <!-- Page with Zone-Based Layout -->
-<main id="Page" bind:this={page_el} class:fadein={true} class:dragging={$dragging_symbol} lang={$locale} use:drag_fallback style="display: flex; flex-direction: column; height: 100%;">
+<main id="Page" bind:this={page_el} class:fadein={true} class:dragging={$dragging_symbol} lang={$locale} use:drag_fallback>
 	<!-- Page Type Header Sections -->
 	{#if header_sections.length > 0}
 		<header class="page-header-zone">
@@ -690,7 +690,7 @@
 			<div
 				class="empty-state"
 				class:dragging-over={hovered_block_el && dragging}
-				style="height: 100%"
+				style="height: calc(100vh - 47px)"
 				onmouseenter={({ target }) => {
 					hovered_block_el = target
 				}}
