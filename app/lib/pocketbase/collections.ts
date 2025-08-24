@@ -2,6 +2,7 @@ import { LibrarySymbol } from '$lib/common/models/LibrarySymbol'
 import { LibrarySymbolEntry } from '$lib/common/models/LibrarySymbolEntry'
 import { LibrarySymbolField } from '$lib/common/models/LibrarySymbolField'
 import { LibrarySymbolGroup } from '$lib/common/models/LibrarySymbolGroup'
+import { LibraryUpload } from '$lib/common/models/LibraryUpload'
 import { Page } from '$lib/common/models/Page'
 import { PageEntry } from '$lib/common/models/PageEntry'
 import { PageSection } from '$lib/common/models/PageSection'
@@ -20,6 +21,7 @@ import { SiteRoleAssignment } from '$lib/common/models/SiteRoleAssignment'
 import { SiteSymbol } from '$lib/common/models/SiteSymbol'
 import { SiteSymbolEntry } from '$lib/common/models/SiteSymbolEntry'
 import { SiteSymbolField } from '$lib/common/models/SiteSymbolField'
+import { SiteUpload } from '$lib/common/models/SiteUpload'
 import { User } from '$lib/common/models/User'
 import { createCollectionManager } from './CollectionManager'
 import { createCollectionMapping } from './CollectionMapping.svelte'
@@ -68,6 +70,10 @@ export const LibrarySymbolEntries = createCollectionMapping('library_symbol_entr
 	links: {}
 })
 
+export const LibraryUploads = createCollectionMapping('library_uploads', LibraryUpload, manager, {
+	links: {}
+})
+
 export const SiteGroups = createCollectionMapping('site_groups', SiteGroup, manager, {
 	links: {
 		sites() {
@@ -89,6 +95,9 @@ export const Sites = createCollectionMapping('sites', Site, manager, {
 		},
 		entries() {
 			return SiteEntries.from(this.collection.instance).list({ filter: `field.site = "${this.id}"` })
+		},
+		uploads() {
+			return SiteUploads.from(this.collection.instance).list({ filter: `site = "${this.id}"` })
 		},
 		page_types() {
 			return PageTypes.from(this.collection.instance).list({ filter: `site = "${this.id}"` })
@@ -213,5 +222,9 @@ export const PageSections = createCollectionMapping('page_sections', PageSection
 })
 
 export const PageSectionEntries = createCollectionMapping('page_section_entries', PageSectionEntry, manager, {
+	links: {}
+})
+
+export const SiteUploads = createCollectionMapping('site_uploads', SiteUpload, manager, {
 	links: {}
 })

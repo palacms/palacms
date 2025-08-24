@@ -29,15 +29,20 @@ import {
 	Sites,
 	SiteSymbolEntries,
 	SiteSymbolFields,
-	SiteSymbols
+	SiteSymbols,
+	SiteUploads
 } from './pocketbase/collections'
+import type { SiteUpload } from './common/models/SiteUpload'
+import { self } from './pocketbase/PocketBase'
+import type { Field } from './common/models/Field'
 
 export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group_id }: { starter_site_id?: string; site_name?: string; site_host?: string; site_group_id?: string }) => {
 	let status = $state<'standby' | 'loading' | 'working'>('standby')
 	let done = $state<(error?: unknown) => void>()
 
 	const starter_site = $derived(starter_site_id ? Sites.one(starter_site_id) : undefined)
-	const siteData = $derived(status === 'standby' ? { data: undefined } : usePageData(starter_site, starter_site?.pages()))
+	const starter_site_pages = $derived(starter_site?.pages())
+	const siteData = $derived(status === 'standby' || !starter_site || !starter_site_pages ? { data: undefined } : usePageData(starter_site, starter_site_pages))
 
 	$effect(() => {
 		const { data } = siteData
@@ -51,7 +56,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 			return
 		}
 
-		untrack(() => {
+		untrack(async () => {
 			const site = Sites.create({
 				...starter_site.values(),
 				id: undefined,
@@ -59,8 +64,32 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 				description: '',
 				host: site_host,
 				group: site_group_id,
-				index: 0
+				index: 0,
+				preview: undefined
 			})
+
+			const site_upload_map = new Map<string, SiteUpload>()
+			for (const starter_site_upload of data.site_uploads) {
+				const file = await fetch(`${self.baseURL}/api/files/site_uploads/${starter_site_upload.id}/${starter_site_upload.file}`)
+					.then((res) => res.blob())
+					.then((blob) => new File([blob], starter_site_upload.file.toString()))
+
+				const upload = SiteUploads.create({
+					...starter_site_upload.values(),
+					id: undefined,
+					file,
+					site: site.id
+				})
+				site_upload_map.set(starter_site_upload.id, upload)
+			}
+
+			const map_entry_value = (value: any, field: Field): unknown => {
+				if (field.type === 'image' && value.upload) {
+					return { ...value, upload: site_upload_map.get(value.upload)?.id }
+				} else {
+					return value
+				}
+			}
 
 			const site_field_map = new Map<string, SiteField>()
 			const create_site_fields = (starter_parent_field?: SiteField) => {
@@ -107,7 +136,8 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 						...starter_site_entry.values(),
 						id: undefined,
 						field: field.id,
-						parent: parent?.id
+						parent: parent?.id,
+						value: map_entry_value(starter_site_entry.value, field)
 					})
 					site_entry_map.set(starter_site_entry.id, entry)
 					create_site_entries(starter_site_entry)
@@ -121,7 +151,8 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 				const symbol = SiteSymbols.create({
 					...starter_symbol.values(),
 					id: undefined,
-					site: site.id
+					site: site.id,
+					compiled_js: undefined
 				})
 				symbol_map.set(starter_symbol.id, symbol)
 
@@ -173,7 +204,8 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 							...starter_symbol_entry.values(),
 							id: undefined,
 							field: field.id,
-							parent: parent?.id
+							parent: parent?.id,
+							value: map_entry_value(starter_symbol_entry.value, field)
 						})
 						symbol_entry_map.set(starter_symbol_entry.id, entry)
 						create_symbol_entries(starter_symbol_entry)
@@ -240,7 +272,8 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 							...starter_page_type_entry.values(),
 							id: undefined,
 							field: field.id,
-							parent: parent?.id
+							parent: parent?.id,
+							value: map_entry_value(starter_page_type_entry.value, field)
 						})
 						page_type_entry_map.set(starter_page_type_entry.id, entry)
 						create_page_type_entries(starter_page_type_entry)
@@ -309,7 +342,8 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 								id: undefined,
 								section: section.id,
 								field: field.id,
-								parent: parent?.id
+								parent: parent?.id,
+								value: map_entry_value(starter_page_type_section_entry.value, field)
 							})
 							page_type_section_entry_map.set(starter_page_type_section_entry.id, entry)
 							create_page_type_section_entries(starter_page_type_section_entry)
@@ -371,7 +405,8 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 								...starter_page_entry.values(),
 								id: undefined,
 								page: page.id,
-								field: field.id
+								field: field.id,
+								value: map_entry_value(starter_page_entry.value, field)
 							})
 							page_entry_map.set(starter_page_entry.id, entry)
 							create_page_entries(starter_page_entry)
@@ -422,7 +457,8 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 									id: undefined,
 									section: section.id,
 									field: field.id,
-									parent: parent?.id
+									parent: parent?.id,
+									value: map_entry_value(starter_page_section_entry.value, field)
 								})
 								page_section_entry_map.set(starter_page_section_entry.id, entry)
 								create_page_section_entries(starter_page_section_entry)

@@ -16,8 +16,10 @@ export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<type
 			[...page_sections, ...page_type_sections]
 				.map((section) => SiteSymbols.one(section.symbol))
 				.filter((symbol) => symbol !== undefined)
+				.filter((symbol) => symbol !== null)
 				.filter(deduplicate('id'))
 	)
+	const site_uploads = $derived(site?.uploads())
 	const site_fields = $derived(site?.fields())
 	const page_type_fields = $derived(
 		page_types?.every((page_type) => page_type.fields() !== undefined) ? page_types.flatMap((page_type) => page_type.fields() ?? []).filter(deduplicate('id')) : undefined
@@ -45,6 +47,7 @@ export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<type
 				page_type_sections &&
 				page_type_symbols &&
 				symbols &&
+				site_uploads &&
 				site_fields &&
 				page_type_fields &&
 				symbol_fields &&
@@ -61,6 +64,7 @@ export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<type
 					page_type_sections,
 					page_type_symbols,
 					symbols,
+					site_uploads,
 					site_fields,
 					page_type_fields,
 					symbol_fields,

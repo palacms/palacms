@@ -12,6 +12,8 @@ import { SiteEntry } from '../common/models/SiteEntry'
 import { PageTypeEntry } from '$lib/common/models/PageTypeEntry'
 import { PageEntry } from '$lib/common/models/PageEntry'
 import { get_empty_value } from '$lib/builder/utils'
+import type { Upload } from '$lib/common/models/Upload'
+import { self } from './PocketBase'
 
 /**
  * Entry models by name of the owning collection.
@@ -30,7 +32,14 @@ export type EntryOf<Collection extends keyof typeof ENTRY_MODELS> = z.TypeOf<(ty
 export type EntityOf<Collection extends keyof typeof ENTRY_MODELS> = z.TypeOf<(typeof models)[Collection]>
 export type Entity = EntityOf<keyof typeof ENTRY_MODELS>
 
-export const getContent = <Collection extends keyof typeof ENTRY_MODELS>(entity: EntityOf<Collection>, fields: Field[], entries: EntryOf<Collection>[], parentField?: Field, parentEntry?: Entry) => {
+export const getContent = <Collection extends keyof typeof ENTRY_MODELS>(
+	entity: EntityOf<Collection>,
+	fields: Field[],
+	entries: EntryOf<Collection>[],
+	uploads: Upload[],
+	parentField?: Field,
+	parentEntry?: Entry
+) => {
 	const content: { [K in (typeof locales)[number]]?: Record<string, unknown> } = {}
 	const filteredFields = fields
 		.filter((field) =>
@@ -49,15 +58,32 @@ export const getContent = <Collection extends keyof typeof ENTRY_MODELS>(entity:
 			const [entry] = fieldEntries
 			if (!entry) continue
 			if (!content[entry.locale]) content[entry.locale] = {}
-			content[entry.locale]![field.key] = getContent(entity, fields, entries, field, entry)[entry.locale]
+			content[entry.locale]![field.key] = getContent(entity, fields, entries, uploads, field, entry)[entry.locale]
 		}
 		// Handle repeater fields specially - collect array of subfield entries into an object
 		else if (field.type === 'repeater' && field.key) {
 			for (const entry of fieldEntries) {
 				if (!content[entry.locale]) content[entry.locale] = {}
 				if (!content[entry.locale]![field.key]) content[entry.locale]![field.key] = []
-				;(content[entry.locale]![field.key] as unknown[]).push(getContent(entity, fields, entries, field, entry)[entry.locale])
+				;(content[entry.locale]![field.key] as unknown[]).push(getContent(entity, fields, entries, uploads, field, entry)[entry.locale])
 			}
+		}
+		// Handle image fields specially - get url
+		else if (field.type === 'image' && field.key) {
+			const [entry] = fieldEntries
+			if (!entry) continue
+			if (!content.en) content.en = {}
+			if (!content[entry.locale]) content[entry.locale] = {}
+
+			const upload_id: string | null | undefined = entry.value.upload
+			const upload = upload_id ? uploads.find((upload) => upload.id === upload_id) : null
+			const upload_url =
+				upload &&
+				(typeof upload.file === 'string' ? `${self.baseURL}/api/files/${'group' in entity ? 'library_uploads' : 'site_uploads'}/${upload.id}/${upload.file}` : URL.createObjectURL(upload.file))
+			const input_url: string | undefined = entry.value.url
+			const url = input_url || upload_url
+			const alt: string = entry.value.alt
+			content[entry.locale]![field.key] = { alt, url }
 		}
 		// If field has a key but no entries, fill with empty value
 		else if (field.key && fieldEntries.length === 0) {

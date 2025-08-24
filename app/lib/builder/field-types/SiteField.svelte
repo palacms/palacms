@@ -34,7 +34,7 @@
 		return $fieldTypes.find((ft) => ft.id === resolvedField.type)
 	})
 
-	const site = site_context.get()
+	const site = site_context.getOr(null)
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
 	const entry = $derived(resolvedField && getDirectEntries(entity, resolvedField, entries)[0])

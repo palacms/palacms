@@ -4,7 +4,7 @@ export const Page = z.object({
 	id: z.string().nonempty(),
 	name: z.string().nonempty(),
 	slug: z.string(),
-	compiled_html: z.string().optional(),
+	compiled_html: z.string().or(z.file()).optional(),
 	page_type: z.string().nonempty(),
 	parent: z.string(),
 	site: z.string().nonempty()
