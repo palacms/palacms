@@ -26,6 +26,11 @@
 		}
 
 		for (const pts of new_page_page_type_sections) {
+			// Skip header and footer sections - these are handled at the site level
+			if (pts.zone === 'header' || pts.zone === 'footer') {
+				continue
+			}
+			
 			// Create the page section
 			const page_section = PageSections.create({
 				page: new_page.id,
