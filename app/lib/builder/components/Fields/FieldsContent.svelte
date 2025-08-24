@@ -184,8 +184,11 @@
 							onduplicate={() => {
 								duplicate_field(field)
 							}}
-							onmove={(direction) => {
-								move_field(field, direction)
+							onmove={(id, direction) => {
+								const field_to_move = fields.find((f) => f.id === id)
+								if (field_to_move) {
+									move_field(field_to_move, direction)
+								}
 							}}
 						/>
 					</div>
