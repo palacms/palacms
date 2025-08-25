@@ -146,7 +146,7 @@
 	<Dialog.Content class="z-[999] max-w-[500px] flex flex-col p-0">
 		<Deploy
 			bind:stage={publish_stage}
-			publish_fn={publish.publish}
+			publish_fn={publish.run}
 			loading={publish_in_progress}
 			site_host={site?.host}
 			onClose={() => {

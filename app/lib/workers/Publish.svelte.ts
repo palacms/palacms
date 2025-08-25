@@ -5,14 +5,14 @@ import type { SiteSymbol } from '$lib/common/models/SiteSymbol'
 import { useContent } from '$lib/Content.svelte'
 import { processors } from '../builder/component'
 import { usePageData } from '../PageData.svelte'
-import { PageTypes, Sites } from '../pocketbase/collections'
+import { Sites } from '../pocketbase/collections'
 import { self } from '../pocketbase/PocketBase'
 import { useSvelteWorker } from './Worker.svelte'
 
 export const usePublishSite = (site_id?: string) => {
 	const worker = useSvelteWorker(
 		() => !!site_id,
-		() => !!site && !!pages && !!data,
+		() => !!site && !!pages && !!page_types && !!data && !!site_content && !!page_type_content && !!section_content,
 		async () => {
 			if (!data) {
 				throw new Error('Not loaded')
@@ -183,16 +183,16 @@ export const usePublishSite = (site_id?: string) => {
 		}
 	}
 
-	const shouldLoad = ['loading', 'working'].includes(worker.status)
+	const shouldLoad = $derived(['loading', 'working'].includes(worker.status))
 	const site = $derived(shouldLoad && site_id ? Sites.one(site_id) : undefined)
 	const pages = $derived(shouldLoad && site ? site.pages() : undefined)
 	const page_types = $derived(shouldLoad && site ? site.page_types() : undefined)
 
 	const { data } = $derived(shouldLoad && site && pages ? usePageData(site, pages) : { data: undefined })
 
-	const site_content = $derived(shouldLoad && site && useContent(site))
-	const page_type_content = $derived(shouldLoad && page_types && Object.fromEntries(page_types.map((page_type) => [page_type.id, useContent(page_type).data])))
-	const section_content = $derived(shouldLoad && data && Object.fromEntries([...data.page_type_sections, ...data.page_sections].map((section) => [section.id, useContent(section).data])))
+	const site_content = $derived(shouldLoad && site ? useContent(site) : undefined)
+	const page_type_content = $derived(shouldLoad && page_types ? Object.fromEntries(page_types.map((page_type) => [page_type.id, useContent(page_type)])) : undefined)
+	const section_content = $derived(shouldLoad && data ? Object.fromEntries([...data.page_type_sections, ...data.page_sections].map((section) => [section.id, useContent(section)])) : undefined)
 
 	return worker
 }
