@@ -8,10 +8,20 @@
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
+	import { LibraryUploads, SiteUploads } from '$lib/pocketbase/collections'
+	import { site_context } from '../stores/context'
+	import { self } from '$lib/pocketbase/PocketBase'
 
-	const default_value = {
+	type ImageFieldValue = {
+		alt: string
+		url: string
+		upload?: string | null
+	}
+
+	const default_value: ImageFieldValue = {
 		alt: '',
-		url: ''
+		url: '',
+		upload: null
 	}
 
 	const {
@@ -24,30 +34,43 @@
 		entry?: Entry
 		onchange: FieldValueHandler
 	} = $props()
-	const entry = $derived(passedEntry || { value: default_value })
 
-	async function upload_image(image) {
-		loading = true
+	const entry = $derived(passedEntry || { value: default_value }) as Omit<Entry, 'value'> & { value: ImageFieldValue }
+	const site = site_context.getOr(null)
 
-		// Get compression options from field config or use defaults
-		const maxSizeMB = field.config.maxSizeMB ?? 1
-		const maxWidthOrHeight = field.config.maxWidthOrHeight ?? 1920
+	async function upload_image(image: File) {
+		try {
+			loading = true
 
-		// Compression options
-		const options = {
-			maxSizeMB, // Maximum size in MB
-			maxWidthOrHeight, // Resize large images to this dimension
-			useWebWorker: true // Use web worker for better UI performance
-		}
+			// Get compression options from field config or use defaults
+			const maxSizeMB = field.config.maxSizeMB ?? 1
+			const maxWidthOrHeight = field.config.maxWidthOrHeight ?? 1920
 
-		// Compress the image
-		const compressedImage = await imageCompression(image, options)
+			// Compression options
+			const options = {
+				maxSizeMB, // Maximum size in MB
+				maxWidthOrHeight, // Resize large images to this dimension
+				useWebWorker: true // Use web worker for better UI performance
+			}
 
-		await upload(compressedImage)
+			// Compress the image
+			// NOTE: browser-image-compression returns Blob instead of File
+			const compressedImage: Blob = await imageCompression(image, options)
+			const compressedImageFile = new File([compressedImage], image.name)
 
-		async function upload(file) {
-			// TODO: Implement
-			throw new Error('Not implemented')
+			if (upload && site) {
+				SiteUploads.update(upload.id, { file: compressedImageFile })
+			} else if (upload) {
+				LibraryUploads.update(upload.id, { file: compressedImageFile })
+			} else if (site) {
+				upload = SiteUploads.create({ file: compressedImageFile, site: site.id })
+			} else {
+				upload = LibraryUploads.create({ file: compressedImageFile })
+			}
+
+			onchange({ [field.key]: { 0: { value: { ...entry.value, upload: upload.id } } } })
+		} finally {
+			loading = false
 		}
 	}
 
@@ -56,6 +79,12 @@
 
 	let width = $state<number | undefined>()
 	let collapsed = $derived(!width || width < 200)
+	let upload = $derived(entry.value.upload ? ('site' in field && site ? SiteUploads.one(entry.value.upload) : LibraryUploads.one(entry.value.upload)) : null)
+	let upload_url = $derived(
+		upload && (typeof upload.file === 'string' ? `${self.baseURL}/api/files/${site ? 'site_uploads' : 'library_uploads'}/${upload.id}/${upload.file}` : URL.createObjectURL(upload.file))
+	)
+	let input_url = $derived(entry.value.url)
+	let url = $derived(input_url || upload_url)
 </script>
 
 <div class="ImageField" bind:clientWidth={width} class:collapsed>
@@ -72,8 +101,8 @@
 						{image_size}KB
 					</span>
 				{/if}
-				{#if entry.value.url}
-					<img src={entry.value.url} alt="Preview" />
+				{#if url}
+					<img src={url} alt="Preview" />
 				{/if}
 				<label class="image-upload">
 					<Icon icon="uil:image-upload" />
@@ -82,8 +111,8 @@
 					{/if}
 					<input
 						onchange={({ target }) => {
-							const { files } = target
-							if (files.length > 0) {
+							const { files } = target as HTMLInputElement
+							if (files?.length) {
 								const image = files[0]
 								upload_image(image)
 							}

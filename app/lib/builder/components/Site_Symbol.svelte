@@ -14,7 +14,7 @@
 
 	let { symbol = $bindable(), checked = false, onclick }: { symbol: SiteSymbol | LibrarySymbol; checked?: boolean; onclick?: () => void } = $props()
 
-	const site = site_context.get()
+	const site = site_context.getOr(null)
 
 	let name_el
 

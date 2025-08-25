@@ -131,7 +131,7 @@
 		$site_html = null
 	})
 
-	const site_data = $derived(site ? getContent(site, site.fields() || [], site.entries() || [])['en'] : {})
+	const site_data = $derived(site ? getContent(site, site.fields() || [], site.entries() || [], site.uploads() || [])['en'] : {})
 	async function compile_component_head({ html, data }) {
 		const compiled = await processCode({
 			component: {

@@ -27,7 +27,7 @@
 	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
 
-	const site = site_context.get()
+	const site = site_context.getOr(null)
 	const page_type_id = $derived(page.params.page_type)
 	const page_type = $derived(PageTypes.one(page_type_id))
 	const fields = $derived(page_type?.fields() ?? [])

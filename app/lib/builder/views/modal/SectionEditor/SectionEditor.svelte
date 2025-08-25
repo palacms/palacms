@@ -18,11 +18,11 @@
 	import { PressedKeys } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { browser } from '$app/environment'
-	import { PageSectionEntries, PageSections, PageEntries, PageTypeSectionEntries, SiteSymbolFields, SiteSymbols, SiteSymbolEntries, manager } from '$lib/pocketbase/collections'
+	import { PageSectionEntries, PageSections, PageEntries, PageTypeSectionEntries, SiteSymbolFields, SiteSymbols, SiteSymbolEntries, SiteEntries, manager, Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import type { PageTypeSection } from '$lib/common/models/PageTypeSection'
 	import { current_user } from '$lib/pocketbase/user'
-	import _ from 'lodash-es'
+	import * as _ from 'lodash-es'
 
 	let {
 		component,
@@ -49,9 +49,11 @@
 	// Data will be loaded automatically by CollectionMapping system when accessed
 
 	const symbol = $derived(SiteSymbols.one(component.symbol))
+	const site = $derived(symbol && Sites.one(symbol.site))
 	const fields = $derived(symbol?.fields())
 	const entries = $derived('page_type' in component ? component.entries() : 'page' in component ? component.entries() : undefined)
-	const component_data = $derived(fields && entries && (getContent(component, fields, entries)[$locale] ?? {}))
+	const uploads = $derived(site?.uploads())
+	const component_data = $derived(fields && entries && uploads && (getContent(component, fields, entries, uploads)[$locale] ?? {}))
 
 	const initial_code = { html: symbol?.html, css: symbol?.css, js: symbol?.js }
 	const initial_data = _.cloneDeep(component_data)

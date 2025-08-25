@@ -13,7 +13,7 @@
 	import { createEventDispatcher, onMount } from 'svelte'
 	import { block_html } from '$lib/builder/code_generators'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { manager, SiteSymbols } from '$lib/pocketbase/collections'
+	import { manager, Sites, SiteSymbols } from '$lib/pocketbase/collections'
 	import { useExportSiteSymbol } from '$lib/ExportSymbol.svelte'
 
 	const dispatch = createEventDispatcher()
@@ -62,9 +62,11 @@
 		css: symbol.css,
 		js: symbol.js
 	})
+	const site = $derived(Sites.one(symbol.site))
 	const fields = $derived(symbol.fields())
 	const entries = $derived(symbol.entries())
-	const data = $derived(fields && entries && (getContent(symbol, fields, entries)[$locale] ?? {}))
+	const uploads = $derived(site?.uploads())
+	const data = $derived(fields && entries && uploads && (getContent(symbol, fields, entries, uploads)[$locale] ?? {}))
 
 	let componentCode = $state()
 	let component_error = $state()

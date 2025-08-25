@@ -1,6 +1,6 @@
 <script lang="ts">
 	import IFrame from '$lib/builder/components/IFrame.svelte'
-	import { LibrarySymbols } from '$lib/pocketbase/collections'
+	import { LibrarySymbols, LibraryUploads } from '$lib/pocketbase/collections'
 	import { block_html } from '$lib/builder/code_generators'
 	import type { Snippet } from 'svelte'
 	import { getContent } from '$lib/pocketbase/content'
@@ -27,7 +27,8 @@
 	)
 	const fields = $derived(symbol?.fields())
 	const entries = $derived(symbol?.entries())
-	const data = $derived(symbol && fields && entries && (getContent(symbol, fields, entries)[$locale] ?? {}))
+	const uploads = $derived(LibraryUploads.list())
+	const data = $derived(symbol && fields && entries && uploads && (getContent(symbol, fields, entries, uploads)[$locale] ?? {}))
 
 	let generated_code = $state()
 	$effect(() => {

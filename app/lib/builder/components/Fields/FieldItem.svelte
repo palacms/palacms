@@ -43,7 +43,7 @@
 		onmove: (id: string, direction: 'up' | 'down') => void
 	} = $props()
 
-	const site = site_context.get()
+	const site = site_context.getOr(null)
 	const page_types = $derived(site?.page_types() ?? [])
 
 	const visible_field_types = hide_dynamic_field_types_context.getOr(false)

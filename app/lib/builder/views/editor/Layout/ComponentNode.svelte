@@ -25,7 +25,7 @@
 	import { component_iframe_srcdoc } from '$lib/builder/components/misc'
 	import { getContent } from '$lib/pocketbase/content'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager } from '$lib/pocketbase/collections'
+	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites } from '$lib/pocketbase/collections'
 	import { Editor, Extension } from '@tiptap/core'
 	import { renderToHTMLString, renderToMarkdown } from '@tiptap/static-renderer'
 
@@ -60,9 +60,11 @@
 
 	let node = $state()
 
+	const site = $derived(Sites.one(block.site))
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
-	const component_data = $derived(fields && entries && (getContent(section, fields, entries)[$locale] ?? {}))
+	const uploads = $derived(site?.uploads())
+	const component_data = $derived(fields && entries && uploads && (getContent(section, fields, entries, uploads)[$locale] ?? {}))
 
 	let floating_menu = $state()
 	let bubble_menu = $state()

@@ -50,7 +50,7 @@
 		append = ''
 	} = $props()
 
-	const site = site_context.get()
+	const site = site_context.getOr(null)
 
 	$preview_updated = false
 
