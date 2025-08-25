@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page as pageState } from '$app/state';
 	import * as Dialog from '$lib/components/ui/dialog'
 	import Item from './Item.svelte'
 	import PageForm from './PageForm.svelte'
@@ -10,6 +11,7 @@
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
+	const page_slug = $derived(pageState.params.page)
 	const all_pages = $derived(site?.pages() ?? [])
 	const home_page = $derived(site?.homepage())
 	const child_pages = $derived(home_page?.children() ?? [])
@@ -75,11 +77,11 @@
 {#if home_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)]">
 		<li>
-			<Item page={home_page} active={false} oncreate={create_page_with_sections} />
+			<Item page={home_page} active={!page_slug} page_slug={page_slug} oncreate={create_page_with_sections} />
 		</li>
 		{#each child_pages as child_page (child_page.id)}
 			<li in:fade={{ duration: 200 }}>
-				<Item page={child_page} active={false} oncreate={create_page_with_sections} />
+				<Item page={child_page} active={page_slug === child_page.slug} page_slug={page_slug} oncreate={create_page_with_sections} />
 			</li>
 		{/each}
 	</ul>

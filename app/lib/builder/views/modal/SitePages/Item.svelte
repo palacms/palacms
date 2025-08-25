@@ -16,7 +16,7 @@
 	let editing_page = $state(false)
 
 	/** @type {Props} */
-	let { parent, page, active, oncreate }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function } = $props()
+	let { parent, page, active, oncreate, page_slug }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function, page_slug: string } = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
@@ -91,7 +91,7 @@
 </script>
 
 <div class="Item" bind:this={element} class:contains-child={parent}>
-	<div class="page-item-container" class:active={false} class:expanded={showing_children && has_children}>
+	<div class="page-item-container" class:active class:expanded={showing_children && has_children}>
 		<div class="left">
 			{#if editing_page}
 				<div class="details">
@@ -127,7 +127,7 @@
 					<span class="icon" style:background={page_type?.color}>
 						<Icon icon={page_type?.icon} />
 					</span>
-					<a class:active href={full_url()} onclick={() => {}} class="name">{page.name}</a>
+					<a class:active={active} href={full_url()} onclick={() => {}} class="name">{page.name}</a>
 					<span class="url">/{page.slug}</span>
 				</div>
 			{/if}
@@ -194,7 +194,7 @@
 	{#if showing_children && has_children}
 		<ul class="page-list child">
 			{#each children as subpage}
-				<Item parent={page} page={subpage} active={false} on:delete on:create />
+				<Item parent={page} page={subpage} active={subpage.slug === page_slug} page_slug={page_slug} on:delete on:create />
 			{/each}
 		</ul>
 	{/if}
