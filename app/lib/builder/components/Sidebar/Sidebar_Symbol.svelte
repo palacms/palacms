@@ -14,7 +14,7 @@
 	import { block_html } from '$lib/builder/code_generators'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { manager, Sites, SiteSymbols } from '$lib/pocketbase/collections'
-	import { useExportSiteSymbol } from '$lib/ExportSymbol.svelte'
+	import { useExportSiteSymbol } from '$lib/workers/ExportSymbol.svelte'
 
 	const dispatch = createEventDispatcher()
 

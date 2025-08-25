@@ -11,7 +11,7 @@
 	import type { PageType } from '$lib/common/models/PageType'
 	import type { Page } from '$lib/common/models/Page'
 	import Button from './ui/button/button.svelte'
-	import { useCloneSite } from '$lib/CloneSite.svelte'
+	import { useCloneSite } from '$lib/workers/CloneSite.svelte'
 	import { convert_markdown_to_html } from '$lib/builder/utils'
 
 	const { oncreated }: { oncreated?: () => void } = $props()
@@ -54,7 +54,7 @@
 		parent: ''
 	} satisfies Partial<Page>
 
-	const { cloneSite } = $derived(
+	const cloneSite = $derived(
 		useCloneSite({
 			starter_site_id: selected_starter_id,
 			site_name,
@@ -203,7 +203,7 @@
 			await manager.commit()
 			oncreated?.()
 		} else {
-			await cloneSite()
+			await cloneSite.run()
 			oncreated?.()
 		}
 	}

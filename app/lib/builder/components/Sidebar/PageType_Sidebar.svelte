@@ -22,7 +22,7 @@
 	import { Button } from '$lib/components/ui/button'
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user.js'
-	import { useImportSiteSymbol } from '$lib/ImportSymbol.svelte.js'
+	import { useImportSiteSymbol } from '$lib/workers/ImportSymbol.svelte.js'
 	import { site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
