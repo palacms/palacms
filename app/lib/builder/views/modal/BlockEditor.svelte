@@ -75,12 +75,12 @@
 			if (!active_symbol_group) {
 				throw new Error('Symbol group not loaded')
 			}
-			return LibrarySymbols.create({ css: '', html: '', js: '', name: 'New Block', group: active_symbol_group.id })
+			return LibrarySymbols.create({ css: '', html: '', js: '', name: '', group: active_symbol_group.id })
 		} else {
 			if (!site) {
 				throw new Error('Site not loaded')
 			}
-			return SiteSymbols.create({ css: '', html: '', js: '', name: 'New Block', site: site.id })
+			return SiteSymbols.create({ css: '', html: '', js: '', name: '', site: site.id })
 		}
 	}
 	const block = $state(existing_block ?? new_block())
