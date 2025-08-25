@@ -1,17 +1,17 @@
 import { untrack } from 'svelte'
-import type { Page } from './common/models/Page'
-import type { PageEntry } from './common/models/PageEntry'
-import type { PageSectionEntry } from './common/models/PageSectionEntry'
-import type { PageType } from './common/models/PageType'
-import type { PageTypeEntry } from './common/models/PageTypeEntry'
-import type { PageTypeField } from './common/models/PageTypeField'
-import type { PageTypeSectionEntry } from './common/models/PageTypeSectionEntry'
-import type { SiteEntry } from './common/models/SiteEntry'
-import type { SiteField } from './common/models/SiteField'
-import type { SiteSymbol } from './common/models/SiteSymbol'
-import type { SiteSymbolEntry } from './common/models/SiteSymbolEntry'
-import type { SiteSymbolField } from './common/models/SiteSymbolField'
-import { usePageData } from './PageData.svelte'
+import type { Page } from '../common/models/Page'
+import type { PageEntry } from '../common/models/PageEntry'
+import type { PageSectionEntry } from '../common/models/PageSectionEntry'
+import type { PageType } from '../common/models/PageType'
+import type { PageTypeEntry } from '../common/models/PageTypeEntry'
+import type { PageTypeField } from '../common/models/PageTypeField'
+import type { PageTypeSectionEntry } from '../common/models/PageTypeSectionEntry'
+import type { SiteEntry } from '../common/models/SiteEntry'
+import type { SiteField } from '../common/models/SiteField'
+import type { SiteSymbol } from '../common/models/SiteSymbol'
+import type { SiteSymbolEntry } from '../common/models/SiteSymbolEntry'
+import type { SiteSymbolField } from '../common/models/SiteSymbolField'
+import { usePageData } from '../PageData.svelte'
 import {
 	manager,
 	PageEntries,
@@ -31,32 +31,22 @@ import {
 	SiteSymbolFields,
 	SiteSymbols,
 	SiteUploads
-} from './pocketbase/collections'
-import type { SiteUpload } from './common/models/SiteUpload'
-import { self } from './pocketbase/PocketBase'
-import type { Field } from './common/models/Field'
+} from '../pocketbase/collections'
+import type { SiteUpload } from '../common/models/SiteUpload'
+import { self } from '../pocketbase/PocketBase'
+import type { Field } from '../common/models/Field'
+import { useSvelteWorker } from './Worker.svelte'
 
 export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group_id }: { starter_site_id?: string; site_name?: string; site_host?: string; site_group_id?: string }) => {
-	let status = $state<'standby' | 'loading' | 'working'>('standby')
-	let done = $state<(error?: unknown) => void>()
+	const worker = useSvelteWorker(
+		() => !!starter_site_id || !!site_name || !site_host || !site_group_id,
+		() => !!starter_site && !!starter_site_pages && !!siteData.data,
+		async () => {
+			const { data } = siteData
+			if (!data || !starter_site || !site_name || !site_host || !site_group_id) {
+				throw new Error('Not loaded')
+			}
 
-	const starter_site = $derived(starter_site_id ? Sites.one(starter_site_id) : undefined)
-	const starter_site_pages = $derived(starter_site?.pages())
-	const siteData = $derived(status === 'standby' || !starter_site || !starter_site_pages ? { data: undefined } : usePageData(starter_site, starter_site_pages))
-
-	$effect(() => {
-		const { data } = siteData
-		if (!data || !starter_site || !site_name || !site_host || !site_group_id) {
-			return
-		}
-
-		if (status !== 'working') {
-			status = 'working'
-		} else {
-			return
-		}
-
-		untrack(async () => {
 			const site = Sites.create({
 				...starter_site.values(),
 				id: undefined,
@@ -472,34 +462,14 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 			}
 			create_pages()
 
-			manager
-				.commit()
-				.then(() => {
-					status = 'standby'
-					done?.()
-				})
-				.catch((error) => {
-					console.error('Clone failed:', error)
-					status = 'standby'
-					done?.(error) // Pass error to the done callback
-				})
-		})
-	})
-
-	return new (class {
-		status = $derived(status)
-
-		async cloneSite() {
-			status = 'loading'
-			return new Promise<void>((resolve, reject) => {
-				done = (error) => {
-					if (error) {
-						reject(error)
-					} else {
-						resolve()
-					}
-				}
-			})
+			await manager.commit()
 		}
-	})()
+	)
+
+	const shouldLoad = $derived(['loading', 'working'].includes(worker.status))
+	const starter_site = $derived(shouldLoad && starter_site_id ? Sites.one(starter_site_id) : undefined)
+	const starter_site_pages = $derived(shouldLoad && starter_site ? starter_site.pages() : undefined)
+	const siteData = $derived(shouldLoad && starter_site && starter_site_pages ? usePageData(starter_site, starter_site_pages) : { data: undefined })
+
+	return worker
 }

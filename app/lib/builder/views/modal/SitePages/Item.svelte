@@ -12,11 +12,24 @@
 	import { site_context } from '$lib/builder/stores/context'
 	import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
+	import type { Page } from '$lib/common/models/Page'
 
 	let editing_page = $state(false)
 
 	/** @type {Props} */
-	let { parent, page, active, oncreate }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function } = $props()
+	let {
+		parent,
+		page,
+		active,
+		oncreate,
+		page_slug
+	}: {
+		parent?: ObjectOf<typeof Pages>
+		page: ObjectOf<typeof Pages>
+		active: boolean
+		oncreate: (new_page: Omit<Page, 'id' | 'index'>) => Promise<void>
+		page_slug: string
+	} = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
@@ -26,6 +39,7 @@
 	})
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
+	const home_page = $derived(site.homepage())
 
 	let showing_children = $state(false)
 	let children = $derived(page.children() ?? [])
@@ -91,7 +105,7 @@
 </script>
 
 <div class="Item" bind:this={element} class:contains-child={parent}>
-	<div class="page-item-container" class:active={false} class:expanded={showing_children && has_children}>
+	<div class="page-item-container" class:active class:expanded={showing_children && has_children}>
 		<div class="left">
 			{#if editing_page}
 				<div class="details">
@@ -140,9 +154,9 @@
 		<div class="options">
 			<!-- TODO: enable reordering for child pages -->
 			{#if !parent}
-				<button class="drag-handle" bind:this={drag_handle_element} style:visibility={page.slug === '' ? 'hidden' : 'visible'}>
+				<!-- <button class="drag-handle" bind:this={drag_handle_element} style:visibility={page.slug === '' ? 'hidden' : 'visible'}>
 					<Icon icon="material-symbols:drag-handle" />
-				</button>
+				</button> -->
 			{/if}
 			<MenuPopup
 				icon="carbon:overflow-menu-vertical"
@@ -165,14 +179,24 @@
 							editing_page = !editing_page
 						}
 					},
-					...(page.slug !== ''
+					...(!!page.parent
 						? [
 								{
 									label: 'Delete',
 									icon: 'ic:outline-delete',
-									on_click: () => {
+									on_click: async () => {
+										const parent_id = page.parent
 										Pages.delete(page.id)
-										manager.commit()
+
+										// Reindex remaining sibling pages
+										const sibling_pages = allPages.filter((p) => p.parent === parent_id).sort((a, b) => a.index - b.index)
+
+										sibling_pages.forEach((sibling_page, i) => {
+											const index = parent_id === home_page?.id ? i + 1 : i
+											Pages.update(sibling_page.id, { index })
+										})
+
+										await manager.commit()
 									}
 								}
 							]
@@ -185,7 +209,7 @@
 	{#if showing_children && has_children}
 		<ul class="page-list child">
 			{#each children as subpage}
-				<Item parent={page} page={subpage} active={false} on:delete on:create />
+				<Item parent={page} page={subpage} active={subpage.slug === page_slug} {page_slug} on:delete on:create />
 			{/each}
 		</ul>
 	{/if}
@@ -194,7 +218,7 @@
 		<div style="border-left: 0.5rem solid #111;">
 			<PageForm
 				parent={page}
-				oncreate={async (new_page) => {
+				oncreate={async (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => {
 					creating_page = false
 					showing_children = true
 					const url_taken = allPages.some((page) => page?.slug === new_page.slug)

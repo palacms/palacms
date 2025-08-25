@@ -1,7 +1,7 @@
-import { get_empty_value } from './builder/utils'
-import type { Entry } from './common/models/Entry'
-import type { Field } from './common/models/Field'
-import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, Sites, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from './pocketbase/collections'
+import { get_empty_value } from '../builder/utils'
+import type { Entry } from '../common/models/Entry'
+import type { Field } from '../common/models/Field'
+import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbols, manager, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '../pocketbase/collections'
 import { useSvelteWorker } from './Worker.svelte'
 
 const createImportWorker =

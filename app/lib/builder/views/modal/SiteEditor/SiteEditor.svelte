@@ -5,20 +5,20 @@
 	import Fields, { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
 	import * as _ from 'lodash-es'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
-	import { getContent } from '$lib/pocketbase/content'
 	import { site_context, hide_dynamic_field_types_context } from '$lib/builder/stores/context'
 	import { page } from '$app/state'
 	import { Sites, SiteFields, SiteEntries, manager } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
 	import { browser } from '$app/environment'
+	import { useContent } from '$lib/Content.svelte'
+	import { locale } from '$lib/builder/stores/app/misc.js'
 
 	let { onClose, has_unsaved_changes = $bindable(false) } = $props()
 
 	const site = site_context.get()
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
-	const uploads = $derived(site.uploads())
-	const site_data = $derived(fields && entries && uploads && (getContent(site, fields, entries, uploads)['en'] ?? {}))
+	const site_data = $derived(useContent(site)[$locale] ?? {})
 
 	hide_dynamic_field_types_context.set(true)
 

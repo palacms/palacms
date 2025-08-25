@@ -19,8 +19,6 @@
 	import { content_editable } from '../utilities'
 	import { processCode } from '../utils.js'
 	import { debounce } from 'lodash-es'
-	import { Sites } from '$lib/pocketbase/collections'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	/**
 	 * @typedef {Object} Props

@@ -1,12 +1,12 @@
 <script lang="ts">
 	import type { PageField } from '$lib/common/models/fields/PageField'
 	import UI from '../ui/index.js'
-	import type { Entity } from '$lib/pocketbase/content.js'
+	import type { Entity } from '$lib/Content.svelte'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 	import { site_context } from '$lib/builder/stores/context'
 
-	const { entity, field, entry, onchange }: { entity: Entity; field: PageField; entry?: Entry; onchange: FieldValueHandler } = $props()
+	const { field, entry, onchange }: { entity: Entity; field: PageField; entry?: Entry; onchange: FieldValueHandler } = $props()
 	const site = site_context.getOr(null)
 	const selectable_pages = $derived.by(() => {
 		const pages = site?.pages() ?? []

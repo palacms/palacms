@@ -9,7 +9,7 @@
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { site_context } from '$lib/builder/stores/context'
 
-	let { parent, oncreate }: { parent?: ObjectOf<typeof Pages>; oncreate: (new_page: Omit<Page, 'id' | 'parent' | 'site'>) => void | Promise<void> } = $props()
+	let { parent, oncreate }: { parent?: ObjectOf<typeof Pages>; oncreate: (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => void | Promise<void> } = $props()
 
 	const site = site_context.get()
 	const page_types = $derived(site?.page_types())

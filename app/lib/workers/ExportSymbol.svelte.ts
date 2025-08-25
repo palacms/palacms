@@ -1,4 +1,4 @@
-import { LibrarySymbols, SiteSymbols } from './pocketbase/collections'
+import { LibrarySymbols, SiteSymbols } from '../pocketbase/collections'
 import { useSvelteWorker } from './Worker.svelte'
 
 const createExportWorker = (collections: { Symbols: typeof SiteSymbols | typeof LibrarySymbols }) => (symbol_id?: string) => {

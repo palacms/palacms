@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte'
 	import autosize from 'autosize'
 	import { convert_markdown_to_html } from '../utils'
-	import type { Entity } from '$lib/pocketbase/content'
+	import type { Entity } from '$lib/Content.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'

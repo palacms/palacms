@@ -47,7 +47,7 @@
 	import { fieldTypes } from '../../stores/app/index.js'
 	import { mod_key_held } from '../../stores/app/misc.js'
 	import type { Field } from '$lib/common/models/Field'
-	import type { Entity } from '$lib/pocketbase/content'
+	import type { Entity } from '$lib/Content.svelte'
 	import type { Entry } from '$lib/common/models/Entry'
 	import EntryContent from './EntryContent.svelte'
 	import { current_user } from '$lib/pocketbase/user'
@@ -59,7 +59,8 @@
 		create_field,
 		oninput,
 		onchange,
-		ondelete
+		ondelete,
+		ondelete_entry
 	}: {
 		entity: Entity
 		fields: Field[]
@@ -68,6 +69,7 @@
 		oninput: FieldValueHandler
 		onchange: (details: { id: string; data: Partial<Field> }) => void
 		ondelete: (field_id: string) => void
+		ondelete_entry?: (entry_id: string) => void
 	} = $props()
 
 	// TABS
@@ -184,13 +186,16 @@
 							onduplicate={() => {
 								duplicate_field(field)
 							}}
-							onmove={(direction) => {
-								move_field(field, direction)
+							onmove={(id, direction) => {
+								const field_to_move = fields.find((f) => f.id === id)
+								if (field_to_move) {
+									move_field(field_to_move, direction)
+								}
 							}}
 						/>
 					</div>
 				{:else if active_tab === 'entry'}
-					<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} />
+					<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} ondelete={ondelete_entry} />
 				{/if}
 			</div>
 		</div>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Field } from '$lib/common/models/Field'
-	import { type Entity } from '$lib/pocketbase/content'
+	import type { Entity } from '$lib/Content.svelte'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from './Fields/FieldsContent.svelte'
 	import EntryContent from './Fields/EntryContent.svelte'
