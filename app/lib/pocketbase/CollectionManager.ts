@@ -52,7 +52,7 @@ export const createCollectionManager = () => {
 
 						case 'delete':
 							await operation.collection.delete(id).then(() => {
-								records.delete(id)
+								records.set(id, null)
 							})
 							break
 					}
