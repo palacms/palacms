@@ -1,19 +1,17 @@
 <script lang="ts">
 	import { fieldTypes } from '../stores/app'
-	import { Pages, PageTypeFields, PageTypes, Sites } from '$lib/pocketbase/collections'
+	import { PageTypeFields, PageTypes } from '$lib/pocketbase/collections'
 	import type { Entry } from '$lib/common/models/Entry'
-	import { getDirectEntries, type Entity } from '$lib/pocketbase/content'
-	import { PageEntries, PageTypeEntries } from '$lib/pocketbase/collections'
+	import type { Entity } from '$lib/Content.svelte'
+	import { PageEntries } from '$lib/pocketbase/collections'
 	import { setFieldEntries, type FieldValueHandler, type FieldValueMap } from '../components/Fields/FieldsContent.svelte'
 	import type { Field } from '$lib/common/models/Field'
-	import { page as pageState } from '$app/state'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { page_context } from '$lib/builder/stores/context'
 
 	const {
 		entity,
 		field,
-		onchange,
+		entry,
 		level
 	}: {
 		entity: Entity
@@ -41,7 +39,6 @@
 	const page_type = $derived(PageTypes.one(page.page_type))
 	const fields = $derived(page_type?.fields() ?? [])
 	const entries = $derived(page?.entries() ?? [])
-	const entry = $derived(page && resolvedField && getDirectEntries(page, resolvedField, entries)[0])
 
 	// Handle changes to the page field by updating the entry
 	function handleFieldChange(values: FieldValueMap) {

@@ -47,7 +47,7 @@
 	import { fieldTypes } from '../../stores/app/index.js'
 	import { mod_key_held } from '../../stores/app/misc.js'
 	import type { Field } from '$lib/common/models/Field'
-	import type { Entity } from '$lib/pocketbase/content'
+	import type { Entity } from '$lib/Content.svelte'
 	import type { Entry } from '$lib/common/models/Entry'
 	import EntryContent from './EntryContent.svelte'
 	import { current_user } from '$lib/pocketbase/user'

@@ -2,7 +2,7 @@
 	import { fieldTypes } from '../stores/app'
 	import { SiteFields, SiteEntries } from '$lib/pocketbase/collections'
 	import type { Entry } from '$lib/common/models/Entry'
-	import { getDirectEntries, type Entity } from '$lib/pocketbase/content'
+	import type { Entity } from '$lib/Content.svelte'
 	import { setFieldEntries, type FieldValueHandler, type FieldValueMap } from '../components/Fields/FieldsContent.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import { site_context } from '$lib/builder/stores/context'
@@ -10,7 +10,7 @@
 	const {
 		entity,
 		field,
-		onchange,
+		entry,
 		level
 	}: {
 		entity: Entity
@@ -37,7 +37,6 @@
 	const site = site_context.getOr(null)
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
-	const entry = $derived(resolvedField && getDirectEntries(entity, resolvedField, entries)[0])
 
 	// Handle changes to the site field by updating the entry
 	function handleFieldChange(values: FieldValueMap) {

@@ -30,11 +30,11 @@
 		SiteUploads
 	} from '$lib/pocketbase/collections'
 	import { page } from '$app/state'
-	import { getContent } from '$lib/pocketbase/content'
 	import { browser } from '$app/environment'
 	import _ from 'lodash-es'
 	import { site_context } from '$lib/builder/stores/context'
 	import { site_html, page_html } from '$lib/builder/stores/app/page.js'
+	import { useContent } from '$lib/Content.svelte'
 
 	let {
 		block: existing_block,
@@ -87,8 +87,7 @@
 
 	const fields = $derived('site' in block ? block.fields() : block.fields())
 	const entries = $derived('site' in block ? block.entries() : block.entries())
-	const uploads = $derived('site' in block ? Sites.one(block.site)?.uploads() : LibraryUploads.list())
-	let component_data = $derived(fields && entries && uploads && (getContent(block, fields, entries, uploads)[$locale] ?? {}))
+	let component_data = $derived(useContent(block)[$locale] ?? {})
 
 	let loading = $state(false)
 

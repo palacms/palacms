@@ -5,7 +5,7 @@
 	import * as idb from 'idb-keyval'
 	import pluralize from 'pluralize'
 	import type { Entry } from '$lib/common/models/Entry'
-	import type { Entity } from '$lib/pocketbase/content'
+	import type { Entity } from '$lib/Content.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import { get_empty_value } from '../utils'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
@@ -118,7 +118,7 @@
 						if (ondelete) {
 							ondelete(entry.id)
 						}
-						
+
 						// Remove from visible repeaters tracking
 						delete visibleRepeaters[`${field.key}-${index}`]
 					}}
