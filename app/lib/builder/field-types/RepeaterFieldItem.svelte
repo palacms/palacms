@@ -27,7 +27,8 @@
 		autofocus,
 		hovering,
 		hover_position,
-		onchange
+		onchange,
+		ondelete
 	}: {
 		entity: Entity
 		field: Field
@@ -42,6 +43,7 @@
 		hovering: boolean
 		hover_position: 'top' | 'bottom'
 		onchange: FieldValueHandler
+		ondelete?: (entry_id: string) => void
 	} = $props()
 
 	function get_image(subfields) {
@@ -165,6 +167,7 @@
 							level={level + 1}
 							minimal={true}
 							onchange={(values) => onchange({ [field.key]: { [index]: { value: null, subValues: values } } })}
+							{ondelete}
 						/>
 					</div>
 				{/each}

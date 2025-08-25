@@ -17,6 +17,7 @@
 		entries,
 		level,
 		onchange,
+		ondelete,
 		minimal
 	}: {
 		entity: Entity
@@ -26,6 +27,7 @@
 		entries: Entry[]
 		level: number
 		onchange: FieldValueHandler
+		ondelete?: (entry_id: string) => void
 		minimal?: boolean
 	} = $props()
 
@@ -39,6 +41,7 @@
 					fields: Field[]
 					entries: Entry[]
 					onchange: FieldValueHandler
+					ondelete?: (entry_id: string) => void
 					level: number
 			  }>
 			| undefined
@@ -87,7 +90,7 @@
 		</div>
 	{/if}
 	<Card {title} {icon} {minimal}>
-		<Field_Component {entity} {field} {fields} {entries} {entry} {level} {onchange} />
+		<Field_Component {entity} {field} {fields} {entries} {entry} {level} {onchange} {ondelete} />
 	</Card>
 {:else if $current_user?.siteRole === 'developer' && !is_visible}
 	<div class="hidden-field">
