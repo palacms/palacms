@@ -535,10 +535,12 @@
 	}
 
 	let compiled_code = $state<string>('')
+	let compiled_data = $state()
 	$effect(() => {
-		if (block && component_data && compiled_code !== block.html) {
+		if (compiled_code !== block.html || !_.isEqual(compiled_data, component_data)) {
 			generate_component_code(block)
 			compiled_code = block.html
+			compiled_data = _.cloneDeep(component_data)
 		}
 	})
 
@@ -673,7 +675,7 @@
 	}
 
 	$effect(() => {
-		if (setup_complete && component_data && !is_editing) {
+		if (setup_complete && !is_editing) {
 			send_component_to_iframe(generated_js, component_data)
 		}
 	})
