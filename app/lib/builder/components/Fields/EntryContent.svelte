@@ -8,6 +8,7 @@
 	import type { Component } from 'svelte'
 	import Icon from '@iconify/svelte'
 	import { current_user } from '$lib/pocketbase/user'
+	import { locale } from '../../stores/app/misc'
 
 	let {
 		entity,
@@ -47,7 +48,7 @@
 			| undefined
 	)
 
-	const data = $derived(useContent(entity))
+	const data = $derived(useContent(entity)[$locale] ?? {})
 	const is_visible = $derived.by(() => {
 		if (!field.config?.condition) return true // has no condition
 

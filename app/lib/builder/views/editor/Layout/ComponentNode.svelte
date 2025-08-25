@@ -62,7 +62,7 @@
 
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
-	const component_data = $derived(useContent(section)[$locale])
+	const component_data = $derived(useContent(section)[$locale] ?? {})
 
 	let floating_menu = $state()
 	let bubble_menu = $state()

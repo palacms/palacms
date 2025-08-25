@@ -19,6 +19,7 @@
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { site_context } from './stores/context'
 	import { useContent } from '$lib/Content.svelte'
+	import { locale } from './stores/app/misc'
 
 	let {
 		site,
@@ -131,7 +132,7 @@
 		$site_html = null
 	})
 
-	const site_data = $derived(useContent(site))
+	const site_data = $derived(useContent(site)[$locale] ?? {})
 	async function compile_component_head({ html, data }) {
 		const compiled = await processCode({
 			component: {
