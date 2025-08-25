@@ -386,18 +386,18 @@
 						}}
 						onchange={({ id, data }) => {
 							PageTypeFields.update(id, data)
+
+							const field = fields.find((field) => field.id === id)
+							if (field?.key) {
+								clearTimeout(commit_task)
+								commit_task = setTimeout(() => manager.commit(), 500)
+							}
 						}}
 						ondelete={(field_id) => {
 							// PocketBase cascade deletion will automatically clean up all associated entries
 							PageTypeFields.delete(field_id)
-						}}
-						onadd={({ parent, index, subfields }) => {
-							// Create an entry for the repeater item
-							PageTypeEntries.create({
-								field: parent,
-								locale: 'en',
-								value: {}
-							})
+							clearTimeout(commit_task)
+							commit_task = setTimeout(() => manager.commit(), 500)
 						}}
 					/>
 				{/if}

@@ -243,9 +243,6 @@ const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEn
 
 	// Handle site fields specially - get entries from the site entity
 	else if (field.type === 'site-field' && field.key) {
-		const [entry] = fieldEntries
-		if (!entry) return []
-
 		if (!field.config?.field) return []
 		const siteField = SiteFields.one(field.config.field)
 		if (!siteField) return []

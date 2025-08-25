@@ -12,6 +12,7 @@
 		entity,
 		field,
 		entry,
+		onchange,
 		level
 	}: {
 		entity: Entity
@@ -55,6 +56,7 @@
 			},
 			values
 		})
+		onchange({})
 	}
 </script>
 

@@ -11,6 +11,7 @@
 		entity,
 		field,
 		entry,
+		onchange,
 		level
 	}: {
 		entity: Entity
@@ -41,6 +42,7 @@
 	// Handle changes to the site field by updating the entry
 	function handleFieldChange(values: FieldValueMap) {
 		setFieldEntries({ fields, entries, updateEntry: SiteEntries.update, createEntry: SiteEntries.create, values })
+		onchange({})
 	}
 </script>
 
