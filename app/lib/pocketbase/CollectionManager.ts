@@ -68,21 +68,7 @@ export const createCollectionManager = () => {
 						})
 					}
 
-					// Wait until all the lists have loaded again, until staged operations are cleared
-					const checkIntervalMs = 100
-					const checkLoaded = () => {
-						for (const list of [...lists.values()]) {
-							if (!list || list.invalidated) {
-								// This list is still loading
-								setTimeout(checkLoaded, checkIntervalMs)
-								return
-							}
-						}
-
-						// All lists loaded, clear staged operations.
-						staged.clear()
-					}
-					setTimeout(checkLoaded, checkIntervalMs)
+					staged.clear()
 				}
 			}
 		},
