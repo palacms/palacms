@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page as pageState } from '$app/state';
+	import { page as pageState } from '$app/state'
 	import * as Dialog from '$lib/components/ui/dialog'
 	import Item from './Item.svelte'
 	import PageForm from './PageForm.svelte'
@@ -32,7 +32,6 @@
 			if (pts.zone === 'header' || pts.zone === 'footer') {
 				continue
 			}
-			
 			// Create the page section
 			const page_section = PageSections.create({
 				page: new_page.id,
@@ -63,8 +62,9 @@
 	 */
 	async function create_page_with_sections(page_data) {
 		// Calculate the next index - just use the count of existing siblings
+		const home_page = all_pages.find((p) => p.slug === '')
 		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent)
-		const next_index = sibling_pages.length
+		const next_index = home_page?.id === page_data.parent ? sibling_pages.length + 1 : sibling_pages
 
 		new_page = Pages.create({
 			...page_data,
@@ -77,11 +77,11 @@
 {#if home_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)]">
 		<li>
-			<Item page={home_page} active={!page_slug} page_slug={page_slug} oncreate={create_page_with_sections} />
+			<Item page={home_page} active={!page_slug} {page_slug} oncreate={create_page_with_sections} />
 		</li>
 		{#each child_pages as child_page (child_page.id)}
 			<li in:fade={{ duration: 200 }}>
-				<Item page={child_page} active={page_slug === child_page.slug} page_slug={page_slug} oncreate={create_page_with_sections} />
+				<Item page={child_page} active={page_slug === child_page.slug} {page_slug} oncreate={create_page_with_sections} />
 			</li>
 		{/each}
 	</ul>

@@ -16,7 +16,7 @@
 	let editing_page = $state(false)
 
 	/** @type {Props} */
-	let { parent, page, active, oncreate, page_slug }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function, page_slug: string } = $props()
+	let { parent, page, active, oncreate, page_slug }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function; page_slug: string } = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
@@ -127,7 +127,7 @@
 					<span class="icon" style:background={page_type?.color}>
 						<Icon icon={page_type?.icon} />
 					</span>
-					<a class:active={active} href={full_url()} onclick={() => {}} class="name">{page.name}</a>
+					<a class:active href={full_url()} onclick={() => {}} class="name">{page.name}</a>
 					<span class="url">/{page.slug}</span>
 				</div>
 			{/if}
@@ -171,13 +171,14 @@
 									label: 'Delete',
 									icon: 'ic:outline-delete',
 									on_click: async () => {
-										// Delete the page
 										Pages.delete(page.id)
 
 										// Reindex remaining sibling pages
+										const home_page = allPages.find((p) => p.slug === '')
 										const sibling_pages = allPages.filter((p) => p.parent === page.parent && p.id !== page.id).sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
 
-										sibling_pages.forEach((sibling_page, index) => {
+										sibling_pages.forEach((sibling_page, i) => {
+											const index = home_page?.id === sibling_page.parent ? i + 1 : i
 											Pages.update(sibling_page.id, { index })
 										})
 
@@ -194,7 +195,7 @@
 	{#if showing_children && has_children}
 		<ul class="page-list child">
 			{#each children as subpage}
-				<Item parent={page} page={subpage} active={subpage.slug === page_slug} page_slug={page_slug} on:delete on:create />
+				<Item parent={page} page={subpage} active={subpage.slug === page_slug} {page_slug} on:delete on:create />
 			{/each}
 		</ul>
 	{/if}
