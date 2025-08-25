@@ -12,11 +12,24 @@
 	import { site_context } from '$lib/builder/stores/context'
 	import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
+	import type { Page } from '$lib/common/models/Page'
 
 	let editing_page = $state(false)
 
 	/** @type {Props} */
-	let { parent, page, active, oncreate, page_slug }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function; page_slug: string } = $props()
+	let {
+		parent,
+		page,
+		active,
+		oncreate,
+		page_slug
+	}: {
+		parent?: ObjectOf<typeof Pages>
+		page: ObjectOf<typeof Pages>
+		active: boolean
+		oncreate: (new_page: Omit<Page, 'id' | 'index'>) => Promise<void>
+		page_slug: string
+	} = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
@@ -26,6 +39,7 @@
 	})
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
+	const home_page = $derived(site.homepage())
 
 	let showing_children = $state(false)
 	let children = $derived(page.children() ?? [])
@@ -165,20 +179,20 @@
 							editing_page = !editing_page
 						}
 					},
-					...(page.slug !== ''
+					...(!!page.parent
 						? [
 								{
 									label: 'Delete',
 									icon: 'ic:outline-delete',
 									on_click: async () => {
+										const parent_id = page.parent
 										Pages.delete(page.id)
 
 										// Reindex remaining sibling pages
-										const home_page = allPages.find((p) => p.slug === '')
-										const sibling_pages = allPages.filter((p) => p.parent === page.parent && p.id !== page.id).sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+										const sibling_pages = allPages.filter((p) => p.parent === parent_id).sort((a, b) => a.index - b.index)
 
 										sibling_pages.forEach((sibling_page, i) => {
-											const index = home_page?.id === sibling_page.parent ? i + 1 : i
+											const index = parent_id === home_page?.id ? i + 1 : i
 											Pages.update(sibling_page.id, { index })
 										})
 
@@ -204,7 +218,7 @@
 		<div style="border-left: 0.5rem solid #111;">
 			<PageForm
 				parent={page}
-				oncreate={async (new_page) => {
+				oncreate={async (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => {
 					creating_page = false
 					showing_children = true
 					const url_taken = allPages.some((page) => page?.slug === new_page.slug)
