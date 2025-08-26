@@ -51,7 +51,8 @@
 	const symbol = $derived(SiteSymbols.one(component.symbol))
 	const fields = $derived(symbol?.fields())
 	const entries = $derived('page_type' in component ? component.entries() : 'page' in component ? component.entries() : undefined)
-	const component_data = $derived(useContent(component)[$locale] ?? {})
+	const data = $derived(useContent(component))
+	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	const initial_code = { html: symbol?.html, css: symbol?.css, js: symbol?.js }
 	const initial_data = _.cloneDeep(component_data)

@@ -132,7 +132,8 @@
 		$site_html = null
 	})
 
-	const site_data = $derived(useContent(site)[$locale] ?? {})
+	const data = $derived(useContent(site))
+	const site_data = $derived(data && (data[$locale] ?? {}))
 	async function compile_component_head({ html, data }) {
 		const compiled = await processCode({
 			component: {
@@ -149,6 +150,10 @@
 
 	// Generate <head> tag code
 	$effect(() => {
+		if (!site_data) {
+			return
+		}
+
 		compile_component_head({
 			html: site.head,
 			data: site_data

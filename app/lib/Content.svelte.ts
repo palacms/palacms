@@ -76,7 +76,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 	const getContent = (parentField?: Field, parentEntry?: Entry) => {
 		if (!fields || !entries || !uploads) {
-			return {}
+			return
 		}
 
 		const content: { [K in (typeof locales)[number]]?: Record<string, unknown> } = {}
@@ -98,7 +98,11 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const [entry] = fieldEntries
 				if (!entry) continue
 				if (!content[entry.locale]) content[entry.locale] = {}
-				content[entry.locale]![field.key] = getContent(field, entry)[entry.locale]
+
+				const data = getContent(field, entry)
+				if (!data) return
+
+				content[entry.locale]![field.key] = data[entry.locale]
 			}
 
 			// Handle repeater fields specially - collect array of subfield entries into an object
@@ -106,7 +110,10 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				for (const entry of fieldEntries) {
 					if (!content[entry.locale]) content[entry.locale] = {}
 					if (!content[entry.locale]![field.key]) content[entry.locale]![field.key] = []
-					;(content[entry.locale]![field.key] as unknown[]).push(getContent(field, entry)[entry.locale])
+
+					const data = getContent(field, entry)
+					if (!data) return
+					;(content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
 				}
 			}
 
@@ -133,9 +140,11 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!entry) continue
 
 				const page = Pages.one(entry.value)
-				if (!page) continue
+				if (!page) return
 
 				const data = useContent(page)
+				if (!data) return
+
 				content[entry.locale]![field.key] = {
 					...data[entry.locale],
 					_meta: {
