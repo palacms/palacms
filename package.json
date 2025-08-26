@@ -5,8 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "devenv up",
-		"build": "NODE_OPTIONS=--max_old_space_size=16384 vite build",
-		"preview": "vite preview",
+		"build": "NODE_OPTIONS=--max_old_space_size=16384 vite --config app.config.js build",
+		"preview": "vite --config app.config.js preview",
 		"check": "svelte-kit sync && svelte-check",
 		"check:watch": "svelte-kit sync && svelte-check --watch",
 		"lint": "prettier --check .",
