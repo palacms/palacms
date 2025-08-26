@@ -6,6 +6,7 @@
   ];
   languages.javascript = {
     enable = true;
+    package = pkgs.nodejs-slim_22;
     npm.enable = true;
     npm.install.enable = true;
   };
