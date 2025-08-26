@@ -22,7 +22,7 @@
 	import { Button } from '$lib/components/ui/button'
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user.js'
-	import { useImportSiteSymbol } from '$lib/ImportSymbol.svelte.js'
+	import { useImportSiteSymbol } from '$lib/workers/ImportSymbol.svelte.js'
 	import { site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
@@ -294,7 +294,7 @@
 							<div class="block" animate:flip={{ duration: 200 }} use:drag_target={symbol}>
 								<Sidebar_Symbol
 									{symbol}
-									head={$site_html}
+									append={$site_html}
 									show_toggle={true}
 									{toggled}
 									on:toggle={({ detail }) => {
@@ -386,18 +386,18 @@
 						}}
 						onchange={({ id, data }) => {
 							PageTypeFields.update(id, data)
+
+							const field = fields.find((field) => field.id === id)
+							if (field?.key) {
+								clearTimeout(commit_task)
+								commit_task = setTimeout(() => manager.commit(), 500)
+							}
 						}}
 						ondelete={(field_id) => {
 							// PocketBase cascade deletion will automatically clean up all associated entries
 							PageTypeFields.delete(field_id)
-						}}
-						onadd={({ parent, index, subfields }) => {
-							// Create an entry for the repeater item
-							PageTypeEntries.create({
-								field: parent,
-								locale: 'en',
-								value: {}
-							})
+							clearTimeout(commit_task)
+							commit_task = setTimeout(() => manager.commit(), 500)
 						}}
 					/>
 				{/if}

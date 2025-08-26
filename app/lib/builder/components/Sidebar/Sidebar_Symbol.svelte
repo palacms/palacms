@@ -9,12 +9,12 @@
 	import { locale } from '../../stores/app/misc'
 	import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import IFrame from '../../components/IFrame.svelte'
-	import { getContent } from '$lib/pocketbase/content'
 	import { createEventDispatcher, onMount } from 'svelte'
 	import { block_html } from '$lib/builder/code_generators'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { manager, Sites, SiteSymbols } from '$lib/pocketbase/collections'
-	import { useExportSiteSymbol } from '$lib/ExportSymbol.svelte'
+	import { useExportSiteSymbol } from '$lib/workers/ExportSymbol.svelte'
+	import { useContent } from '$lib/Content.svelte'
 
 	const dispatch = createEventDispatcher()
 
@@ -23,9 +23,8 @@
 		controls_enabled = true,
 		show_toggle = false,
 		toggled = false,
-		head = '',
 		append = ''
-	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; head?: string; append?: string } = $props()
+	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; append?: string } = $props()
 
 	let name_el = $state()
 
@@ -63,11 +62,8 @@
 		css: symbol.css,
 		js: symbol.js
 	})
-	const site = $derived(Sites.one(symbol.site))
-	const fields = $derived(symbol.fields())
-	const entries = $derived(symbol.entries())
-	const uploads = $derived(site?.uploads())
-	const data = $derived(fields && entries && uploads && (getContent(symbol, fields, entries, uploads)[$locale] ?? {}))
+	const _data = $derived(useContent(symbol))
+	const data = $derived(_data && (_data[$locale] ?? {}))
 
 	let componentCode = $state()
 	let component_error = $state()

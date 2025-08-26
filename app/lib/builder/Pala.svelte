@@ -15,17 +15,18 @@
 	import { site_html } from '$lib/builder/stores/app/page'
 	import { processCode } from '$lib/builder/utils.js'
 	import { page } from '$app/state'
-	import { getContent } from '$lib/pocketbase/content.js'
-	import type { Pages, Sites } from '$lib/pocketbase/collections'
+	import type { Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { site_context } from './stores/context'
+	import { useContent } from '$lib/Content.svelte'
+	import { locale } from './stores/app/misc'
 
 	let {
 		site,
 		toolbar,
 		children
 	}: {
-		site?: ObjectOf<typeof Sites>
+		site: ObjectOf<typeof Sites>
 		toolbar?: Snippet
 		children?: Snippet
 	} = $props()
@@ -131,7 +132,8 @@
 		$site_html = null
 	})
 
-	const site_data = $derived(site ? getContent(site, site.fields() || [], site.entries() || [], site.uploads() || [])['en'] : {})
+	const data = $derived(useContent(site))
+	const site_data = $derived(data && (data[$locale] ?? {}))
 	async function compile_component_head({ html, data }) {
 		const compiled = await processCode({
 			component: {
@@ -148,6 +150,10 @@
 
 	// Generate <head> tag code
 	$effect(() => {
+		if (!site_data) {
+			return
+		}
+
 		compile_component_head({
 			html: site.head,
 			data: site_data

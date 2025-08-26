@@ -30,10 +30,11 @@
 		SiteUploads
 	} from '$lib/pocketbase/collections'
 	import { page } from '$app/state'
-	import { getContent } from '$lib/pocketbase/content'
 	import { browser } from '$app/environment'
 	import _ from 'lodash-es'
 	import { site_context } from '$lib/builder/stores/context'
+	import { site_html, page_html } from '$lib/builder/stores/app/page.js'
+	import { useContent } from '$lib/Content.svelte'
 
 	let {
 		block: existing_block,
@@ -74,20 +75,20 @@
 			if (!active_symbol_group) {
 				throw new Error('Symbol group not loaded')
 			}
-			return LibrarySymbols.create({ css: '', html: '', js: '', name: 'New Block', group: active_symbol_group.id })
+			return LibrarySymbols.create({ css: '', html: '', js: '', name: '', group: active_symbol_group.id })
 		} else {
 			if (!site) {
 				throw new Error('Site not loaded')
 			}
-			return SiteSymbols.create({ css: '', html: '', js: '', name: 'New Block', site: site.id })
+			return SiteSymbols.create({ css: '', html: '', js: '', name: '', site: site.id })
 		}
 	}
 	const block = $state(existing_block ?? new_block())
 
 	const fields = $derived('site' in block ? block.fields() : block.fields())
 	const entries = $derived('site' in block ? block.entries() : block.entries())
-	const uploads = $derived('site' in block ? Sites.one(block.site)?.uploads() : LibraryUploads.list())
-	let component_data = $derived(fields && entries && uploads && (getContent(block, fields, entries, uploads)[$locale] ?? {}))
+	const data = $derived(useContent(block))
+	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	let loading = $state(false)
 
@@ -239,7 +240,7 @@
 		<PaneResizer class="PaneResizer" />
 		<Pane defaultSize={50}>
 			{#if component_data}
-				<ComponentPreview bind:orientation={$orientation} view="small" {loading} {code} data={component_data} />
+				<ComponentPreview bind:orientation={$orientation} view="small" {loading} {code} data={component_data} head={$site_html} />
 			{/if}
 		</Pane>
 	</PaneGroup>

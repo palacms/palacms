@@ -5,7 +5,7 @@
 	import * as idb from 'idb-keyval'
 	import pluralize from 'pluralize'
 	import type { Entry } from '$lib/common/models/Entry'
-	import type { Entity } from '$lib/pocketbase/content'
+	import type { Entity } from '$lib/Content.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import { get_empty_value } from '../utils'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
@@ -16,6 +16,7 @@
 		fields,
 		entries,
 		onchange,
+		ondelete,
 		level
 	}: {
 		entity: Entity
@@ -24,6 +25,7 @@
 		fields: Field[]
 		entries: Entry[]
 		onchange: FieldValueHandler
+		ondelete?: (entry_id: string) => void
 		level: number
 	} = $props()
 
@@ -100,6 +102,7 @@
 					{level}
 					{autofocus}
 					{onchange}
+					{ondelete}
 					is_visible={visibleRepeaters[subfield_id]}
 					on:toggle={() => (visibleRepeaters[subfield_id] = !visibleRepeaters[subfield_id])}
 					on:hover={({ detail }) => {
@@ -109,7 +112,16 @@
 					{hovering}
 					{hover_position}
 					on:move
-					on:remove
+					on:remove={() => {
+						// Delete the repeater item entry
+						// PocketBase cascade deletion will automatically clean up all sub-entries
+						if (ondelete) {
+							ondelete(entry.id)
+						}
+
+						// Remove from visible repeaters tracking
+						delete visibleRepeaters[`${field.key}-${index}`]
+					}}
 					on:keydown
 					on:add
 				/>

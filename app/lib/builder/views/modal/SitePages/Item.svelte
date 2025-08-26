@@ -12,11 +12,26 @@
 	import { site_context } from '$lib/builder/stores/context'
 	import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
+	import type { Page } from '$lib/common/models/Page'
 
 	let editing_page = $state(false)
 
 	/** @type {Props} */
-	let { parent, page, active, oncreate }: { parent?: ObjectOf<typeof Pages>; page: ObjectOf<typeof Pages>; active: boolean; oncreate?: Function } = $props()
+	let {
+		parent,
+		page,
+		active,
+		oncreate,
+		page_slug,
+		hover_position = $bindable(null)
+	}: {
+		parent?: ObjectOf<typeof Pages>
+		page: ObjectOf<typeof Pages>
+		active: boolean
+		oncreate: (new_page: Omit<Page, 'id' | 'index'>) => Promise<void>
+		page_slug: string
+		hover_position?: string | null
+	} = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
@@ -26,6 +41,7 @@
 	})
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
+	const home_page = $derived(site.homepage())
 
 	let showing_children = $state(false)
 	let children = $derived(page.children() ?? [])
@@ -50,7 +66,13 @@
 		draggable({
 			element,
 			dragHandle: drag_handle_element,
-			getInitialData: () => ({ page })
+			getInitialData: () => ({ page }),
+			onDragStart: () => {
+				is_dragging = true
+			},
+			onDrop: () => {
+				is_dragging = false
+			}
 		})
 		dropTargetForElements({
 			element,
@@ -65,7 +87,37 @@
 				)
 			},
 			onDrag({ self, source }) {
-				hover_position = extractClosestEdge(self.data)
+				const edge = extractClosestEdge(self.data)
+				if (edge === 'bottom') {
+					// Set hover position to show indicator below this item
+					// Special handling for the last item in the list
+					const siblings = allPages.filter(p => p.parent === page.parent).sort((a, b) => a.index - b.index)
+					const isLastItem = siblings[siblings.length - 1]?.id === page.id
+					
+					if (page.index === 0) {
+						hover_position = 'home-bottom'
+					} else if (isLastItem && page.parent === home_page?.id) {
+						// This is the last child page - show the end indicator
+						hover_position = `${page.id}-bottom`
+					} else {
+						hover_position = `${page.id}-bottom`
+					}
+				} else if (edge === 'top') {
+					// For top edge, we want to show the indicator above this item
+					// which is the bottom of the previous item
+					if (page.index === 0) {
+						hover_position = null // Can't drop above home
+					} else if (page.index === 1) {
+						hover_position = 'home-bottom'
+					} else {
+						// Find the previous sibling
+						const siblings = allPages.filter(p => p.parent === page.parent).sort((a, b) => a.index - b.index)
+						const prevIndex = siblings.findIndex(p => p.id === page.id) - 1
+						if (prevIndex >= 0) {
+							hover_position = `${siblings[prevIndex].id}-bottom`
+						}
+					}
+				}
 			},
 			onDragLeave() {
 				hover_position = null
@@ -74,24 +126,79 @@
 				const page_dragged_over = self.data.page
 				const page_being_dragged = source.data.page
 				const closestEdgeOfTarget = extractClosestEdge(self.data)
-				if (page_dragged_over.index === 0) return // can't place above home
-				if (closestEdgeOfTarget === 'top') {
-					// TODO: Implement
-					throw new Error('Not implemented')
-				} else if (closestEdgeOfTarget === 'bottom') {
-					// TODO: Implement
-					throw new Error('Not implemented')
+
+				// Don't allow dragging onto itself
+				if (page_dragged_over.id === page_being_dragged.id) {
+					hover_position = null
+					return
 				}
+
+				// Don't allow placing above home page
+				if (closestEdgeOfTarget === 'top' && page_dragged_over.index === 0) {
+					hover_position = null
+					return
+				}
+
+				// Get all siblings (pages with same parent)
+				const siblings = allPages.filter((p) => p.parent === page_being_dragged.parent).sort((a, b) => a.index - b.index)
+
+				const old_index = page_being_dragged.index
+				let target_index
+
+				if (closestEdgeOfTarget === 'top') {
+					target_index = page_dragged_over.index
+				} else if (closestEdgeOfTarget === 'bottom') {
+					target_index = page_dragged_over.index + 1
+				}
+
+				// Adjust target index if we're moving from before to after in the list
+				let final_index = target_index
+				if (old_index < target_index) {
+					final_index = target_index - 1
+				}
+
+				// Don't do anything if position hasn't changed
+				if (old_index === final_index) {
+					hover_position = null
+					return
+				}
+
+				// Reindex all affected siblings
+				const updates = []
+				for (let i = 0; i < siblings.length; i++) {
+					const sibling = siblings[i]
+					let new_index = sibling.index
+					
+					if (sibling.id === page_being_dragged.id) {
+						new_index = final_index
+					} else if (old_index < final_index) {
+						// Moving item down - shift others up
+						if (sibling.index > old_index && sibling.index <= final_index) {
+							new_index = sibling.index - 1
+						}
+					} else {
+						// Moving item up - shift others down
+						if (sibling.index >= final_index && sibling.index < old_index) {
+							new_index = sibling.index + 1
+						}
+					}
+					
+					if (new_index !== sibling.index) {
+						Pages.update(sibling.id, { index: new_index })
+					}
+				}
+
+				manager.commit()
 				hover_position = null
 			}
 		})
 	})
 
-	let hover_position = $state(null)
+	let is_dragging = $state(false)
 </script>
 
-<div class="Item" bind:this={element} class:contains-child={parent}>
-	<div class="page-item-container" class:active={false} class:expanded={showing_children && has_children}>
+<div class="Item" bind:this={element} class:contains-child={parent} class:dragging={is_dragging}>
+	<div class="page-item-container" class:active class:expanded={showing_children && has_children}>
 		<div class="left">
 			{#if editing_page}
 				<div class="details">
@@ -165,14 +272,24 @@
 							editing_page = !editing_page
 						}
 					},
-					...(page.slug !== ''
+					...(!!page.parent
 						? [
 								{
 									label: 'Delete',
 									icon: 'ic:outline-delete',
-									on_click: () => {
+									on_click: async () => {
+										const parent_id = page.parent
 										Pages.delete(page.id)
-										manager.commit()
+
+										// Reindex remaining sibling pages
+										const sibling_pages = allPages.filter((p) => p.parent === parent_id).sort((a, b) => a.index - b.index)
+
+										sibling_pages.forEach((sibling_page, i) => {
+											const index = parent_id === home_page?.id ? i + 1 : i
+											Pages.update(sibling_page.id, { index })
+										})
+
+										await manager.commit()
 									}
 								}
 							]
@@ -185,7 +302,7 @@
 	{#if showing_children && has_children}
 		<ul class="page-list child">
 			{#each children as subpage}
-				<Item parent={page} page={subpage} active={false} on:delete on:create />
+				<Item parent={page} page={subpage} active={subpage.slug === page_slug} {page_slug} on:delete on:create />
 			{/each}
 		</ul>
 	{/if}
@@ -194,7 +311,7 @@
 		<div style="border-left: 0.5rem solid #111;">
 			<PageForm
 				parent={page}
-				oncreate={async (new_page) => {
+				oncreate={async (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => {
 					creating_page = false
 					showing_children = true
 					const url_taken = allPages.some((page) => page?.slug === new_page.slug)
@@ -212,11 +329,10 @@
 			<span>Create Child Page</span>
 		</button>
 	{/if}
-
-	<hr class:highlight={hover_position === 'bottom'} />
 </div>
 
 <style lang="postcss">
+
 	button.create-page {
 		padding: 0.5rem;
 		background: var(--primo-color-codeblack);
@@ -239,7 +355,16 @@
 		cursor: grab;
 	}
 	.Item {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		transition: transform 0.2s ease, opacity 0.2s ease;
 		/* padding-bottom: 0.5rem; */
+		
+		&.dragging {
+			opacity: 0.5;
+			transform: scale(0.98);
+		}
 
 		&.contains-child {
 			.page-item-container {
@@ -262,13 +387,6 @@
 				border-width: 1px !important;
 				border-color: #1a1a1a !important;
 			}
-		}
-	}
-	hr {
-		border: 3px solid transparent;
-
-		&.highlight {
-			border-color: var(--weave-primary-color);
 		}
 	}
 	.page-item-container {

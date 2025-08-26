@@ -23,11 +23,11 @@
 	import { site_html } from '$lib/builder/stores/app/page'
 	import MarkdownButton from './MarkdownButton.svelte'
 	import { component_iframe_srcdoc } from '$lib/builder/components/misc'
-	import { getContent } from '$lib/pocketbase/content'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites } from '$lib/pocketbase/collections'
 	import { Editor, Extension } from '@tiptap/core'
 	import { renderToHTMLString, renderToMarkdown } from '@tiptap/static-renderer'
+	import { useContent } from '$lib/Content.svelte'
 
 	const lowlight = createLowlight(all)
 
@@ -60,11 +60,10 @@
 
 	let node = $state()
 
-	const site = $derived(Sites.one(block.site))
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
-	const uploads = $derived(site?.uploads())
-	const component_data = $derived(fields && entries && uploads && (getContent(section, fields, entries, uploads)[$locale] ?? {}))
+	const data = $derived(useContent(section))
+	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
@@ -94,6 +93,7 @@
 			},
 			buildStatic: false
 		})
+
 		if (res.error) {
 			error = res.error
 			dispatch_mount()
@@ -349,10 +349,6 @@
 				image_editor.onclick = () => {
 					current_image_element = element
 					current_image_id = id
-					current_image_value = {
-						url: element.src || '',
-						alt: element.alt || ''
-					}
 					editing_image = true
 					image_editor_is_visible = false
 				}
@@ -386,11 +382,6 @@
 					e.stopPropagation()
 					current_link_element = element
 					current_link_id = id
-					current_link_value = {
-						url: element.href || '',
-						label: element.innerText || '',
-						active: true
-					}
 					// Hide menus when opening modal
 					bubble_menu.style.display = 'none'
 					floating_menu.style.display = 'none'
@@ -547,7 +538,7 @@
 
 	let compiled_code = $state<string>('')
 	$effect(() => {
-		if (block && component_data && compiled_code !== block.html) {
+		if (component_data && compiled_code !== block.html) {
 			generate_component_code(block)
 			compiled_code = block.html
 		}
@@ -684,7 +675,7 @@
 	}
 
 	$effect(() => {
-		if (setup_complete && component_data && !is_editing) {
+		if (setup_complete && !is_editing) {
 			send_component_to_iframe(generated_js, component_data)
 		}
 	})
@@ -720,25 +711,23 @@
 	let editing_video = $state(false)
 	let current_image_element = $state(null)
 	let current_image_id = $state(null)
-	let current_image_value = $state({ url: '', alt: '' })
 	let current_link_element = $state(null)
 	let current_link_id = $state(null)
-	let current_link_value = $state({ url: '', label: '', active: true })
 </script>
 
 <Dialog.Root bind:open={editing_image}>
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12">
+		{@const entry = entries?.find((e) => e.id === current_image_id)!}
+		{@const field = fields?.find((f) => entry.field === f.id)!}
 		<ImageField
 			entity={section}
-			field={fields?.find((f) => entries?.find((e) => e.id === current_image_id)?.field === f.id) || { label: 'Image', key: 'image', type: 'image', config: {} }}
-			entry={{
-				value: current_image_value
-			}}
+			{field}
+			{entry}
 			onchange={(changeData) => {
 				// Extract the actual value from the nested structure
 				const fieldKey = Object.keys(changeData)[0]
 				const newValue = changeData[fieldKey][0].value
-				current_image_value = newValue
+				save_edited_value({ id: current_image_id, value: newValue })
 			}}
 		/>
 		<div class="flex justify-end gap-2 mt-2">
@@ -746,12 +735,12 @@
 				onclick={() => {
 					if (active_editor) {
 						// Handle TipTap editor images
-						active_editor.chain().focus().setImage({ src: current_image_value.url, alt: current_image_value.alt }).run()
+						active_editor.chain().focus().setImage({ src: entry.value.url, alt: entry.value.alt }).run()
 					} else if (current_image_element && current_image_id) {
 						// Handle direct image editing
-						current_image_element.src = current_image_value.url
-						current_image_element.alt = current_image_value.alt
-						save_edited_value({ id: current_image_id, value: current_image_value })
+						current_image_element.src = entry.value.url
+						current_image_element.alt = entry.value.alt
+						save_edited_value({ id: current_image_id, value: entry.value })
 					}
 					editing_image = false
 				}}
@@ -765,17 +754,17 @@
 
 <Dialog.Root bind:open={editing_link}>
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12 overflow-visible">
+		{@const entry = entries?.find((e) => e.id === current_link_id)!}
+		{@const field = fields?.find((f) => entry.field === f.id)!}
 		<LinkField
 			entity={section}
-			field={fields?.find((f) => entries?.find((e) => e.id === current_link_id)?.field === f.id) || { label: 'Link', key: 'link', type: 'link', config: {} }}
-			entry={{
-				value: current_link_value
-			}}
+			{field}
+			{entry}
 			onchange={(changeData) => {
 				// Extract the actual value from the nested structure
 				const fieldKey = Object.keys(changeData)[0]
 				const newValue = changeData[fieldKey][0].value
-				current_link_value = newValue
+				save_edited_value({ id: current_link_id, value: newValue })
 			}}
 		/>
 		<div class="flex justify-end gap-2 mt-2">
@@ -783,12 +772,12 @@
 				onclick={() => {
 					if (active_editor) {
 						// Handle TipTap editor links - just set the URL, TipTap handles the label
-						active_editor.chain().focus().setLink({ href: current_link_value.url }).run()
+						active_editor.chain().focus().setLink({ href: entry.value.url }).run()
 					} else if (current_link_element && current_link_id) {
 						// Handle direct link editing
-						current_link_element.href = current_link_value.url
-						current_link_element.innerText = current_link_value.label
-						save_edited_value({ id: current_link_id, value: current_link_value })
+						current_link_element.href = entry.value.url
+						current_link_element.innerText = entry.value.label
+						save_edited_value({ id: current_link_id, value: entry.value })
 					}
 					editing_link = false
 				}}

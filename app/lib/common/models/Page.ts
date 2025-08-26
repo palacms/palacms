@@ -7,7 +7,8 @@ export const Page = z.object({
 	compiled_html: z.string().or(z.file()).optional(),
 	page_type: z.string().nonempty(),
 	parent: z.string(),
-	site: z.string().nonempty()
+	site: z.string().nonempty(),
+	index: z.number().int().nonnegative()
 })
 
 export type Page = z.infer<typeof Page>

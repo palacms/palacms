@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const Symbol = z.object({
 	id: z.string().nonempty(),
-	name: z.string().nonempty(),
+	name: z.string().optional(),
 	js: z.string(),
 	css: z.string(),
 	html: z.string()

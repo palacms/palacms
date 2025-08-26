@@ -3,12 +3,12 @@
 	import Icon from '@iconify/svelte'
 	import UI from '../ui'
 	import { locale } from '../stores/app'
-	import type { LinkField } from '$lib/common/models/fields/LinkField'
-	import { type Entity } from '$lib/pocketbase/content'
+	import type { Entity } from '$lib/Content.svelte'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 	import { site_context } from '$lib/builder/stores/context'
+	import type { Field } from '$lib/common/models/Field'
 
-	const { entity, field, entry: passedEntry, onchange }: { entity: Entity; field: LinkField; entry?: any; onchange: FieldValueHandler } = $props()
+	const { field, entry: passedEntry, onchange }: { entity: Entity; field: Field; entry?: any; onchange: FieldValueHandler } = $props()
 
 	const default_value = {
 		label: '',

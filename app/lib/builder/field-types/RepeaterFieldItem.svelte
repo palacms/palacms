@@ -8,9 +8,10 @@
 	import pluralize from 'pluralize'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
-	import { getResolvedEntries, type Entity } from '$lib/pocketbase/content'
+	import type { Entity } from '$lib/Content.svelte'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 	import EntryContent from '../components/Fields/EntryContent.svelte'
+	import { useEntries } from '$lib/Content.svelte'
 
 	const dispatch = createEventDispatcher()
 
@@ -27,7 +28,8 @@
 		autofocus,
 		hovering,
 		hover_position,
-		onchange
+		onchange,
+		ondelete
 	}: {
 		entity: Entity
 		field: Field
@@ -42,12 +44,13 @@
 		hovering: boolean
 		hover_position: 'top' | 'bottom'
 		onchange: FieldValueHandler
+		ondelete?: (entry_id: string) => void
 	} = $props()
 
 	function get_image(subfields) {
 		const [first_subfield] = subfields
 		if (first_subfield && first_subfield.type === 'image') {
-			const [ent] = getResolvedEntries(entity, first_subfield, entries).filter((ent) => ent.parent === entry.id)
+			const [ent] = useEntries(entity, first_subfield, entry)
 			return ent?.value?.url
 		} else return null
 	}
@@ -55,7 +58,7 @@
 	function get_icon(subfields) {
 		const [first_subfield] = subfields
 		if (first_subfield && first_subfield.type === 'icon') {
-			const [ent] = getResolvedEntries(entity, first_subfield, entries).filter((ent) => ent.parent === entry.id)
+			const [ent] = useEntries(entity, first_subfield, entry)
 			return ent?.value
 		} else return null
 	}
@@ -63,7 +66,7 @@
 	function get_title(subfields) {
 		const first_subfield = subfields.find((subfield) => ['text', 'markdown', 'link', 'number'].includes(subfield.type))
 		if (first_subfield) {
-			const [ent] = getResolvedEntries(entity, first_subfield, entries).filter((ent) => ent.parent === entry.id)
+			const [ent] = useEntries(entity, first_subfield, entry)
 			if (first_subfield.type === 'link') return ent?.value?.label
 			else if (first_subfield.type === 'markdown') return ent?.value?.markdown
 			else return ent?.value
@@ -165,6 +168,7 @@
 							level={level + 1}
 							minimal={true}
 							onchange={(values) => onchange({ [field.key]: { [index]: { value: null, subValues: values } } })}
+							{ondelete}
 						/>
 					</div>
 				{/each}

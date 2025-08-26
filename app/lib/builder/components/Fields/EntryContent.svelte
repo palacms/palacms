@@ -2,12 +2,13 @@
 	import Card from '$lib/builder/ui/Card.svelte'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { Field } from '$lib/common/models/Field'
-	import { type Entity, getResolvedEntries } from '$lib/pocketbase/content'
+	import { useContent, useEntries, type Entity } from '$lib/Content.svelte'
 	import type { FieldValueHandler } from './FieldsContent.svelte'
 	import { fieldTypes } from '../../stores/app/index.js'
 	import type { Component } from 'svelte'
 	import Icon from '@iconify/svelte'
 	import { current_user } from '$lib/pocketbase/user'
+	import { locale } from '../../stores/app/misc'
 
 	let {
 		entity,
@@ -17,6 +18,7 @@
 		entries,
 		level,
 		onchange,
+		ondelete,
 		minimal
 	}: {
 		entity: Entity
@@ -26,6 +28,7 @@
 		entries: Entry[]
 		level: number
 		onchange: FieldValueHandler
+		ondelete?: (entry_id: string) => void
 		minimal?: boolean
 	} = $props()
 
@@ -39,11 +42,14 @@
 					fields: Field[]
 					entries: Entry[]
 					onchange: FieldValueHandler
+					ondelete?: (entry_id: string) => void
 					level: number
 			  }>
 			| undefined
 	)
 
+	const _data = $derived(useContent(entity))
+	const data = $derived(_data && (_data[$locale] ?? {}))
 	const is_visible = $derived.by(() => {
 		if (!field.config?.condition) return true // has no condition
 
@@ -53,14 +59,11 @@
 		const comparable_field = fields.find((f) => f.id === field_to_check)
 		if (!comparable_field) return true // field not found, show by default
 
-		// Get the entry for the comparable field
-		const entry = getResolvedEntries(entity, comparable_field, entries)[0]
-		if (!entry) return true // no entry found, show by default
-
 		// Check the condition
-		if (comparison === '=' && value === entry.value) {
+		const comparable_value = data[comparable_field.key]
+		if (comparison === '=' && value === comparable_value) {
 			return true
-		} else if (comparison === '!=' && value !== entry.value) {
+		} else if (comparison === '!=' && value !== comparable_value) {
 			return true
 		}
 
@@ -72,7 +75,7 @@
 	<!-- TODO: Improve the error message -->
 	<span>Field type for the field is not found!</span>
 {:else if is_visible}
-	{@const [entry] = getResolvedEntries(entity, field, entries).filter((entry) => (parent ? entry.parent === parent.id : !entry.parent))}
+	{@const [entry] = useEntries(entity, field, parent)}
 	{@const title = ['repeater', 'group'].includes(field.type) ? field.label : null}
 	{@const icon = undefined}
 	{#if field.type === 'site-field' || field.type === 'page-field'}
@@ -87,7 +90,7 @@
 		</div>
 	{/if}
 	<Card {title} {icon} {minimal}>
-		<Field_Component {entity} {field} {fields} {entries} {entry} {level} {onchange} />
+		<Field_Component {entity} {field} {fields} {entries} {entry} {level} {onchange} {ondelete} />
 	</Card>
 {:else if $current_user?.siteRole === 'developer' && !is_visible}
 	<div class="hidden-field">

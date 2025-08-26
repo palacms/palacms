@@ -13,7 +13,7 @@
 	import Fields, { setFieldEntries } from '../../../components/Fields/FieldsContent.svelte'
 	import { locale } from '../../../stores/app/misc.js'
 	import hotkey_events from '../../../stores/app/hotkey_events.js'
-	import { getContent } from '$lib/pocketbase/content'
+	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { PressedKeys } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { browser } from '$app/environment'
@@ -22,6 +22,7 @@
 	import type { PageTypeSection } from '$lib/common/models/PageTypeSection'
 	import { current_user } from '$lib/pocketbase/user'
 	import * as _ from 'lodash-es'
+	import { useContent } from '$lib/Content.svelte'
 
 	let {
 		component,
@@ -48,11 +49,10 @@
 	// Data will be loaded automatically by CollectionMapping system when accessed
 
 	const symbol = $derived(SiteSymbols.one(component.symbol))
-	const site = $derived(symbol && Sites.one(symbol.site))
 	const fields = $derived(symbol?.fields())
 	const entries = $derived('page_type' in component ? component.entries() : 'page' in component ? component.entries() : undefined)
-	const uploads = $derived(site?.uploads())
-	const component_data = $derived(fields && entries && uploads && (getContent(component, fields, entries, uploads)[$locale] ?? {}))
+	const data = $derived(useContent(component))
+	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	const initial_code = { html: symbol?.html, css: symbol?.css, js: symbol?.js }
 	const initial_data = _.cloneDeep(component_data)
@@ -288,14 +288,20 @@
 						// PocketBase cascade deletion will automatically clean up all associated entries
 						SiteSymbolFields.delete(field_id)
 					}}
+					ondelete_entry={(entry_id) => {
+						// Delete the entry - PocketBase cascade deletion will handle sub-entries
+						if ('page_type' in component) {
+							PageTypeSectionEntries.delete(entry_id)
+						} else {
+							PageSectionEntries.delete(entry_id)
+						}
+					}}
 				/>
 			{/if}
 		</Pane>
 		<PaneResizer class="PaneResizer" />
 		<Pane defaultSize={50}>
-			{#if component_data}
-				<ComponentPreview {code} data={component_data} bind:orientation={$orientation} view="small" {loading} />
-			{/if}
+			<ComponentPreview {code} data={component_data} bind:orientation={$orientation} view="small" {loading} head={$site_html} />
 		</Pane>
 	</PaneGroup>
 </main>

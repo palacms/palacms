@@ -12,7 +12,7 @@
 	import { onNavigate, goto } from '$app/navigation'
 	import { active_users } from '$lib/builder/stores/app/misc'
 	import { page as pageState } from '$app/state'
-	import { Sites, PageTypes, SiteEntries, SiteFields, Pages, manager } from '$lib/pocketbase/collections'
+	import { PageTypes, Pages, manager } from '$lib/pocketbase/collections'
 	import hotkey_events from '$lib/builder/stores/app/hotkey_events'
 
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
@@ -20,10 +20,9 @@
 	import PageTypeModal from '$lib/builder/views/modal/PageTypeModal/PageTypeModal.svelte'
 	import Collaboration from '$lib/builder/views/modal/Collaboration.svelte'
 	import Deploy from '$lib/components/Modals/Deploy/Deploy.svelte'
-	import { usePublishSite } from '$lib/Publish.svelte'
+	import { usePublishSite } from '$lib/workers/Publish.svelte'
 	import { type Snippet } from 'svelte'
 	import { site_context } from '$lib/builder/stores/context'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { current_user } from '$lib/pocketbase/user'
 
 	let { children }: { children: Snippet } = $props()
@@ -36,6 +35,7 @@
 	const page_page_type = $derived(page && PageTypes.one(page.page_type))
 
 	const publish = $derived(usePublishSite(site?.id))
+	const publish_in_progress = $derived(['loading', 'working'].includes(publish.status))
 
 	let going_up = $state(false)
 	let going_down = $state(false)
@@ -146,8 +146,8 @@
 	<Dialog.Content class="z-[999] max-w-[500px] flex flex-col p-0">
 		<Deploy
 			bind:stage={publish_stage}
-			publish_fn={publish.publish}
-			loading={publish.status !== 'standby'}
+			publish_fn={publish.run}
+			loading={publish_in_progress}
 			site_host={site?.host}
 			onClose={() => {
 				publishing = false
@@ -249,7 +249,7 @@
 			{/if}
 			{@render children?.()}
 			<!-- <LocaleSelector /> -->
-			<ToolbarButton type="primo" icon="entypo:publish" label="Publish" key="p" loading={publish.status !== 'standby'} on:click={() => (publishing = true)} />
+			<ToolbarButton type="primo" icon="entypo:publish" label="Publish" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
 		</div>
 	</div>
 </nav>
