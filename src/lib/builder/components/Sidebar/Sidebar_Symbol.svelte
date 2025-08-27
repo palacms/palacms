@@ -68,40 +68,24 @@
 
 	let componentCode = $state()
 	let component_error = $state()
-	let is_loading = $state(false)
-	
-	// Cache for processed symbols to avoid regenerating on page navigation
-	const cache = new Map()
-	
+	let is_loading = $state(true)
+
 	// Watch for changes in symbol code or data and regenerate
 	watch(
 		() => ({ code, data }),
 		async ({ code, data }) => {
-			const cache_key = JSON.stringify({ code, data })
-			
-			// Check cache first
-			if (cache.has(cache_key)) {
-				const cached = cache.get(cache_key)
-				componentCode = cached.componentCode
-				component_error = cached.component_error
-				return
-			}
-			
 			is_loading = true
 			component_error = undefined
+			if (!data) return
 			try {
 				const res = await block_html({ code, data })
 				// Only set componentCode if we have actual content
 				if (res && res.body) {
 					componentCode = res
-					// Cache successful result
-					cache.set(cache_key, { componentCode: res, component_error: undefined })
 				}
 			} catch (error) {
 				console.error('Sidebar symbol error for', symbol.name, ':', error)
 				component_error = error
-				// Cache error result too
-				cache.set(cache_key, { componentCode: undefined, component_error: error })
 			} finally {
 				is_loading = false
 			}
@@ -315,7 +299,7 @@
 		inset: 0;
 		align-items: center;
 		color: #888;
-		
+
 		:global(svg) {
 			height: 1rem;
 			width: 1rem;
