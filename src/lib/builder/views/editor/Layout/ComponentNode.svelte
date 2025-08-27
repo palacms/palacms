@@ -63,8 +63,8 @@
 
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
-	const data = $derived(useContent(section))
-	const component_data = $derived(data && (data[$locale] ?? {}))
+	const _data = $derived(useContent(section))
+	const data = $derived(_data && (_data[$locale] ?? {}))
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
@@ -93,7 +93,7 @@
 				html: block.html,
 				css: block.css,
 				js: block.js,
-				data: component_data
+				data
 			},
 			buildStatic: false
 		})
@@ -616,15 +616,23 @@
 		}
 	}
 
-	let compiled_code = $state<string>('')
+	const code = $derived({
+		html: block.html,
+		css: block.css,
+		js: block.js
+	})
+
 	// Watch for changes in block code or component data and regenerate
+	let seen_code = $state()
+	let seen_data = $state()
 	watch(
-		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
-		({ html, data }) => {
-			if (data && compiled_code !== html) {
-				generate_component_code(block)
-				compiled_code = html
-			}
+		() => ({ code, data }),
+		({ code, data }) => {
+			if (!data) return
+			if (_.isEqual(seen_code, code) && _.isEqual(seen_data, data)) return
+			seen_code = _.cloneDeep(code)
+			seen_data = _.cloneDeep(data)
+			generate_component_code(block)
 		}
 	)
 
@@ -763,7 +771,7 @@
 
 	// Watch for changes and send to iframe when ready
 	watch(
-		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
+		() => ({ js: generated_js, data, ready: setup_complete && !is_editing }),
 		({ js, data, ready }) => {
 			if (ready && data && js) {
 				send_component_to_iframe(js, data)

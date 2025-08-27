@@ -71,13 +71,15 @@
 	let is_loading = $state(true)
 
 	// Watch for changes in symbol code or data and regenerate
-	let seen_html = $state('')
+	let seen_code = $state()
+	let seen_data = $state()
 	watch(
 		() => ({ code, data }),
 		async ({ code, data }) => {
 			if (!data) return
-			if (seen_html === code.html) return
-			seen_html = code.html
+			if (_.isEqual(seen_code, code) && _.isEqual(seen_data, data)) return
+			seen_code = _.cloneDeep(code)
+			seen_data = _.cloneDeep(data)
 
 			is_loading = true
 			component_error = undefined
