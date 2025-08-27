@@ -18,7 +18,7 @@
 	let { children } = $props()
 
 	const host = $derived(page.url.host)
-	const sites = $derived(Sites.list({ filter: `host = "${host}"` }))
+	const sites = $derived(Sites.list({ filter: { host } }))
 	const site = $derived(sites?.[0])
 
 	let creating_site = $state(false)

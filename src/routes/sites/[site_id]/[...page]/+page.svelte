@@ -7,11 +7,10 @@
 	const site_id = $derived(pageState.params.site_id)
 	const page_slug = $derived(pageState.params.page)
 
-	const site = $derived(Sites.one(site_id))
-	const current_page = $derived(site && page_slug && Pages.list({ filter: `site = "${site.id}" && slug = "${page_slug}"` })?.[0])
+	const site = $derived(site_id && Sites.one(site_id))
+	const current_page = $derived(site && page_slug && Pages.list({ filter: { site: site.id, slug: page_slug } })?.[0])
 </script>
 
 {#if $compilers_registered && current_page}
 	<PalaPage page={current_page} />
 {/if}
-
