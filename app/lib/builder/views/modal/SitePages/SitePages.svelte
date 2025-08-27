@@ -28,6 +28,8 @@
 	})
 
 	let creating_page = $state(false)
+	let building_page = $state(false)
+	let building_page_name = $state('')
 	let new_page = $state<ObjectOf<typeof Pages>>()
 	let new_page_page_type = $derived(new_page && PageTypes.one(new_page.page_type))
 	let new_page_page_type_sections = $derived(new_page_page_type?.sections())
@@ -37,6 +39,8 @@
 		if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries) {
 			return
 		}
+
+		building_page = true
 
 		for (const pts of new_page_page_type_sections) {
 			// Skip header and footer sections - these are handled at the site level
@@ -65,6 +69,7 @@
 
 		new_page = undefined
 		manager.commit()
+		building_page = false
 	})
 
 	/**
@@ -98,6 +103,14 @@
 				<div class="drop-indicator-inline" class:active={hover_position === `${child_page.id}-bottom`}><div></div></div>
 			</li>
 		{/each}
+		{#if building_page}
+			<li class="page-item-wrapper building-placeholder">
+				<div class="building-page-item">
+					<Icon icon="eos-icons:three-dots-loading" />
+					<span>Building {building_page_name} Page</span>
+				</div>
+			</li>
+		{/if}
 	</ul>
 
 	{#if creating_page}
@@ -109,6 +122,8 @@
 					if (url_taken) {
 						alert(`That URL is already in use`)
 					} else {
+						building_page = true
+						building_page_name = new_page.name
 						await create_page_with_sections({ ...new_page, parent: home_page.id, site: site.id })
 					}
 				}}
@@ -185,6 +200,25 @@
 		&:hover {
 			border-color: var(--weave-primary-color);
 			color: var(--weave-primary-color);
+		}
+	}
+
+	.building-placeholder {
+		.building-page-item {
+			background: #1a1a1a;
+			border: 1px dashed var(--color-gray-6);
+			border-radius: var(--primo-border-radius);
+			padding: 1rem;
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			color: var(--color-gray-3);
+			font-size: 0.875rem;
+			
+			:global(svg) {
+				height: 1rem;
+				width: 1rem;
+			}
 		}
 	}
 </style>
