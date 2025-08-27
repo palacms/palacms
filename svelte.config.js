@@ -11,12 +11,6 @@ const config = {
 		}),
 		paths: {
 			base: '/admin'
-		},
-		files: {
-			appTemplate: 'app/app.html',
-			assets: 'app/assets',
-			lib: 'app/lib',
-			routes: 'app/routes'
 		}
 	},
 	vitePlugin: {
