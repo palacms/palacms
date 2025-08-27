@@ -63,7 +63,7 @@
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
 	const data = $derived(useContent(section))
-	const component_data = $derived(data && (data[$locale] ?? {}))
+	const component_data = $derived(data ? (data[$locale] ?? {}) : {})
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
@@ -624,8 +624,7 @@
 		// Trigger regeneration when component_data OR block code changes
 		const code_changed = last_block_html !== block.html || last_block_css !== block.css || last_block_js !== block.js
 		
-		if (component_data && (code_changed || compiled_code !== block.html)) {
-			console.log('Regenerating component code - code changed:', code_changed, 'data available:', !!component_data)
+		if (code_changed || compiled_code !== block.html) {
 			generate_component_code(block)
 			compiled_code = block.html
 			last_block_html = block.html
@@ -774,7 +773,7 @@
 	}
 
 	$effect(() => {
-		if (setup_complete && !is_editing && generated_js && component_data) {
+		if (setup_complete && !is_editing && generated_js) {
 			// Only send if there's an actual change in content
 			const data_changed = !_.isEqual(last_sent_data, component_data)
 			const js_changed = last_sent_js !== generated_js
@@ -783,7 +782,6 @@
 				// Debounce rapid changes
 				clearTimeout(send_to_iframe_timeout)
 				send_to_iframe_timeout = setTimeout(() => {
-					console.log('SENDING - data changed:', data_changed, 'js changed:', js_changed)
 					last_sent_data = _.cloneDeep(component_data)
 					last_sent_js = generated_js
 					send_component_to_iframe(generated_js, component_data)
@@ -794,7 +792,6 @@
 
 	async function send_component_to_iframe(js, data) {
 		try {
-			console.log({ js, data })
 			node.contentWindow.postMessage({ type: 'component', payload: { js, data } }, '*')
 			setTimeout(make_content_editable, 200) // wait for component to mount within iframe
 		} catch (e) {
