@@ -36,8 +36,8 @@
 		return $fieldTypes.find((ft) => ft.id === resolvedField.type)
 	})
 
-	const page = page_context.get()
-	const page_type = $derived(PageTypes.one(page.page_type))
+	const page = page_context.getOr(null)
+	const page_type = $derived(page && PageTypes.one(page.page_type))
 	const fields = $derived(page_type?.fields() ?? [])
 	const entries = $derived(page?.entries() ?? [])
 
