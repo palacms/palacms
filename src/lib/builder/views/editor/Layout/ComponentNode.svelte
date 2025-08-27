@@ -64,7 +64,7 @@
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
 	const data = $derived(useContent(section))
-	const component_data = $derived(data ? (data[$locale] ?? {}) : {})
+	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
@@ -765,7 +765,7 @@
 	watch(
 		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
 		({ js, data, ready }) => {
-			if (ready && js) {
+			if (ready && data && js) {
 				send_component_to_iframe(js, data)
 			}
 		}
@@ -837,10 +837,11 @@
 									return false // Stop searching
 								}
 							})
-							
+
 							if (imagePos !== null) {
 								// Select the image node and update its attributes
-								editor.chain()
+								editor
+									.chain()
 									.focus()
 									.setNodeSelection(imagePos)
 									.updateAttributes('image', {

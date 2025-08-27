@@ -69,13 +69,14 @@
 	let componentCode = $state()
 	let component_error = $state()
 	let is_loading = $state(true)
-	
+
 	// Watch for changes in symbol code or data and regenerate
 	watch(
 		() => ({ code, data }),
 		async ({ code, data }) => {
 			is_loading = true
 			component_error = undefined
+			if (!data) return
 			try {
 				const res = await block_html({ code, data })
 				// Only set componentCode if we have actual content
@@ -298,7 +299,7 @@
 		inset: 0;
 		align-items: center;
 		color: #888;
-		
+
 		:global(svg) {
 			height: 1rem;
 			width: 1rem;
