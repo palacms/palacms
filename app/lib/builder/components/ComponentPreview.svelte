@@ -241,7 +241,19 @@
 			return
 		}
 		iframeLoaded = false
-		iframe.srcdoc = dynamic_iframe_srcdoc(component_head_html)
+		
+		// Parse site settings for iframe
+		const site = site_context.get()
+		let settings = {}
+		if (site?.settings) {
+			try {
+				settings = JSON.parse(site.settings)
+			} catch (e) {
+				console.warn('Invalid site settings JSON:', e)
+			}
+		}
+		
+		iframe.srcdoc = dynamic_iframe_srcdoc(component_head_html, settings)
 	}
 
 	let previewWidth = $state()
@@ -331,7 +343,18 @@
 				style:width={view === 'large' ? `${active_static_width}px` : '100%'}
 				onload={setLoading}
 				title="Preview HTML"
-				srcdoc={dynamic_iframe_srcdoc(component_head_html)}
+				srcdoc={dynamic_iframe_srcdoc(component_head_html, (() => {
+					const site = site_context.get()
+					let settings = {}
+					if (site?.settings) {
+						try {
+							settings = JSON.parse(site.settings)
+						} catch (e) {
+							console.warn('Invalid site settings JSON:', e)
+						}
+					}
+					return settings
+				})())}
 				bind:this={iframe}
 			></iframe>
 		{:else}

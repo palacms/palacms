@@ -149,10 +149,26 @@ export const usePublishSite = (site_id?: string) => {
 			.filter((symbol) => symbol.js)
 		no_js ||= page_symbols_with_js.length === 0
 
+		// Parse site settings
+		let settings = { html_classes: '', html_attributes: `lang="${locale}"`, body_classes: '', body_attributes: '' }
+		if (site?.settings) {
+			try {
+				const parsed_settings = JSON.parse(site.settings)
+				settings = { ...settings, ...parsed_settings }
+			} catch (e) {
+				console.warn('Invalid site settings JSON:', e)
+			}
+		}
+
+		const html_class_attr = settings.html_classes ? ` class="${settings.html_classes}"` : ''
+		const html_attrs = settings.html_attributes ? ` ${settings.html_attributes}` : ` lang="${locale}"`
+		const body_class_attr = settings.body_classes ? ` class="${settings.body_classes}"` : ''
+		const body_attrs = settings.body_attributes ? ` ${settings.body_attributes}` : ''
+
 		const final =
-			`<!DOCTYPE html><html lang="${locale}"><head><meta name="generator" content="PalaCMS" />` +
+			`<!DOCTYPE html><html${html_class_attr}${html_attrs}><head><meta name="generator" content="PalaCMS" />` +
 			res.head +
-			'</head><body id="page">' +
+			`</head><body id="page"${body_class_attr}${body_attrs}>` +
 			res.body +
 			(no_js ? `` : '<script type="module">' + 'import { hydrate } from "https://esm.sh/svelte";' + fetch_modules(page_symbols_with_js) + '</script>') +
 			site?.foot +

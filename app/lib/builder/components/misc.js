@@ -1,7 +1,12 @@
-export const dynamic_iframe_srcdoc = (head = '') => {
+export const dynamic_iframe_srcdoc = (head = '', settings = {}) => {
+	const html_class_attr = settings.html_classes ? ` class="${settings.html_classes}"` : ''
+	const html_attrs = settings.html_attributes ? ` ${settings.html_attributes}` : ' lang="en"'
+	const body_class_attr = settings.body_classes ? ` class="${settings.body_classes}"` : ''
+	const body_attrs = settings.body_attributes ? ` ${settings.body_attributes}` : ''
+
 	return `
   <!DOCTYPE html>
-  <html lang="en">
+  <html${html_class_attr}${html_attrs}>
     <head>
       ${head}
       <meta charset="utf-8">
@@ -61,17 +66,22 @@ export const dynamic_iframe_srcdoc = (head = '') => {
         }
 		  </script>
     </head>
-    <body id="page"></body>
+    <body id="page"${body_class_attr}${body_attrs}></body>
   </html>
 `
 }
 
-export const static_iframe_srcdoc = ({ head = '', html, css, foot = '' }) => {
+export const static_iframe_srcdoc = ({ head = '', html, css, foot = '', settings = {} }) => {
+	const html_class_attr = settings.html_classes ? ` class="${settings.html_classes}"` : ''
+	const html_attrs = settings.html_attributes ? ` ${settings.html_attributes}` : ' lang="en"'
+	const body_class_attr = settings.body_classes ? ` class="${settings.body_classes}"` : ''
+	const body_attrs = settings.body_attributes ? ` ${settings.body_attributes}` : ''
+
 	return `
     <!DOCTYPE html>
-    <html lang="en">
+    <html${html_class_attr}${html_attrs}>
       <head>${head}</head>
-      <body id="page" style="margin:0">
+      <body id="page"${body_class_attr}${body_attrs} style="margin:0">
         ${html}
         <style>${css}</style>
         ${foot}
@@ -80,10 +90,15 @@ export const static_iframe_srcdoc = ({ head = '', html, css, foot = '' }) => {
   `
 }
 
-export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
+export const component_iframe_srcdoc = ({ head = '', foot = '', settings = {} }) => {
+	const html_class_attr = settings.html_classes ? ` class="${settings.html_classes}"` : ''
+	const html_attrs = settings.html_attributes ? ` ${settings.html_attributes}` : ' lang="en"'
+	const body_class_attr = settings.body_classes ? ` class="${settings.body_classes}"` : ''
+	const body_attrs = settings.body_attributes ? ` ${settings.body_attributes}` : ''
+
 	return `
     <!DOCTYPE html>
-    <html lang="en">
+    <html${html_class_attr}${html_attrs}>
       <head>
         <script type="module">
           import { mount, unmount } from "https://esm.sh/svelte"
@@ -121,7 +136,7 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
         </script>
         ${head}
       </head>
-      <body style="margin:0;overflow:hidden;">
+      <body${body_class_attr}${body_attrs} style="margin:0;overflow:hidden;">
         <div id="component"></div>
         ${foot}
         <style>

@@ -77,7 +77,7 @@
 		flex-direction: column;
 		overflow: hidden;
 		background: #1a1a1a;
-		padding: 0.25rem 0.75rem 0.75rem 0.75rem;
+		padding: 0.75rem 0.75rem 0.75rem 0.75rem;
 		--Spinner-padding: 3rem;
 		gap: 0.5rem;
 	}

@@ -4,6 +4,7 @@
 	import { tick } from 'svelte'
 	import { static_iframe_srcdoc } from './misc'
 	import * as _ from 'lodash-es'
+	import { site_context } from '../stores/context'
 
 	/**
 	 * @typedef {Object} Props
@@ -67,11 +68,24 @@
 	let active_code = {}
 	async function set_srcdoc(componentCode) {
 		active_code = _.cloneDeep(componentCode)
+		
+		// Parse site settings for iframe
+		const site = site_context.get()
+		let settings = {}
+		if (site?.settings) {
+			try {
+				settings = JSON.parse(site.settings)
+			} catch (e) {
+				console.warn('Invalid site settings JSON:', e)
+			}
+		}
+		
 		generated_srcdoc = static_iframe_srcdoc({
 			head: componentCode.head,
 			html: componentCode.body,
 			css: componentCode.css,
-			foot: append
+			foot: append,
+			settings
 		})
 		setup_complete = true
 	}

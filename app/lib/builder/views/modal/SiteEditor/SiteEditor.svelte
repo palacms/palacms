@@ -22,17 +22,25 @@
 
 	hide_dynamic_field_types_context.set(true)
 
-	const initial_code = { head: site?.head, foot: site?.foot }
+	const initial_code = { head: site?.head, foot: site?.foot, settings: site?.settings }
 	const initial_data = _.cloneDeep(site_data)
 
 	let head = $state(site?.head || '')
 	let foot = $state(site?.foot || '')
+	const default_settings = `{
+	"html_classes": "",
+	"html_attributes": "lang='en' data-theme='light'",
+	"body_classes": "",
+	"body_attributes": ""
+}`
+
+	let settings = $state(site?.settings || default_settings)
 
 	let disableSave = $state(false)
 
 	// Compare current state to initial data
 	$effect(() => {
-		const code_changed = head !== initial_code.head || foot !== initial_code.foot
+		const code_changed = head !== initial_code.head || foot !== initial_code.foot || settings !== initial_code.settings
 		const data_changed = !_.isEqual(initial_data, site_data)
 		has_unsaved_changes = code_changed || data_changed
 	})
@@ -62,7 +70,8 @@
 		try {
 			Sites.update(site.id, {
 				head,
-				foot
+				foot,
+				settings
 			})
 
 			await manager.commit()
@@ -136,6 +145,17 @@
 				</PaneResizer>
 				<Pane defaultSize={50}>
 					<PaneGroup direction="vertical">
+						<Pane minSize={2} defaultSize={2}>
+							<div class="container" style="margin-bottom: 1rem">
+								<span class="primo--field-label">Settings</span>
+								<CodeEditor mode="javascript" bind:value={settings} on:save={saveComponent} />
+							</div>
+						</Pane>
+						<PaneResizer class="PaneResizer-secondary">
+							<div class="icon secondary">
+								<Icon icon="mdi:drag-horizontal-variant" />
+							</div>
+						</PaneResizer>
 						<Pane>
 							<div class="container" style="margin-bottom: 1rem">
 								<span class="primo--field-label">Head</span>
@@ -147,7 +167,7 @@
 								<Icon icon="mdi:drag-horizontal-variant" />
 							</div>
 						</PaneResizer>
-						<Pane>
+						<Pane minSize={2} defaultSize={8}>
 							<div class="container">
 								<span class="primo--field-label">Foot</span>
 								<CodeEditor mode="html" bind:value={foot} on:save={saveComponent} />

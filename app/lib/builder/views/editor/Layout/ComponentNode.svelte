@@ -21,6 +21,7 @@
 	import { hovering_outside } from '$lib/builder/utilities'
 	import { locale } from '$lib/builder/stores/app/misc'
 	import { site_html } from '$lib/builder/stores/app/page'
+	import { site_context } from '$lib/builder/stores/context'
 	import MarkdownButton from './MarkdownButton.svelte'
 	import { component_iframe_srcdoc } from '$lib/builder/components/misc'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
@@ -62,7 +63,8 @@
 
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
-	const component_data = $derived(useContent(section)[$locale] ?? {})
+	const data = $derived(useContent(section))
+	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
@@ -78,6 +80,9 @@
 		highlight: false
 	})
 
+	// Store editor instances by markdown ID so we can access them later
+	let markdown_editors = new Map()
+
 	let error = $state('')
 
 	let generated_js = $state('')
@@ -92,6 +97,7 @@
 			},
 			buildStatic: false
 		})
+
 		if (res.error) {
 			error = res.error
 			dispatch_mount()
@@ -313,6 +319,9 @@
 					}
 				}
 			})
+
+			// Store the editor instance for later access
+			markdown_editors.set(markdown_id, editor)
 		}
 
 		async function set_editable_image({ element, id, options }) {
@@ -347,6 +356,12 @@
 				image_editor.onclick = () => {
 					current_image_element = element
 					current_image_id = id
+					// Set current_image_value from the entry
+					const entry = entries?.find((entry) => entry.id === id)
+					current_image_value = entry?.value || {
+						url: element.src || '',
+						alt: element.alt || ''
+					}
 					editing_image = true
 					image_editor_is_visible = false
 				}
@@ -380,6 +395,13 @@
 					e.stopPropagation()
 					current_link_element = element
 					current_link_id = id
+					// Set current_link_value from the entry
+					const entry = entries?.find((entry) => entry.id === id)
+					current_link_value = entry?.value || {
+						url: element.href || '',
+						label: element.innerText || '',
+						active: true
+					}
 					// Hide menus when opening modal
 					bubble_menu.style.display = 'none'
 					floating_menu.style.display = 'none'
@@ -449,12 +471,70 @@
 		}
 	}
 
-	// Reroute links to correctly open externally and internally
+	// Reroute links to correctly open externally and internally, and handle TipTap images
 	async function reroute_links() {
 		if (!node?.contentDocument) return
 		const { pathname, origin } = window.location
 		const [site] = pathname.split('/').slice(1)
 		const site_url = `${origin}/${site}`
+
+		// Handle TipTap images (they don't have entries but should be editable)
+		node.contentDocument.querySelectorAll('img').forEach((image) => {
+			// Skip images that are already handled by field entries
+			if (image.dataset.entry || image.dataset.key) {
+				return
+			}
+
+			// Only handle images that are within markdown fields
+			const markdownContainer = image.closest('[data-markdown-id]')
+			if (!markdownContainer) {
+				return
+			}
+
+			// Handle TipTap markdown images
+			let rect
+			image.onmousemove = (e) => {
+				if (!image_editor_is_visible) {
+					attach_tiptap_image_overlay(image)
+				}
+			}
+		})
+
+		async function attach_tiptap_image_overlay(element) {
+			image_editor_is_visible = true
+			await tick()
+			const iframe_rect = node.getBoundingClientRect()
+			const rect = element.getBoundingClientRect()
+			image_editor.style.left = `${rect.left + iframe_rect.left}px`
+			image_editor.style.top = `${rect.top + iframe_rect.top}px`
+			image_editor.style.width = `${rect.width}px`
+			image_editor.style.height = `${rect.height}px`
+			image_editor.style.borderRadius = getComputedStyle(element).borderRadius
+
+			image_editor.onwheel = (e) => {
+				image_editor_is_visible = false
+			}
+
+			image_editor.onmouseleave = (e) => {
+				const is_outside = e.x >= Math.floor(rect.right) || e.y >= Math.floor(rect.bottom) || e.x <= Math.floor(rect.left) || e.y <= Math.floor(rect.top)
+				if (is_outside) {
+					image_editor_is_visible = false
+				}
+			}
+
+			image_editor.onclick = () => {
+				current_image_element = element
+				current_image_id = null // No entry for TipTap images
+				// Set current_image_value from the element
+				current_image_value = {
+					url: element.src || '',
+					alt: element.alt || ''
+				}
+				editing_image = true
+				image_editor_is_visible = false
+			}
+		}
+
 		node.contentDocument.querySelectorAll('a').forEach((link) => {
 			// Skip editable links - they have their own handlers
 			if (link.dataset.entry || link.dataset.key) {
@@ -465,6 +545,8 @@
 			if (link.dataset.tiptapLink === 'true') {
 				link.onclick = (e) => {
 					e.preventDefault()
+					current_link_id = null // No entry for TipTap links
+					current_link_element = link // Store the link element for TipTap links
 					current_link_value = {
 						url: link.href || '',
 						label: link.textContent || '',
@@ -535,12 +617,21 @@
 	}
 
 	let compiled_code = $state<string>('')
-	let compiled_data = $state()
+	let last_block_html = $state('')
+	let last_block_css = $state('')
+	let last_block_js = $state('')
+	
 	$effect(() => {
-		if (compiled_code !== block.html || !_.isEqual(compiled_data, component_data)) {
+		// Trigger regeneration when component_data OR block code changes
+		const code_changed = last_block_html !== block.html || last_block_css !== block.css || last_block_js !== block.js
+		
+		if (component_data && (code_changed || compiled_code !== block.html)) {
+			console.log('Regenerating component code - code changed:', code_changed, 'data available:', !!component_data)
 			generate_component_code(block)
 			compiled_code = block.html
-			compiled_data = _.cloneDeep(component_data)
+			last_block_html = block.html
+			last_block_css = block.css
+			last_block_js = block.js
 		}
 	})
 
@@ -633,8 +724,17 @@
 	}
 
 	let setup_complete = $state(false)
+	let last_sent_data = $state(null)
+	let last_sent_js = $state(null)
+	let send_to_iframe_timeout
+
 	function setup_component_iframe() {
 		setup_complete = false
+		last_sent_data = null
+		last_sent_js = null
+		clearTimeout(send_to_iframe_timeout)
+		// Clear previous editor instances
+		markdown_editors.clear()
 		// Wait for iframe to be ready
 		node.removeEventListener('load', setup)
 
@@ -675,13 +775,27 @@
 	}
 
 	$effect(() => {
-		if (setup_complete && !is_editing) {
-			send_component_to_iframe(generated_js, component_data)
+		if (setup_complete && !is_editing && generated_js && component_data) {
+			// Only send if there's an actual change in content
+			const data_changed = !_.isEqual(last_sent_data, component_data)
+			const js_changed = last_sent_js !== generated_js
+
+			if (data_changed || js_changed) {
+				// Debounce rapid changes
+				clearTimeout(send_to_iframe_timeout)
+				send_to_iframe_timeout = setTimeout(() => {
+					console.log('SENDING - data changed:', data_changed, 'js changed:', js_changed)
+					last_sent_data = _.cloneDeep(component_data)
+					last_sent_js = generated_js
+					send_component_to_iframe(generated_js, component_data)
+				}, 100) // Small delay to batch rapid changes
+			}
 		}
 	})
 
 	async function send_component_to_iframe(js, data) {
 		try {
+			console.log({ js, data })
 			node.contentWindow.postMessage({ type: 'component', payload: { js, data } }, '*')
 			setTimeout(make_content_editable, 200) // wait for component to mount within iframe
 		} catch (e) {
@@ -711,86 +825,154 @@
 	let editing_video = $state(false)
 	let current_image_element = $state(null)
 	let current_image_id = $state(null)
+	let current_image_value = $state({ url: '', alt: '' })
 	let current_link_element = $state(null)
 	let current_link_id = $state(null)
+	let current_link_value = $state({ url: '', label: '', active: true })
 </script>
 
 <Dialog.Root bind:open={editing_image}>
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12">
-		{@const entry = entries?.find((e) => e.id === current_image_id)!}
-		{@const field = fields?.find((f) => entry.field === f.id)!}
-		<ImageField
-			entity={section}
-			{field}
-			{entry}
-			onchange={(changeData) => {
-				// Extract the actual value from the nested structure
-				const fieldKey = Object.keys(changeData)[0]
-				const newValue = changeData[fieldKey][0].value
-				save_edited_value({ id: current_image_id, value: newValue })
-			}}
-		/>
-		<div class="flex justify-end gap-2 mt-2">
-			<button
-				onclick={() => {
-					if (active_editor) {
-						// Handle TipTap editor images
-						active_editor.chain().focus().setImage({ src: entry.value.url, alt: entry.value.alt }).run()
-					} else if (current_image_element && current_image_id) {
-						// Handle direct image editing
-						current_image_element.src = entry.value.url
-						current_image_element.alt = entry.value.alt
-						save_edited_value({ id: current_image_id, value: entry.value })
+		{@const field = fields?.find((f) => entries?.find((e) => e.id === current_image_id)?.field === f.id) || { label: 'Image', key: 'image', type: 'image', config: {} }}
+		{@const entry = {
+			value: current_image_value
+		}}
+		<form
+			onsubmit={(e) => {
+				e.preventDefault()
+				// Handle submit - same logic as Done button
+				if (active_editor && !current_image_element) {
+					// Handle TipTap editor images - only for NEW images from floating menu
+					active_editor.chain().focus().setImage({ src: current_image_value.url, alt: current_image_value.alt }).run()
+				} else if (current_image_element && !current_image_id) {
+					// Handle existing TipTap markdown images (no entry)
+					const markdownContainer = current_image_element.closest('[data-markdown-id]')
+					if (markdownContainer) {
+						const markdownId = markdownContainer.getAttribute('data-markdown-id')
+						const editor = markdown_editors.get(markdownId)
+
+						if (editor && editor.view) {
+							// Find the image node in the document and select it, then update
+							let imagePos = null
+							editor.view.state.doc.descendants((node, pos) => {
+								if (node.type.name === 'image' && node.attrs.src === current_image_element.src) {
+									imagePos = pos
+									return false // Stop searching
+								}
+							})
+							
+							if (imagePos !== null) {
+								// Select the image node and update its attributes
+								editor.chain()
+									.focus()
+									.setNodeSelection(imagePos)
+									.updateAttributes('image', {
+										src: current_image_value.url,
+										alt: current_image_value.alt
+									})
+									.run()
+								console.log('Updated image via TipTap commands')
+							} else {
+								console.log('Could not find image node, falling back to DOM update')
+								current_image_element.src = current_image_value.url
+								current_image_element.alt = current_image_value.alt
+							}
+						} else {
+							// Fallback: directly update the DOM element
+							console.log('falling back')
+							current_image_element.src = current_image_value.url
+							current_image_element.alt = current_image_value.alt
+						}
 					}
-					editing_image = false
+				} else if (current_image_element && current_image_id) {
+					// Handle direct image editing (entry-based)
+					current_image_element.src = current_image_value.url
+					current_image_element.alt = current_image_value.alt
+					save_edited_value({ id: current_image_id, value: current_image_value })
+				}
+				editing_image = false
+			}}
+		>
+			<ImageField
+				entity={section}
+				{field}
+				{entry}
+				onchange={(changeData) => {
+					// Extract the actual value from the nested structure
+					const fieldKey = Object.keys(changeData)[0]
+					const newValue = changeData[fieldKey][0].value
+					current_image_value = newValue
 				}}
-				class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-md"
-			>
-				Done
-			</button>
-		</div>
+			/>
+			<div class="flex justify-end gap-2 mt-2">
+				<button type="submit" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-md">Done</button>
+			</div>
+		</form>
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_link}>
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12 overflow-visible">
-		{@const entry = entries?.find((e) => e.id === current_link_id)!}
-		{@const field = fields?.find((f) => entry.field === f.id)!}
-		<LinkField
-			entity={section}
-			{field}
-			{entry}
-			onchange={(changeData) => {
-				// Extract the actual value from the nested structure
-				const fieldKey = Object.keys(changeData)[0]
-				const newValue = changeData[fieldKey][0].value
-				save_edited_value({ id: current_link_id, value: newValue })
-			}}
-		/>
-		<div class="flex justify-end gap-2 mt-2">
-			<button
-				onclick={() => {
-					if (active_editor) {
-						// Handle TipTap editor links - just set the URL, TipTap handles the label
-						active_editor.chain().focus().setLink({ href: entry.value.url }).run()
-					} else if (current_link_element && current_link_id) {
-						// Handle direct link editing
-						current_link_element.href = entry.value.url
-						current_link_element.innerText = entry.value.label
-						save_edited_value({ id: current_link_id, value: entry.value })
+		{@const field = fields?.find((f) => entries?.find((e) => e.id === current_link_id)?.field === f.id) || { label: 'Link', key: 'link', type: 'link', config: {} }}
+		{@const entry = {
+			value: current_link_value || { url: '', label: '', active: true }
+		}}
+		<form
+			onsubmit={(e) => {
+				e.preventDefault()
+				// Handle submit - same logic as Done button
+				if (active_editor && current_link_value.originalLabel !== undefined) {
+					// Handle new TipTap links created from bubble menu
+					const chain = active_editor.chain().focus()
+
+					// If label changed from original selected text, replace the text
+					if (current_link_value.label !== current_link_value.originalLabel) {
+						// Delete selected text and insert new label with link
+						chain
+							.deleteSelection()
+							.insertContent({
+								type: 'text',
+								text: current_link_value.label,
+								marks: [{ type: 'link', attrs: { href: current_link_value.url } }]
+							})
+							.run()
+					} else {
+						// Just wrap existing text in link
+						chain.setLink({ href: current_link_value.url }).run()
 					}
-					editing_link = false
+				} else if (current_link_element && !current_link_id) {
+					// Handle existing TipTap markdown links (clicked from content)
+					current_link_element.href = current_link_value.url
+					current_link_element.textContent = current_link_value.label
+				} else if (current_link_element && current_link_id) {
+					// Handle direct link editing (entry-based)
+					current_link_element.href = current_link_value.url
+					current_link_element.innerText = current_link_value.label
+					save_edited_value({ id: current_link_id, value: _.cloneDeep(current_link_value) })
+				}
+				editing_link = false
+			}}
+		>
+			<LinkField
+				entity={section}
+				{field}
+				{entry}
+				onchange={(changeData) => {
+					// Extract the actual value from the nested structure
+					const fieldKey = Object.keys(changeData)[0]
+					const newValue = changeData[fieldKey][0].value
+					current_link_value = newValue
 				}}
-				class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-md"
-			>
-				Done
-			</button>
-		</div>
+			/>
+			<div class="flex justify-end gap-2 mt-2">
+				<button type="submit" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-md">Done</button>
+			</div>
+		</form>
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_video}>
-	<Dialog.Content class="z-[999] max-w-[60px]">
+	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12">
 		<VideoModal
 			onsave={(url) => {
 				if (url) {
@@ -831,7 +1013,19 @@
 		bind:this={node}
 		title="block"
 		srcdoc={component_iframe_srcdoc({
-			head: $site_html
+			head: $site_html,
+			settings: (() => {
+				const site = site_context.get()
+				let settings = {}
+				if (site?.settings) {
+					try {
+						settings = JSON.parse(site.settings)
+					} catch (e) {
+						console.warn('Invalid site settings JSON:', e)
+					}
+				}
+				return settings
+			})()
 		})}
 		onload={setup_component_iframe}
 	></iframe>
@@ -885,6 +1079,9 @@
 			onclick={() => {
 				bubble_menu.style.display = 'none'
 				floating_menu.style.display = 'none'
+				current_image_id = null
+				current_image_element = null
+				current_image_value = { url: '', alt: '' }
 				editing_image = true
 			}}
 		/>
@@ -906,10 +1103,13 @@
 				// Get selected text to pre-fill the link label
 				const selection = active_editor.view.state.selection
 				const selectedText = active_editor.view.state.doc.textBetween(selection.from, selection.to)
+				current_link_id = null // No entry for new TipTap links
+				current_link_element = null
 				current_link_value = {
 					url: '',
 					label: selectedText || '',
-					active: true
+					active: true,
+					originalLabel: selectedText // Store original to check if it changed
 				}
 				// Hide menus when opening modal
 				bubble_menu.style.display = 'none'
