@@ -22,6 +22,7 @@
 	import { locale } from '$lib/builder/stores/app/misc'
 	import { site_html } from '$lib/builder/stores/app/page'
 	import MarkdownButton from './MarkdownButton.svelte'
+	import { watch } from 'runed'
 	import { component_iframe_srcdoc } from '$lib/builder/components/misc'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites } from '$lib/pocketbase/collections'
@@ -62,8 +63,7 @@
 
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
-	const data = $derived(useContent(section))
-	const component_data = $derived(data ? (data[$locale] ?? {}) : {})
+	const component_data = $derived(useContent(section)?.[$locale] ?? {})
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
@@ -615,23 +615,13 @@
 		}
 	}
 
-	let compiled_code = $state<string>('')
-	let last_block_html = $state('')
-	let last_block_css = $state('')
-	let last_block_js = $state('')
-	
-	$effect(() => {
-		// Trigger regeneration when component_data OR block code changes
-		const code_changed = last_block_html !== block.html || last_block_css !== block.css || last_block_js !== block.js
-		
-		if (code_changed || compiled_code !== block.html) {
+	// Watch for changes in block code or component data and regenerate
+	watch(
+		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
+		() => {
 			generate_component_code(block)
-			compiled_code = block.html
-			last_block_html = block.html
-			last_block_css = block.css
-			last_block_js = block.js
 		}
-	})
+	)
 
 	let mutation_observer
 	let iframe_resize_observer = $state()
@@ -722,15 +712,9 @@
 	}
 
 	let setup_complete = $state(false)
-	let last_sent_data = $state(null)
-	let last_sent_js = $state(null)
-	let send_to_iframe_timeout
 
 	function setup_component_iframe() {
 		setup_complete = false
-		last_sent_data = null
-		last_sent_js = null
-		clearTimeout(send_to_iframe_timeout)
 		// Clear previous editor instances
 		markdown_editors.clear()
 		// Wait for iframe to be ready
@@ -772,23 +756,15 @@
 		}
 	}
 
-	$effect(() => {
-		if (setup_complete && !is_editing && generated_js) {
-			// Only send if there's an actual change in content
-			const data_changed = !_.isEqual(last_sent_data, component_data)
-			const js_changed = last_sent_js !== generated_js
-
-			if (data_changed || js_changed) {
-				// Debounce rapid changes
-				clearTimeout(send_to_iframe_timeout)
-				send_to_iframe_timeout = setTimeout(() => {
-					last_sent_data = _.cloneDeep(component_data)
-					last_sent_js = generated_js
-					send_component_to_iframe(generated_js, component_data)
-				}, 100) // Small delay to batch rapid changes
+	// Watch for changes and send to iframe when ready
+	watch(
+		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
+		({ js, data, ready }) => {
+			if (ready && js) {
+				send_component_to_iframe(js, data)
 			}
 		}
-	})
+	)
 
 	async function send_component_to_iframe(js, data) {
 		try {

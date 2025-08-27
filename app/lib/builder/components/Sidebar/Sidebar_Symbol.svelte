@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
-	// import Icon from '@iconify/svelte'
+	import Icon from '@iconify/svelte'
 	import Toggle from 'svelte-toggle'
 	import { Button } from '$lib/components/ui/button'
 	import * as Dialog from '$lib/components/ui/dialog'
@@ -10,6 +10,7 @@
 	import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import IFrame from '../../components/IFrame.svelte'
 	import { createEventDispatcher, onMount } from 'svelte'
+	import { watch } from 'runed'
 	import { block_html } from '$lib/builder/code_generators'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { manager, Sites, SiteSymbols } from '$lib/pocketbase/collections'
@@ -62,23 +63,32 @@
 		css: symbol.css,
 		js: symbol.js
 	})
-	const data = $derived(useContent(symbol)[$locale] ?? {})
+	const data = $derived(useContent(symbol)?.[$locale] ?? {})
 
 	let componentCode = $state()
 	let component_error = $state()
-	$effect(() => {
-		if (!data) return
-		block_html({
-			code,
-			data
-		})
-			.then((res) => {
-				componentCode = res
-			})
-			.catch((error) => {
+	let is_loading = $state(true)
+	
+	// Watch for changes in symbol code or data and regenerate
+	watch(
+		() => ({ code, data }),
+		async ({ code, data }) => {
+			is_loading = true
+			component_error = undefined
+			try {
+				const res = await block_html({ code, data })
+				// Only set componentCode if we have actual content
+				if (res && res.body) {
+					componentCode = res
+				}
+			} catch (error) {
+				console.error('Sidebar symbol error for', symbol.name, ':', error)
 				component_error = error
-			})
-	})
+			} finally {
+				is_loading = false
+			}
+		}
+	)
 
 	let element = $state()
 	$effect(() => {
@@ -197,6 +207,10 @@
 			<div class="error">
 				<!-- <Icon icon="heroicons:no-symbol-16-solid" /> -->
 			</div>
+		{:else if is_loading}
+			<div class="loading">
+				<Icon icon="eos-icons:three-dots-loading" />
+			</div>
 		{:else if componentCode}
 			<div class="symbol">
 				<IFrame bind:height {append} {componentCode} />
@@ -274,6 +288,20 @@
 		inset: 0;
 		align-items: center;
 		/* background: #ff0000; */
+	}
+	.loading {
+		display: flex;
+		justify-content: center;
+		height: 100%;
+		position: absolute;
+		inset: 0;
+		align-items: center;
+		color: #888;
+		
+		:global(svg) {
+			height: 1rem;
+			width: 1rem;
+		}
 	}
 	[contenteditable] {
 		outline: 0 !important;
