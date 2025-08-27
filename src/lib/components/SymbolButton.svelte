@@ -25,7 +25,8 @@
 			js: symbol.js
 		}
 	)
-	const data = $derived(useContent(symbol)[$locale] ?? {})
+	const _data = $derived(useContent(symbol))
+	const data = $derived(_data && (_data[$locale] ?? {}))
 
 	let generated_code = $state()
 	$effect(() => {

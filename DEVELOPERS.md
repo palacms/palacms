@@ -19,7 +19,7 @@ This guide covers the technical aspects of working **on the PalaCMS codebase its
 
 ```
 palacms/
-├── app/                    # Main SvelteKit application
+├── src/                    # Main SvelteKit application
 │   ├── lib/
 │   │   ├── builder/        # Core page builder components
 │   │   │   ├── components/ # Builder UI components
@@ -120,9 +120,9 @@ palacms/
 ### Collections & Data Access
 
 - Use the CollectionMapping system for reactive data access
-- Collections are defined in `app/lib/pocketbase/collections.ts`
+- Collections are defined in `src/lib/pocketbase/collections.ts`
 - Follow existing patterns for CRUD operations
-- Data models are in `app/lib/common/models/`
+- Data models are in `src/lib/common/models/`
 
 Example:
 
@@ -250,7 +250,7 @@ For production deployments, see the [PocketBase deployment documentation](https:
 ### TypeScript
 
 - All new code should be TypeScript
-- Data models extend base types from `app/lib/common/models/`
+- Data models extend base types from `src/lib/common/models/`
 - Use proper typing for Svelte components and stores
 - Prefer interfaces over types for object shapes
 
@@ -272,14 +272,14 @@ For production deployments, see the [PocketBase deployment documentation](https:
 
 ### Adding New Field Types
 
-1. Create field component in `app/lib/builder/field-types/`
+1. Create field component in `src/lib/builder/field-types/`
 2. Add to field type registry
 3. Define TypeScript interfaces
 4. Add validation logic
 
 ### Creating Custom Views
 
-1. Add route in `app/routes/`
+1. Add route in `src/routes/`
 2. Create view components
 3. Handle authentication and permissions
 4. Add navigation if needed

@@ -616,11 +616,15 @@
 		}
 	}
 
+	let compiled_code = $state<string>('')
 	// Watch for changes in block code or component data and regenerate
 	watch(
 		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
-		() => {
-			generate_component_code(block)
+		({ html, data }) => {
+			if (data && compiled_code !== html) {
+				generate_component_code(block)
+				compiled_code = html
+			}
 		}
 	)
 

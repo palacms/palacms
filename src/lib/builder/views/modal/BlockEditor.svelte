@@ -87,7 +87,8 @@
 
 	const fields = $derived('site' in block ? block.fields() : block.fields())
 	const entries = $derived('site' in block ? block.entries() : block.entries())
-	let component_data = $derived(useContent(block)[$locale] ?? {})
+	const data = $derived(useContent(block))
+	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	let loading = $state(false)
 

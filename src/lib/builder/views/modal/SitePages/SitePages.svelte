@@ -20,7 +20,6 @@
 	const all_pages = $derived(site?.pages() ?? [])
 	const home_page = $derived(site?.homepage())
 	const child_pages = $derived(home_page?.children() ?? [])
-	$inspect({ all_pages: all_pages.map((p) => ({ name: p.name, index: p.index })) })
 
 	// WORKAROUND: For some reason Svelte does not track all_pages if it's not a dependency for an effect.
 	$effect(() => {
@@ -96,9 +95,7 @@
 			<div class="drop-indicator-inline" class:active={hover_position === 'home-bottom'}><div></div></div>
 		</li>
 		{#each child_pages.sort((a, b) => a.index - b.index) as child_page, i (child_page.id)}
-			<li class="page-item-wrapper" 
-				in:fly={{ y: 20, duration: 200, delay: i * 50 }}
-				animate:flip={{ duration: 300, easing: quintOut }}>
+			<li class="page-item-wrapper" in:fly={{ y: 20, duration: 200, delay: i * 50 }} animate:flip={{ duration: 300, easing: quintOut }}>
 				<Item page={child_page} active={page_slug === child_page.slug} {page_slug} oncreate={create_page_with_sections} bind:hover_position />
 				<div class="drop-indicator-inline" class:active={hover_position === `${child_page.id}-bottom`}><div></div></div>
 			</li>
@@ -142,11 +139,11 @@
 <style lang="postcss">
 	.page-list {
 		gap: 0.5rem;
-		
+
 		.page-item-wrapper {
 			position: relative;
 		}
-		
+
 		.drop-indicator-inline {
 			height: 4px;
 			display: flex;
@@ -157,7 +154,7 @@
 			left: 0;
 			right: 0;
 			z-index: 10;
-			
+
 			div {
 				width: 100%;
 				height: 2px;
@@ -166,7 +163,7 @@
 				transition: all 0.2s ease;
 				opacity: 0;
 			}
-			
+
 			&.active div {
 				opacity: 1;
 				background: var(--weave-primary-color);
@@ -175,16 +172,17 @@
 			}
 		}
 	}
-	
+
 	@keyframes pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 1;
 		}
 		50% {
 			opacity: 0.6;
 		}
 	}
-	
+
 	.create-page-btn {
 		width: 100%;
 		padding: 0.875rem 1.125rem;

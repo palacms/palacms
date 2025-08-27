@@ -63,7 +63,8 @@
 		css: symbol.css,
 		js: symbol.js
 	})
-	const data = $derived(useContent(symbol)?.[$locale] ?? {})
+	const _data = $derived(useContent(symbol))
+	const data = $derived(_data && (_data[$locale] ?? {}))
 
 	let componentCode = $state()
 	let component_error = $state()

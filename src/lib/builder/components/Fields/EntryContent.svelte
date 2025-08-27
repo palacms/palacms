@@ -48,7 +48,8 @@
 			| undefined
 	)
 
-	const data = $derived(useContent(entity)[$locale] ?? {})
+	const _data = $derived(useContent(entity))
+	const data = $derived(_data && (_data[$locale] ?? {}))
 	const is_visible = $derived.by(() => {
 		if (!field.config?.condition) return true // has no condition
 
