@@ -232,26 +232,32 @@ const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEn
 	// Handle page-field fields specially - get entries from the page entity
 	if (field.type === 'page-field' && field.key) {
 		if (!field.config?.field) return []
-		const pageField = PageTypeFields.one(field.config.field)
-		if (!pageField) return
+		const sourceField = PageTypeFields.one(field.config.field)
+		if (!sourceField) return
 
-		let page: ObjectOf<typeof Pages> | undefined | null
+		let sourceEntity: ObjectOf<typeof Pages> | ObjectOf<typeof PageTypes> | undefined | null
 		if ('page' in entity && 'symbol' in entity) {
 			// This is a page section, get the page
-			page = Pages.one(entity.page)
+			sourceEntity = Pages.one(entity.page)
+		} else if ('page_type' in entity && 'symbol' in entity) {
+			// This is page type section, get the page type
+			sourceEntity = PageTypes.one(entity.page_type)
 		} else if ('slug' in entity) {
-			// This a page itself
-			page = entity
+			// This a page
+			sourceEntity = entity
+		} else if ('site' in entity && 'head' in entity) {
+			// This is page type
+			sourceEntity = entity
 		} else {
-			// There's no page
+			// Entity is not related to any page or page type
 			return []
 		}
-		if (!page) return
+		if (!sourceEntity) return
 
-		const pageEntries = page.entries()
-		if (!pageEntries) return
+		const sourceEntries = 'page_type' in sourceEntity ? sourceEntity.entries() : sourceEntity.entries()
+		if (!sourceEntries) return
 
-		return resolveEntries(page, pageField, pageEntries)
+		return resolveEntries(sourceEntity, sourceField, sourceEntries)
 	}
 
 	// Handle site fields specially - get entries from the site entity
