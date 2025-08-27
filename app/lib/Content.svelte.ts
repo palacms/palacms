@@ -92,6 +92,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 		for (const field of filteredFields) {
 			const fieldEntries = resolveEntries(entity, field, entries, parentEntry)
+			if (!fieldEntries) return
 
 			// Handle group fields specially - collect subfield entries into an object
 			if (field.type === 'group' && field.key) {
@@ -219,10 +220,10 @@ export const useEntries = (entity: Entity, field: Field, parentEntry?: Entry) =>
 		}
 	})()
 
-	return (entries && resolveEntries(entity, field, entries, parentEntry)) ?? []
+	return entries && resolveEntries(entity, field, entries, parentEntry)
 }
 
-const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEntry?: Entry) => {
+const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEntry?: Entry): Entry[] | undefined => {
 	const fieldEntries = entries
 		.filter((entry) => entry.field === field.id && (!('section' in entry) || entry.section === entity.id))
 		.filter((entry) => (parentEntry ? entry.parent === parentEntry.id : !entry.parent))
@@ -232,7 +233,7 @@ const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEn
 	if (field.type === 'page-field' && field.key) {
 		if (!field.config?.field) return []
 		const pageField = PageTypeFields.one(field.config.field)
-		if (!pageField) return []
+		if (!pageField) return
 
 		let page: ObjectOf<typeof Pages> | undefined | null
 		if ('page' in entity && 'symbol' in entity) {
@@ -241,11 +242,14 @@ const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEn
 		} else if ('slug' in entity) {
 			// This a page itself
 			page = entity
+		} else {
+			// There's no page
+			return []
 		}
-		if (!page) return []
+		if (!page) return
 
 		const pageEntries = page.entries()
-		if (!pageEntries) return []
+		if (!pageEntries) return
 
 		return resolveEntries(page, pageField, pageEntries)
 	}
@@ -254,13 +258,13 @@ const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEn
 	else if (field.type === 'site-field' && field.key) {
 		if (!field.config?.field) return []
 		const siteField = SiteFields.one(field.config.field)
-		if (!siteField) return []
+		if (!siteField) return
 
 		const site = Sites.one(siteField.site)
-		if (!site) return []
+		if (!site) return
 
 		const siteEntries = site.entries()
-		if (!siteEntries) return []
+		if (!siteEntries) return
 
 		return resolveEntries(site, siteField, siteEntries)
 	}
