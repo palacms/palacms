@@ -68,12 +68,25 @@
 
 	let componentCode = $state()
 	let component_error = $state()
-	let is_loading = $state(true)
+	let is_loading = $state(false)
+	
+	// Cache for processed symbols to avoid regenerating on page navigation
+	const cache = new Map()
 	
 	// Watch for changes in symbol code or data and regenerate
 	watch(
 		() => ({ code, data }),
 		async ({ code, data }) => {
+			const cache_key = JSON.stringify({ code, data })
+			
+			// Check cache first
+			if (cache.has(cache_key)) {
+				const cached = cache.get(cache_key)
+				componentCode = cached.componentCode
+				component_error = cached.component_error
+				return
+			}
+			
 			is_loading = true
 			component_error = undefined
 			try {
@@ -81,10 +94,14 @@
 				// Only set componentCode if we have actual content
 				if (res && res.body) {
 					componentCode = res
+					// Cache successful result
+					cache.set(cache_key, { componentCode: res, component_error: undefined })
 				}
 			} catch (error) {
 				console.error('Sidebar symbol error for', symbol.name, ':', error)
 				component_error = error
+				// Cache error result too
+				cache.set(cache_key, { componentCode: undefined, component_error: error })
 			} finally {
 				is_loading = false
 			}
@@ -267,7 +284,7 @@
 		overflow: hidden;
 		position: relative;
 		cursor: grab;
-		min-height: 2rem;
+		min-height: 4rem;
 		transition: box-shadow 0.2s;
 		background: var(--color-gray-8);
 

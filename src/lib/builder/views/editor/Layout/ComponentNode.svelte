@@ -64,7 +64,12 @@
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
 	const data = $derived(useContent(section))
-	const component_data = $derived(data ? (data[$locale] ?? {}) : {})
+	const component_data = $derived.by(() => {
+		console.log('ComponentNode data:', data, 'locale:', $locale)
+		const result = data && typeof data === 'object' ? (data[$locale] ?? {}) : {}
+		console.log('ComponentNode component_data:', result)
+		return result
+	})
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
@@ -87,13 +92,14 @@
 
 	let generated_js = $state('')
 	async function generate_component_code(block) {
+		const safeData = component_data && typeof component_data === 'object' ? component_data : {}
 		const res = await processCode({
 			component: {
 				head: '',
 				html: block.html,
 				css: block.css,
 				js: block.js,
-				data: component_data
+				data: safeData
 			},
 			buildStatic: false
 		})
@@ -621,7 +627,7 @@
 	watch(
 		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
 		({ html, data }) => {
-			if (data && compiled_code !== html) {
+			if (compiled_code !== html && Object.keys(component_data).length > 0) {
 				generate_component_code(block)
 				compiled_code = html
 			}

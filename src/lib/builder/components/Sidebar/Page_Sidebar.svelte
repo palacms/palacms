@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { flip } from 'svelte/animate'
 	import * as _ from 'lodash-es'
 	import UI from '$lib/builder/ui'
 	import { dragging_symbol } from '$lib/builder/stores/app/misc'
@@ -95,7 +94,7 @@
 	<div class="symbols">
 		{#if $site_html !== null}
 			{#each available_symbols ?? [] as symbol (symbol.id)}
-				<div animate:flip={{ duration: 200 }} use:drag_target={symbol}>
+				<div use:drag_target={symbol}>
 					<Sidebar_Symbol {symbol} controls_enabled={false} append={$site_html} />
 				</div>
 			{/each}
