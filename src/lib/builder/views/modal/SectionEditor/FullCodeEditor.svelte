@@ -1,5 +1,30 @@
 <script module>
 	import { writable } from 'svelte/store'
+	
+	// Global pane size stores that persist across component instances
+	// Keyed by storage_key to maintain separate states for different editors
+	const pane_states = new Map()
+	
+	function get_pane_stores(storage_key) {
+		if (!storage_key) {
+			// Return default stores for editors without a storage key
+			return {
+				left_pane_size: writable(33),
+				center_pane_size: writable(33),
+				right_pane_size: writable(33)
+			}
+		}
+		
+		if (!pane_states.has(storage_key)) {
+			pane_states.set(storage_key, {
+				left_pane_size: writable(33),
+				center_pane_size: writable(33),
+				right_pane_size: writable(33)
+			})
+		}
+		
+		return pane_states.get(storage_key)
+	}
 </script>
 
 <script>
@@ -10,10 +35,6 @@
 	import { get, set } from 'idb-keyval'
 
 	const dispatch = createEventDispatcher()
-
-	const left_pane_size = writable(33)
-	const center_pane_size = writable(33)
-	const right_pane_size = writable(33)
 
 	/**
 	 * @typedef {Object} Props
@@ -26,6 +47,9 @@
 
 	/** @type {Props} */
 	let { data = {}, completions, html = $bindable(''), css = $bindable(''), js = $bindable(''), storage_key, onmod_e = () => {}, onmod_r = () => {}, oninput = () => {} } = $props()
+	
+	// Get the appropriate pane stores for this editor instance
+	const { left_pane_size, center_pane_size, right_pane_size } = get_pane_stores(storage_key)
 
 	let html_pane_component = $state()
 	let css_pane_component = $state()
@@ -173,9 +197,20 @@
 		}
 	}
 
-	// close empty tabs on mount only
+	// Load saved sizes from IndexedDB once, or initialize based on content
 	onMount(async () => {
-		// First, try to load saved pane sizes if we have a storage key
+		// Check if we've already loaded sizes for this storage_key in this session
+		const current_left = $left_pane_size
+		const current_center = $center_pane_size
+		const current_right = $right_pane_size
+		
+		// If stores already have non-default values, the state is already loaded
+		if (current_left !== 33 || current_center !== 33 || current_right !== 33) {
+			initial_load_complete = true
+			return
+		}
+		
+		// First, try to load saved pane sizes from IndexedDB if we have a storage key
 		if (idb_key) {
 			try {
 				const saved_sizes = await get(idb_key)
