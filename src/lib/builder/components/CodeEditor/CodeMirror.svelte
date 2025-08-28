@@ -20,7 +20,7 @@
 	import * as prettierPostcss from 'prettier/plugins/postcss'
 	import * as prettierBabel from 'prettier/plugins/babel'
 	import * as prettierEstree from 'prettier/plugins/estree'
-	import * as prettierSvelte from 'prettier-plugin-svelte'
+	import * as prettierSvelte from 'prettier-plugin-svelte/browser'
 
 	const slowDebounce = createDebouncer(1000)
 
