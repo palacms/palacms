@@ -139,6 +139,7 @@
 <style lang="postcss">
 	.page-list {
 		gap: 0.5rem;
+		overflow: auto;
 
 		.page-item-wrapper {
 			position: relative;
@@ -212,7 +213,7 @@
 			gap: 0.75rem;
 			color: var(--color-gray-3);
 			font-size: 0.875rem;
-			
+
 			:global(svg) {
 				height: 1rem;
 				width: 1rem;
