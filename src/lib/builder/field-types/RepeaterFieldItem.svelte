@@ -50,7 +50,7 @@
 	function get_image(subfields) {
 		const [first_subfield] = subfields
 		if (first_subfield && first_subfield.type === 'image') {
-			const [ent] = useEntries(entity, first_subfield, entry)
+			const [ent] = useEntries(entity, first_subfield, entry) ?? []
 			return ent?.value?.url
 		} else return null
 	}
@@ -58,7 +58,7 @@
 	function get_icon(subfields) {
 		const [first_subfield] = subfields
 		if (first_subfield && first_subfield.type === 'icon') {
-			const [ent] = useEntries(entity, first_subfield, entry)
+			const [ent] = useEntries(entity, first_subfield, entry) ?? []
 			return ent?.value
 		} else return null
 	}
@@ -66,7 +66,7 @@
 	function get_title(subfields) {
 		const first_subfield = subfields.find((subfield) => ['text', 'markdown', 'link', 'number'].includes(subfield.type))
 		if (first_subfield) {
-			const [ent] = useEntries(entity, first_subfield, entry)
+			const [ent] = useEntries(entity, first_subfield, entry) ?? []
 			if (first_subfield.type === 'link') return ent?.value?.label
 			else if (first_subfield.type === 'markdown') return ent?.value?.markdown
 			else return ent?.value

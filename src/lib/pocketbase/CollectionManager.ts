@@ -2,10 +2,10 @@ import type { ObjectWithId } from './Object'
 import type { RecordService } from 'pocketbase'
 import { OrderedSvelteMap } from './OrderedSvelteMap'
 
-export type StagedOperation<T extends ObjectWithId> =
-	| { collection: RecordService<T>; operation: 'create'; processed: boolean; data: Omit<T, 'id'> }
-	| { collection: RecordService<T>; operation: 'update'; processed: boolean; data: Partial<T> }
-	| { collection: RecordService<T>; operation: 'delete'; processed: boolean }
+export type Change<T extends ObjectWithId> =
+	| { collection: RecordService<T>; operation: 'create'; committed: boolean; data: Omit<T, 'id'> }
+	| { collection: RecordService<T>; operation: 'update'; committed: boolean; data: Partial<T> }
+	| { collection: RecordService<T>; operation: 'delete'; committed: boolean }
 
 export type RecordIdList = {
 	invalidated: boolean
@@ -15,43 +15,43 @@ export type RecordIdList = {
 export type CollectionManager = ReturnType<typeof createCollectionManager>
 
 export const createCollectionManager = () => {
-	const staged = new OrderedSvelteMap<string, StagedOperation<ObjectWithId>>()
+	const changes = new OrderedSvelteMap<string, Change<ObjectWithId>>()
 	const records = new OrderedSvelteMap<string, ObjectWithId | undefined | null>()
 	const lists = new OrderedSvelteMap<string, RecordIdList | undefined | null>()
 
 	let commitsInProgress = 0
 
 	return {
-		staged,
+		changes,
 		records,
 		lists,
 		commit: async () => {
 			try {
 				commitsInProgress++
 
-				for (const [id, operation] of staged) {
-					// Avoid redoing operation if commit is done twice in a row
-					if (operation.processed) {
+				for (const [id, change] of changes) {
+					// Avoid re-committing a change if commit is done twice in a row
+					if (change.committed) {
 						continue
 					} else {
-						operation.processed = true
+						change.committed = true
 					}
 
-					switch (operation.operation) {
+					switch (change.operation) {
 						case 'create':
-							await operation.collection.create(operation.data).then((record) => {
+							await change.collection.create(change.data).then((record) => {
 								records.set(id, record)
 							})
 							break
 
 						case 'update':
-							await operation.collection.update(id, operation.data).then((record) => {
+							await change.collection.update(id, change.data).then((record) => {
 								records.set(id, record)
 							})
 							break
 
 						case 'delete':
-							await operation.collection.delete(id).then(() => {
+							await change.collection.delete(id).then(() => {
 								records.set(id, null)
 							})
 							break
@@ -67,13 +67,15 @@ export const createCollectionManager = () => {
 							ids: [...(list?.ids ?? [])]
 						})
 					}
-
-					staged.clear()
 				}
 			}
 		},
 		discard: () => {
-			staged.clear()
+			for (const [id, change] of [...changes]) {
+				if (!change.committed) {
+					changes.delete(id)
+				}
+			}
 		}
 	}
 }

@@ -30,7 +30,7 @@
 	const site = site_context.get()
 	const page_slug = $derived(pageState.params.page || '')
 	const page_type_id = $derived(pageState.params.page_type)
-	const page = $derived(site && page_slug ? Pages.list({ filter: `site = "${site.id}" && slug = "${page_slug}"` })?.[0] : undefined)
+	const page = $derived(site && page_slug ? Pages.list({ filter: { site: site.id, slug: page_slug } })?.[0] : undefined)
 	const page_type = $derived(page_type_id && PageTypes.one(page_type_id))
 	const page_page_type = $derived(page && PageTypes.one(page.page_type))
 
@@ -44,7 +44,18 @@
 	const home_page = $derived(site?.homepage())
 	const child_pages = $derived(home_page?.children() ?? [])
 	const root_pages = $derived(home_page ? [home_page, ...child_pages] : [])
-	const current_page_index = $derived(root_pages.findIndex((p) => p.id === page?.id))
+	const current_page_index = $derived.by(() => {
+		if (!page) {
+			// If no page is found, we might be on the homepage
+			const currentUrl = pageState.url.pathname
+			const siteBasePath = `/admin/sites/${site?.id}`
+			if (currentUrl === siteBasePath) {
+				// We're on the homepage
+				return 0
+			}
+		}
+		return root_pages.findIndex((p) => p.id === page?.id)
+	})
 	const can_navigate_up = $derived(current_page_index > 0)
 	const can_navigate_down = $derived(current_page_index < root_pages.length - 1 && current_page_index !== -1)
 
@@ -52,16 +63,36 @@
 	function navigate_up() {
 		if (can_navigate_up) {
 			const prev_page = root_pages[current_page_index - 1]
-			const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
-			goto(`${base_path}/${prev_page.slug}`)
+			const base_path = `/admin/sites/${site?.id}`
+			// Check if this is the homepage (first page in root_pages array)
+			const target_url = prev_page === home_page ? base_path : `${base_path}/${prev_page.slug}`
+			console.log('Navigate up:', {
+				current_page_index,
+				prev_page: prev_page?.name,
+				prev_page_slug: prev_page?.slug,
+				is_homepage: prev_page === home_page,
+				target_url
+			})
+			goto(target_url)
 		}
 	}
 
 	function navigate_down() {
-		if (can_navigate_down) {
+		if (can_navigate_down && current_page_index < root_pages.length - 1 && current_page_index !== -1) {
 			const next_page = root_pages[current_page_index + 1]
-			const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
-			goto(`${base_path}/${next_page.slug}`)
+			if (next_page) {
+				const base_path = `/admin/sites/${site?.id}`
+				// Check if this is the homepage (first page in root_pages array)  
+				const target_url = next_page === home_page ? base_path : `${base_path}/${next_page.slug}`
+				console.log('Navigate down:', {
+					current_page_index,
+					next_page: next_page?.name,
+					next_page_slug: next_page?.slug,
+					is_homepage: next_page === home_page,
+					target_url
+				})
+				goto(target_url)
+			}
 		}
 	}
 

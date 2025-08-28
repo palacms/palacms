@@ -474,6 +474,72 @@
 	// Check if hovered section is a page type section (header/footer)
 	let is_page_type_section = $derived(hovered_section_id && (header_sections.some((s) => s.id === hovered_section_id) || footer_sections.some((s) => s.id === hovered_section_id)))
 	let editing_section = $state(false)
+
+	// Fade-in logic
+	let page_fade_loaded = $state(false)
+	let current_page_id = $state(page.id)
+	let fade_timeout = $state(null)
+	
+	$effect(() => {
+		// Reset fade state when page changes
+		if (current_page_id !== page.id) {
+			current_page_id = page.id
+			page_loaded.set(false)
+			page_fade_loaded = false
+			
+			// Clear any pending timeout
+			if (fade_timeout) {
+				clearTimeout(fade_timeout)
+				fade_timeout = null
+			}
+		}
+		
+		// Use MutationObserver to detect when page content is rendered
+		if (page_el && !page_fade_loaded) {
+			const observer = new MutationObserver(() => {
+				// Check if page has any rendered content and we haven't already loaded
+				const hasContent = page_el.querySelector('[data-section]')
+				if (hasContent && !page_fade_loaded && current_page_id === page.id) {
+					// Clear any existing timeout
+					if (fade_timeout) clearTimeout(fade_timeout)
+					
+					// Small delay to ensure content is fully rendered
+					fade_timeout = setTimeout(() => {
+						if (current_page_id === page.id) { // Double-check page hasn't changed
+							page_loaded.set(true)
+							page_fade_loaded = true
+							fade_timeout = null
+						}
+					}, 100)
+				}
+			})
+			
+			observer.observe(page_el, {
+				childList: true,
+				subtree: true
+			})
+			
+			// Also check immediately in case content is already there
+			const hasContent = page_el.querySelector('[data-section]')
+			if (hasContent && !page_fade_loaded && current_page_id === page.id) {
+				fade_timeout = setTimeout(() => {
+					if (current_page_id === page.id) {
+						page_loaded.set(true)
+						page_fade_loaded = true
+						fade_timeout = null
+					}
+				}, 100)
+			}
+			
+			return () => {
+				observer.disconnect()
+				if (fade_timeout) {
+					clearTimeout(fade_timeout)
+					fade_timeout = null
+				}
+			}
+		}
+	})
 </script>
 
 {#if hovered_section}
@@ -616,7 +682,7 @@
 {/if}
 
 <!-- Page with Zone-Based Layout -->
-<main id="Page" bind:this={page_el} class:fadein={true} class:dragging={$dragging_symbol} lang={$locale} use:drag_fallback>
+<main id="Page" bind:this={page_el} class:fadein={$page_loaded} class:dragging={$dragging_symbol} lang={$locale} use:drag_fallback>
 	<!-- Page Type Header Sections -->
 	{#if header_sections.length > 0}
 		<header class="page-header-zone">
