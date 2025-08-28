@@ -28,7 +28,10 @@
 	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites } from '$lib/pocketbase/collections'
 	import { Editor, Extension } from '@tiptap/core'
 	import { renderToHTMLString, renderToMarkdown } from '@tiptap/static-renderer'
-	import { useContent } from '$lib/Content.svelte'
+	import { useContent, useEntries } from '$lib/Content.svelte'
+	import { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
+	import { self } from '$lib/pocketbase/PocketBase'
+	import { site_context } from '$lib/builder/stores/context'
 
 	const lowlight = createLowlight(all)
 
@@ -65,6 +68,9 @@
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
 	const _data = $derived(useContent(section))
 	const data = $derived(_data && (_data[$locale] ?? {}))
+
+	const site = site_context.get()
+	const uploads = $derived(site.uploads())
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
@@ -356,12 +362,6 @@
 				image_editor.onclick = () => {
 					current_image_element = element
 					current_image_id = id
-					// Set current_image_value from the entry
-					const entry = entries?.find((entry) => entry.id === id)
-					current_image_value = entry?.value || {
-						url: element.src || '',
-						alt: element.alt || ''
-					}
 					editing_image = true
 					image_editor_is_visible = false
 				}
@@ -819,9 +819,7 @@
 <Dialog.Root bind:open={editing_image}>
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12">
 		{@const field = fields?.find((f) => entries?.find((e) => e.id === current_image_id)?.field === f.id) || { label: 'Image', key: 'image', type: 'image', config: {} }}
-		{@const entry = {
-			value: current_image_value
-		}}
+		{@const [entry] = 'id' in field ? (useEntries(section, field) ?? []) : [{ value: current_image_value }]}
 		<form
 			onsubmit={(e) => {
 				e.preventDefault()
@@ -870,11 +868,6 @@
 							current_image_element.alt = current_image_value.alt
 						}
 					}
-				} else if (current_image_element && current_image_id) {
-					// Handle direct image editing (entry-based)
-					current_image_element.src = current_image_value.url
-					current_image_element.alt = current_image_value.alt
-					save_edited_value({ id: current_image_id, value: current_image_value })
 				}
 				editing_image = false
 			}}
@@ -883,11 +876,28 @@
 				entity={section}
 				{field}
 				{entry}
-				onchange={(changeData) => {
-					// Extract the actual value from the nested structure
-					const fieldKey = Object.keys(changeData)[0]
-					const newValue = changeData[fieldKey][0].value
-					current_image_value = newValue
+				onchange={(values) => {
+					if ('id' in field) {
+						setFieldEntries({
+							fields: [field],
+							entries: [entry],
+							updateEntry: 'page_type' in section ? PageTypeSectionEntries.update : PageSectionEntries.update,
+							createEntry:
+								'page_type' in section ? (values) => PageTypeSectionEntries.create({ ...values, section: section.id }) : (values) => PageSectionEntries.create({ ...values, section: section.id }),
+							values
+						})
+					} else {
+						// Extract the actual value from the nested structure
+						const [key] = Object.keys(values)
+						const entry = values[key][0]
+						const upload_id: string | null | undefined = entry.value.upload
+						const upload = upload_id ? uploads?.find((upload) => upload.id === upload_id) : null
+						const upload_url = upload && (typeof upload.file === 'string' ? `${self.baseURL}/api/files/site_uploads/${upload.id}/${upload.file}` : URL.createObjectURL(upload.file))
+						const input_url: string | undefined = entry.value.url
+						const url = input_url || upload_url
+						const alt: string = entry.value.alt
+						current_image_value = { url, alt }
+					}
 				}}
 			/>
 			<div class="flex justify-end gap-2 mt-2">
