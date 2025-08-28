@@ -25,13 +25,12 @@
 	import { watch } from 'runed'
 	import { component_iframe_srcdoc } from '$lib/builder/components/misc'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites } from '$lib/pocketbase/collections'
-	import { Editor, Extension } from '@tiptap/core'
-	import { renderToHTMLString, renderToMarkdown } from '@tiptap/static-renderer'
-	import { useContent, useEntries } from '$lib/Content.svelte'
-	import { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
+	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites, SiteUploads, LibraryUploads } from '$lib/pocketbase/collections'
 	import { self } from '$lib/pocketbase/PocketBase'
 	import { site_context } from '$lib/builder/stores/context'
+	import { Editor, Extension } from '@tiptap/core'
+	import { renderToHTMLString, renderToMarkdown } from '@tiptap/static-renderer'
+	import { useContent } from '$lib/Content.svelte'
 
 	const lowlight = createLowlight(all)
 
@@ -66,16 +65,15 @@
 
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
-	const _data = $derived(useContent(section))
-	const data = $derived(_data && (_data[$locale] ?? {}))
-
-	const site = site_context.get()
-	const uploads = $derived(site.uploads())
+	const data = $derived(useContent(section))
+	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
 	let image_editor = $state()
 	let image_editor_is_visible = $state(false)
+	
+	const site = site_context.getOr(null)
 
 	let link_editor_is_visible = $state(false)
 
@@ -93,13 +91,14 @@
 
 	let generated_js = $state('')
 	async function generate_component_code(block) {
+		const safeData = component_data && typeof component_data === 'object' ? component_data : {}
 		const res = await processCode({
 			component: {
 				head: '',
 				html: block.html,
 				css: block.css,
 				js: block.js,
-				data
+				data: safeData
 			},
 			buildStatic: false
 		})
@@ -362,6 +361,12 @@
 				image_editor.onclick = () => {
 					current_image_element = element
 					current_image_id = id
+					// Set current_image_value from the entry
+					const entry = entries?.find((entry) => entry.id === id)
+					current_image_value = entry?.value || {
+						url: element.src || '',
+						alt: element.alt || ''
+					}
 					editing_image = true
 					image_editor_is_visible = false
 				}
@@ -528,7 +533,8 @@
 				// Set current_image_value from the element
 				current_image_value = {
 					url: element.src || '',
-					alt: element.alt || ''
+					alt: element.alt || '',
+					upload: null  // Clear any previous upload
 				}
 				editing_image = true
 				image_editor_is_visible = false
@@ -616,23 +622,15 @@
 		}
 	}
 
-	const code = $derived({
-		html: block.html,
-		css: block.css,
-		js: block.js
-	})
-
+	let compiled_code = $state<string>('')
 	// Watch for changes in block code or component data and regenerate
-	let seen_code = $state()
-	let seen_data = $state()
 	watch(
-		() => ({ code, data }),
-		({ code, data }) => {
-			if (!data) return
-			if (_.isEqual(seen_code, code) && _.isEqual(seen_data, data)) return
-			seen_code = _.cloneDeep(code)
-			seen_data = _.cloneDeep(data)
-			generate_component_code(block)
+		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
+		({ html, data }) => {
+			if (component_data && typeof component_data === 'object' && Object.keys(component_data).length > 0 && compiled_code !== html) {
+				generate_component_code(block)
+				compiled_code = html
+			}
 		}
 	)
 
@@ -771,7 +769,7 @@
 
 	// Watch for changes and send to iframe when ready
 	watch(
-		() => ({ js: generated_js, data, ready: setup_complete && !is_editing }),
+		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
 		({ js, data, ready }) => {
 			if (ready && data && js) {
 				send_component_to_iframe(js, data)
@@ -819,16 +817,106 @@
 <Dialog.Root bind:open={editing_image}>
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12">
 		{@const field = fields?.find((f) => entries?.find((e) => e.id === current_image_id)?.field === f.id) || { label: 'Image', key: 'image', type: 'image', config: {} }}
-		{@const [entry] = 'id' in field ? (useEntries(section, field) ?? []) : [{ value: current_image_value }]}
+		{@const entry = {
+			value: current_image_value
+		}}
 		<form
-			onsubmit={(e) => {
+			onsubmit={async (e) => {
 				e.preventDefault()
+				
 				// Handle submit - same logic as Done button
-				if (active_editor && !current_image_element) {
+				
+				if (!current_image_element && active_editor) {
 					// Handle TipTap editor images - only for NEW images from floating menu
-					active_editor.chain().focus().setImage({ src: current_image_value.url, alt: current_image_value.alt }).run()
+					
+					// Get the image URL - either from direct URL or from upload
+					let imageUrl = current_image_value.url
+					if (!imageUrl && current_image_value.upload) {
+						// Get upload URL from the upload record
+						const upload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
+						if (upload) {
+							const baseURL = self.baseURL
+							const collection = site ? 'site_uploads' : 'library_uploads'
+							
+							// Only use the PocketBase URL if the file is saved server-side (string)
+							// If it's still a File object, we need to commit it first
+							if (typeof upload.file === 'string') {
+								imageUrl = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
+							} else {
+								try {
+									// Force commit the upload to save it server-side
+									await manager.commit()
+									
+									// Refresh the upload record to get the server-side filename
+									const refreshedUpload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
+									
+									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
+										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
+									} else {
+										console.error('Upload still not committed after manager.commit()')
+										alert('Upload failed to complete. Please try again.')
+										editing_image = false
+										return
+									}
+								} catch (error) {
+									console.error('Failed to commit upload:', error)
+									alert('Failed to save image. Please try again.')
+									editing_image = false
+									return
+								}
+							}
+						}
+					}
+					
+					
+					// Just insert the image and let TipTap's onUpdate handle the save automatically
+					active_editor.chain().focus().setImage({ src: imageUrl, alt: current_image_value.alt }).run()
 				} else if (current_image_element && !current_image_id) {
 					// Handle existing TipTap markdown images (no entry)
+					
+					// Get the image URL - prioritize upload over direct URL for new uploads
+					let imageUrl = ''
+					if (current_image_value.upload) {
+						// Get upload URL from the upload record
+						const upload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
+						if (upload) {
+							const baseURL = self.baseURL
+							const collection = site ? 'site_uploads' : 'library_uploads'
+							
+							// Only use the PocketBase URL if the file is saved server-side (string)
+							// If it's still a File object, we need to commit it first
+							if (typeof upload.file === 'string') {
+								imageUrl = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
+							} else {
+								try {
+									// Force commit the upload to save it server-side
+									await manager.commit()
+									
+									// Refresh the upload record to get the server-side filename
+									const refreshedUpload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
+									
+									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
+										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
+									} else {
+										console.error('Upload still not committed after manager.commit() for existing image')
+										alert('Upload failed to complete. Please try again.')
+										editing_image = false
+										return
+									}
+								} catch (error) {
+									console.error('Failed to commit upload for existing image:', error)
+									alert('Failed to save image. Please try again.')
+									editing_image = false
+									return
+								}
+							}
+						}
+					} else if (current_image_value.url) {
+						// Use direct URL if no upload
+						imageUrl = current_image_value.url
+					}
+					
+					
 					const markdownContainer = current_image_element.closest('[data-markdown-id]')
 					if (markdownContainer) {
 						const markdownId = markdownContainer.getAttribute('data-markdown-id')
@@ -846,28 +934,46 @@
 
 							if (imagePos !== null) {
 								// Select the image node and update its attributes
-								editor
+								const result = editor
 									.chain()
 									.focus()
 									.setNodeSelection(imagePos)
 									.updateAttributes('image', {
-										src: current_image_value.url,
+										src: imageUrl,
 										alt: current_image_value.alt
 									})
 									.run()
-								console.log('Updated image via TipTap commands')
+								
+								// The editor's onUpdate callback should handle the save automatically
+								// but let's trigger it manually to be sure
+								setTimeout(() => {
+									const json = editor.getJSON()
+									const html = renderToHTMLString({
+										extensions: tiptapExtensions,
+										content: json
+									})
+									const markdown = renderToMarkdown({
+										extensions: tiptapExtensions,
+										content: json
+									})
+									
+									save_edited_value({ id: markdownId, value: { html, markdown } })
+								}, 100)
 							} else {
-								console.log('Could not find image node, falling back to DOM update')
 								current_image_element.src = current_image_value.url
 								current_image_element.alt = current_image_value.alt
 							}
 						} else {
 							// Fallback: directly update the DOM element
-							console.log('falling back')
 							current_image_element.src = current_image_value.url
 							current_image_element.alt = current_image_value.alt
 						}
 					}
+				} else if (current_image_element && current_image_id) {
+					// Handle direct image editing (entry-based)
+					current_image_element.src = current_image_value.url
+					current_image_element.alt = current_image_value.alt
+					save_edited_value({ id: current_image_id, value: current_image_value })
 				}
 				editing_image = false
 			}}
@@ -876,31 +982,75 @@
 				entity={section}
 				{field}
 				{entry}
-				onchange={(values) => {
-					if ('id' in field) {
-						setFieldEntries({
-							fields: [field],
-							entries: [entry],
-							updateEntry: 'page_type' in section ? PageTypeSectionEntries.update : PageSectionEntries.update,
-							createEntry:
-								'page_type' in section ? (values) => PageTypeSectionEntries.create({ ...values, section: section.id }) : (values) => PageSectionEntries.create({ ...values, section: section.id }),
-							values
-						})
-					} else {
-						// Extract the actual value from the nested structure
-						const [key] = Object.keys(values)
-						const entry = values[key][0]
-						const upload_id: string | null | undefined = entry.value.upload
-						const upload = upload_id ? uploads?.find((upload) => upload.id === upload_id) : null
-						const upload_url = upload && (typeof upload.file === 'string' ? `${self.baseURL}/api/files/site_uploads/${upload.id}/${upload.file}` : URL.createObjectURL(upload.file))
-						const input_url: string | undefined = entry.value.url
-						const url = input_url || upload_url
-						const alt: string = entry.value.alt
-						current_image_value = { url, alt }
+				onchange={async (changeData) => {
+					// Extract the actual value from the nested structure
+					const fieldKey = Object.keys(changeData)[0]
+					const newValue = changeData[fieldKey][0].value
+					
+					// If there's a new upload, populate the URL field with the upload URL
+					// This handles both new uploads and replacements
+					if (newValue.upload) {
+						const upload = site ? SiteUploads.one(newValue.upload) : LibraryUploads.one(newValue.upload)
+						
+						if (upload) {
+							// If file is not yet saved to server, commit first
+							if (typeof upload.file !== 'string') {
+								try {
+									await manager.commit()
+									// Re-fetch the upload after commit
+									const refreshedUpload = site ? SiteUploads.one(newValue.upload) : LibraryUploads.one(newValue.upload)
+									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
+										const baseURL = self.baseURL
+										const collection = site ? 'site_uploads' : 'library_uploads'
+										newValue.url = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
+									}
+								} catch (error) {
+									console.error('Failed to commit upload in onchange:', error)
+								}
+							} else {
+								const baseURL = self.baseURL
+								const collection = site ? 'site_uploads' : 'library_uploads'
+								newValue.url = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
+							}
+						}
 					}
+					
+					current_image_value = newValue
 				}}
 			/>
 			<div class="flex justify-end gap-2 mt-2">
+				{#if current_image_element && !current_image_id}
+					<button 
+						type="button" 
+						onclick={() => {
+							// Delete the image from TipTap markdown only (not for image fields)
+							if (current_image_element) {
+								const markdownContainer = current_image_element.closest('[data-markdown-id]')
+								if (markdownContainer) {
+									const markdownId = markdownContainer.getAttribute('data-markdown-id')
+									const editor = markdown_editors.get(markdownId)
+									if (editor) {
+										// Find and delete the image node
+										let imagePos = null
+										editor.view.state.doc.descendants((node, pos) => {
+											if (node.type.name === 'image' && node.attrs.src === current_image_element.src) {
+												imagePos = pos
+												return false
+											}
+										})
+										if (imagePos !== null) {
+											editor.chain().focus().setNodeSelection(imagePos).deleteSelection().run()
+										}
+									}
+								}
+							}
+							editing_image = false
+						}} 
+						class="px-4 py-2 text-sm bg-red-100 hover:bg-red-200 text-red-900 rounded-md"
+					>
+						Delete
+					</button>
+				{/if}
 				<button type="submit" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-md">Done</button>
 			</div>
 		</form>
