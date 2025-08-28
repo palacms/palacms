@@ -48,11 +48,11 @@
 		/>
 		<div class="url-select">
 			<div class="toggle">
-				<button class:active={selected === 'page'} onclick={() => (selected = 'page')}>
+				<button type="button" class:active={selected === 'page'} onclick={() => (selected = 'page')}>
 					<Icon icon="iconoir:multiple-pages" />
 					<span>Page</span>
 				</button>
-				<button class:active={selected === 'url'} onclick={() => (selected = 'url')}>
+				<button type="button" class:active={selected === 'url'} onclick={() => (selected = 'url')}>
 					<Icon icon="akar-icons:link-chain" />
 					<span>URL</span>
 				</button>
