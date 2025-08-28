@@ -15,7 +15,7 @@ export type MappedObjectList<T extends ObjectWithId, Options extends CollectionM
 
 export type ListOptions = {
 	sort?: string
-	filter?: string
+	filter?: Record<string, string>
 }
 
 export type CollectionMappingOptions<T extends ObjectWithId> = {
@@ -52,7 +52,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 	const instance = options?.instance ?? self
 	const instanceCache = new Map<PocketBase, CollectionMapping<T, Options>>()
 	const collection = instance.collection(name)
-	const { staged, records, lists } = manager
+	const { changes, records, lists } = manager
 
 	const mapObject = (record: unknown): MappedObject<T, Options> => {
 		const object = model.parse(record)
@@ -64,13 +64,13 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 
 	const collectionMapping: CollectionMapping<T, Options> = {
 		one: (id) => {
-			const operation = staged.get(id)
+			const change = changes.get(id)
 			let data = records.get(id)
 
-			if (operation && operation.operation === 'delete') {
+			if (change && change.operation === 'delete') {
 				return undefined
-			} else if (operation && !operation.processed) {
-				data = Object.assign({}, data, operation.data)
+			} else if (change && !change.committed) {
+				data = Object.assign({}, data, change.data)
 			} else if (!data) {
 				$effect(() => {
 					// If no cached record exists, start loading it
@@ -97,6 +97,10 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 		list: (options) => {
 			const listId = name + JSON.stringify(options ?? {})
 
+			const filter = Object.entries(options?.filter ?? {})
+				.map(([key, value]) => `${key} = "${value}"`)
+				.join(' && ')
+
 			$effect(() => {
 				// If no cached list exists or it's invalidated, start loading it
 				const existingList = lists.get(listId)
@@ -106,6 +110,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 						collection
 							.getFullList({
 								...options,
+								filter,
 								requestKey: listId
 							})
 							.then((fetchedRecords) => {
@@ -125,20 +130,36 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 			})
 
 			const list = [...(lists.get(listId)?.ids ?? [])]
-			for (const [id, value] of staged) {
-				if (value.collection !== collection) {
-					// The operation is not for this collection
+			for (const [id, change] of changes) {
+				if (change.collection !== collection) {
+					// The change is not for this collection
 					continue
 				}
 
-				// Only add non-deleted and non-processed staged items to the list
-				if (value.operation !== 'delete' && !value.processed && !list.includes(id)) {
+				// Only add non-deleted items to the list
+				if (change.operation !== 'delete' && !list.includes(id)) {
 					list.push(id)
 				}
 			}
 
 			const originalList = lists.get(listId)
-			const objects = list.map((id) => collectionMapping.one(id)).filter((object) => !!object)
+			const objects = list
+				.map((id) => collectionMapping.one(id))
+				.filter((object) => !!object)
+				.filter((object) => {
+					const values = object.values()
+					for (const [key, value] of Object.entries(options?.filter ?? {})) {
+						if (key.includes('.')) {
+							// Ignore condition refering to a referenced collection. If that kind of
+							// filter is used, filtering must be manually handled.
+							continue
+						}
+						if (values[key] !== value) {
+							return false
+						}
+					}
+					return true
+				})
 			if (lists.has(listId) && !originalList) {
 				return originalList
 			} else if (!originalList && objects.length === 0) {
@@ -150,44 +171,44 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 		create: (values) => {
 			const id = generateId()
 			const data = { ...values, id }
-			staged.set(id, { collection, operation: 'create', processed: false, data })
+			changes.set(id, { collection, operation: 'create', committed: false, data })
 			return mapObject(data)
 		},
 		update: (id, values) => {
-			let operation = staged.get(id)
-			if (operation && operation.operation !== 'delete') {
+			let change = changes.get(id)
+			if (change && change.operation !== 'delete' && !change.committed) {
 				// Create a new operation object to ensure reactivity
-				const updatedOperation =
+				const updatedChange =
 					// Separate (duplicate) cases for each operation type to satify TypeScript
-					operation.operation == 'create'
+					change.operation == 'create'
 						? {
 								collection,
-								operation: operation.operation,
-								processed: false,
-								data: { ...operation.data, ...values }
+								operation: change.operation,
+								committed: false,
+								data: { ...change.data, ...values }
 							}
 						: {
 								collection,
-								operation: operation.operation,
-								processed: false,
-								data: { ...operation.data, ...values }
+								operation: change.operation,
+								committed: false,
+								data: { ...change.data, ...values }
 							}
-				staged.set(id, updatedOperation)
+				changes.set(id, updatedChange)
 			} else {
-				operation = { collection, operation: 'update', processed: false, data: values }
-				staged.set(id, operation)
+				change = { collection, operation: 'update', committed: false, data: values }
+				changes.set(id, change)
 			}
 
 			let data = records.get(id)
-			data = Object.assign({}, data, operation.data)
+			data = Object.assign({}, data, change.data)
 			return mapObject(data)
 		},
 		delete: (id) => {
-			const operation = staged.get(id)
-			if (operation?.operation === 'create' && !operation.processed) {
-				staged.delete(id)
+			const change = changes.get(id)
+			if (change?.operation === 'create' && !change.committed) {
+				changes.delete(id)
 			} else {
-				staged.set(id, { collection, operation: 'delete', processed: false })
+				changes.set(id, { collection, operation: 'delete', committed: false })
 			}
 		},
 		authWithPassword: async (usernameOrEmail, password) => {

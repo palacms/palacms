@@ -5,9 +5,9 @@
 	import { Sites, Pages } from '$lib/pocketbase/collections'
 
 	const host = $derived(pageState.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = $derived(Sites.list({ filter: { host } })?.[0])
 	const slug = $derived(pageState.params.page)
-	const page = $derived(site && slug && Pages.list({ filter: `site = "${site.id}" && slug = "${slug}"` })?.[0])
+	const page = $derived(site && slug && Pages.list({ filter: { site: site.id, slug } })?.[0])
 </script>
 
 {#if $compilers_registered && page}

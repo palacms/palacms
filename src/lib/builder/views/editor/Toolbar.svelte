@@ -30,7 +30,7 @@
 	const site = site_context.get()
 	const page_slug = $derived(pageState.params.page || '')
 	const page_type_id = $derived(pageState.params.page_type)
-	const page = $derived(site && page_slug ? Pages.list({ filter: `site = "${site.id}" && slug = "${page_slug}"` })?.[0] : undefined)
+	const page = $derived(site && page_slug ? Pages.list({ filter: { site: site.id, slug: page_slug } })?.[0] : undefined)
 	const page_type = $derived(page_type_id && PageTypes.one(page_type_id))
 	const page_page_type = $derived(page && PageTypes.one(page.page_type))
 

@@ -17,11 +17,10 @@
 	import { site_context } from '$lib/builder/stores/context'
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	const site = site_context.getOr(null)
 	const slug = $derived(pageState.params.page)
-	const page = $derived(site && slug ? Pages.list({ filter: `site = "${site.id}" && slug = "${slug}"` })?.[0] : site?.homepage())
+	const page = $derived(site && slug ? Pages.list({ filter: { site: site.id, slug } })?.[0] : site?.homepage())
 	const page_type = $derived(page && PageTypes.one(page.page_type))
 	const page_type_fields = $derived(page_type?.fields())
 	const page_entries = $derived(page?.entries())

@@ -75,7 +75,7 @@
 	<!-- TODO: Improve the error message -->
 	<span>Field type for the field is not found!</span>
 {:else if is_visible}
-	{@const [entry] = useEntries(entity, field, parent)}
+	{@const [entry] = useEntries(entity, field, parent) ?? []}
 	{@const title = ['repeater', 'group'].includes(field.type) ? field.label : null}
 	{@const icon = undefined}
 	{#if field.type === 'site-field' || field.type === 'page-field'}

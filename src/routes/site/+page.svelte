@@ -5,7 +5,7 @@
 	import { Sites } from '$lib/pocketbase/collections'
 
 	const host = $derived(pageState.url.host)
-	const site = $derived(Sites.list({ filter: `host = "${host}"` })?.[0])
+	const site = $derived(Sites.list({ filter: { host } })?.[0])
 	const page = $derived(site?.homepage())
 </script>
 

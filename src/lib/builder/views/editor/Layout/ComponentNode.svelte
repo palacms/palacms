@@ -28,7 +28,10 @@
 	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites } from '$lib/pocketbase/collections'
 	import { Editor, Extension } from '@tiptap/core'
 	import { renderToHTMLString, renderToMarkdown } from '@tiptap/static-renderer'
-	import { useContent } from '$lib/Content.svelte'
+	import { useContent, useEntries } from '$lib/Content.svelte'
+	import { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
+	import { self } from '$lib/pocketbase/PocketBase'
+	import { site_context } from '$lib/builder/stores/context'
 
 	const lowlight = createLowlight(all)
 
@@ -63,8 +66,11 @@
 
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
-	const data = $derived(useContent(section))
-	const component_data = $derived(data && (data[$locale] ?? {}))
+	const _data = $derived(useContent(section))
+	const data = $derived(_data && (_data[$locale] ?? {}))
+
+	const site = site_context.get()
+	const uploads = $derived(site.uploads())
 
 	let floating_menu = $state()
 	let bubble_menu = $state()
@@ -87,14 +93,13 @@
 
 	let generated_js = $state('')
 	async function generate_component_code(block) {
-		const safeData = component_data && typeof component_data === 'object' ? component_data : {}
 		const res = await processCode({
 			component: {
 				head: '',
 				html: block.html,
 				css: block.css,
 				js: block.js,
-				data: safeData
+				data
 			},
 			buildStatic: false
 		})
@@ -357,12 +362,6 @@
 				image_editor.onclick = () => {
 					current_image_element = element
 					current_image_id = id
-					// Set current_image_value from the entry
-					const entry = entries?.find((entry) => entry.id === id)
-					current_image_value = entry?.value || {
-						url: element.src || '',
-						alt: element.alt || ''
-					}
 					editing_image = true
 					image_editor_is_visible = false
 				}
@@ -617,15 +616,23 @@
 		}
 	}
 
-	let compiled_code = $state<string>('')
+	const code = $derived({
+		html: block.html,
+		css: block.css,
+		js: block.js
+	})
+
 	// Watch for changes in block code or component data and regenerate
+	let seen_code = $state()
+	let seen_data = $state()
 	watch(
-		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
-		({ html, data }) => {
-			if (compiled_code !== html && Object.keys(component_data).length > 0) {
-				generate_component_code(block)
-				compiled_code = html
-			}
+		() => ({ code, data }),
+		({ code, data }) => {
+			if (!data) return
+			if (_.isEqual(seen_code, code) && _.isEqual(seen_data, data)) return
+			seen_code = _.cloneDeep(code)
+			seen_data = _.cloneDeep(data)
+			generate_component_code(block)
 		}
 	)
 
@@ -764,7 +771,7 @@
 
 	// Watch for changes and send to iframe when ready
 	watch(
-		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
+		() => ({ js: generated_js, data, ready: setup_complete && !is_editing }),
 		({ js, data, ready }) => {
 			if (ready && data && js) {
 				send_component_to_iframe(js, data)
@@ -812,9 +819,7 @@
 <Dialog.Root bind:open={editing_image}>
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12">
 		{@const field = fields?.find((f) => entries?.find((e) => e.id === current_image_id)?.field === f.id) || { label: 'Image', key: 'image', type: 'image', config: {} }}
-		{@const entry = {
-			value: current_image_value
-		}}
+		{@const [entry] = 'id' in field ? (useEntries(section, field) ?? []) : [{ value: current_image_value }]}
 		<form
 			onsubmit={(e) => {
 				e.preventDefault()
@@ -863,11 +868,6 @@
 							current_image_element.alt = current_image_value.alt
 						}
 					}
-				} else if (current_image_element && current_image_id) {
-					// Handle direct image editing (entry-based)
-					current_image_element.src = current_image_value.url
-					current_image_element.alt = current_image_value.alt
-					save_edited_value({ id: current_image_id, value: current_image_value })
 				}
 				editing_image = false
 			}}
@@ -876,11 +876,28 @@
 				entity={section}
 				{field}
 				{entry}
-				onchange={(changeData) => {
-					// Extract the actual value from the nested structure
-					const fieldKey = Object.keys(changeData)[0]
-					const newValue = changeData[fieldKey][0].value
-					current_image_value = newValue
+				onchange={(values) => {
+					if ('id' in field) {
+						setFieldEntries({
+							fields: [field],
+							entries: [entry],
+							updateEntry: 'page_type' in section ? PageTypeSectionEntries.update : PageSectionEntries.update,
+							createEntry:
+								'page_type' in section ? (values) => PageTypeSectionEntries.create({ ...values, section: section.id }) : (values) => PageSectionEntries.create({ ...values, section: section.id }),
+							values
+						})
+					} else {
+						// Extract the actual value from the nested structure
+						const [key] = Object.keys(values)
+						const entry = values[key][0]
+						const upload_id: string | null | undefined = entry.value.upload
+						const upload = upload_id ? uploads?.find((upload) => upload.id === upload_id) : null
+						const upload_url = upload && (typeof upload.file === 'string' ? `${self.baseURL}/api/files/site_uploads/${upload.id}/${upload.file}` : URL.createObjectURL(upload.file))
+						const input_url: string | undefined = entry.value.url
+						const url = input_url || upload_url
+						const alt: string = entry.value.alt
+						current_image_value = { url, alt }
+					}
 				}}
 			/>
 			<div class="flex justify-end gap-2 mt-2">
