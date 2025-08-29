@@ -3,7 +3,6 @@
 	import type { Entity } from '$lib/Content.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
-	import { SiteSymbolFields } from '$lib/pocketbase/collections'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 
 	let {
@@ -18,9 +17,7 @@
 	} = $props()
 
 	const value = $derived(entry?.value)
-	// Access staged field config through collection mapping system
-	const currentField = $derived(SiteSymbolFields.one(field.id))
-	const options = $derived(currentField?.config?.options || [])
+	const options = $derived(field.config?.options || [])
 </script>
 
 <div class="SelectField">

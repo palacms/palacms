@@ -212,7 +212,7 @@
 					selected_field_type_id = field_type_id
 
 					// Set default config based on field type
-					let defaultConfig = {}
+					let defaultConfig: unknown = {}
 					if (field_type_id === 'page') {
 						// Page field requires page_type - get the first available page type
 						const firstPageType = page_types[0]?.id || 'default'
@@ -221,6 +221,8 @@
 						// Page list might also need page_type
 						const firstPageType = page_types[0]?.id || 'default'
 						defaultConfig = { page_type: firstPageType }
+					} else {
+						defaultConfig = null
 					}
 
 					onchange({ id: field.id, data: { type: field_type_id, config: defaultConfig } })
