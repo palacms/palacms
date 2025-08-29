@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Standalone Migrator Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+        }
+        
+        .success {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        
+        .component {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .field {
+            margin-left: 20px;
+            padding: 5px;
+            background: #f0f0f0;
+            border-left: 2px solid #667eea;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Site Migrator - Standalone Test</h1>
+        
+        <div class="test-section">
+            <h2>Test 1: Basic HTML Parsing</h2>
+            <div id="test1-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 2: Component Extraction</h2>
+            <div id="test2-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 3: Field Extraction</h2>
+            <div id="test3-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Full Conversion Result</h2>
+            <div id="full-result"></div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // Mock implementation of the converter for testing
+        class MockSiteFetcher {
+            constructor(url) {
+                this.url = url;
+            }
+            
+            async fetch() {
+                // Return mock fetched data
+                return {
+                    url: this.url,
+                    domain: new URL(this.url).hostname,
+                    pages: [{
+                        url: this.url,
+                        path: '/',
+                        title: 'Test Site - Home',
+                        html: `<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Site - Home</title>
+    <meta name="description" content="A test website">
+</head>
+<body>
+    <header class="site-header">
+        <nav>
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
+        </nav>
+    </header>
+    
+    <section class="hero-section">
+        <h1>Welcome to Our Site</h1>
+        <p>This is a test paragraph with some content.</p>
+        <img src="/images/hero.jpg" alt="Hero Image">
+    </section>
+    
+    <section class="features">
+        <h2>Our Features</h2>
+        <div class="feature">
+            <h3>Feature One</h3>
+            <p>Description of feature one.</p>
+        </div>
+        <div class="feature">
+            <h3>Feature Two</h3>
+            <p>Description of feature two.</p>
+        </div>
+    </section>
+    
+    <footer>
+        <p>&copy; 2024 Test Company. All rights reserved.</p>
+    </footer>
+</body>
+</html>`,
+                        styles: [],
+                        scripts: [],
+                        images: ['/images/hero.jpg'],
+                        meta: {
+                            description: 'A test website'
+                        }
+                    }],
+                    assets: {
+                        styles: new Map(),
+                        scripts: new Map(),
+                        images: new Map(),
+                        fonts: new Map()
+                    },
+                    globalStyles: '',
+                    globalScripts: ''
+                };
+            }
+        }
+        
+        class MockHtmlToPalaConverter {
+            constructor(site) {
+                this.site = site;
+                this.componentMap = new Map();
+            }
+            
+            convert() {
+                const result = {
+                    id: this.generateId(),
+                    name: this.site.domain.replace(/\./g, '_'),
+                    pages: [],
+                    symbols: [],
+                    styles: this.site.globalStyles,
+                    scripts: this.site.globalScripts
+                };
+                
+                // Convert each page
+                for (const page of this.site.pages) {
+                    const convertedPage = this.convertPage(page);
+                    result.pages.push(convertedPage);
+                }
+                
+                // Add unique components
+                result.symbols = Array.from(this.componentMap.values());
+                
+                return result;
+            }
+            
+            convertPage(page) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(page.html, 'text/html');
+                
+                const sections = this.extractSections(doc);
+                
+                return {
+                    id: this.generateId(),
+                    name: page.title || 'Untitled Page',
+                    slug: page.path === '/' ? '' : page.path.substring(1),
+                    sections: sections
+                };
+            }
+            
+            extractSections(doc) {
+                const sections = [];
+                const semanticElements = doc.querySelectorAll('header, nav, section, article, aside, footer');
+                
+                semanticElements.forEach(element => {
+                    const component = this.createComponent(element);
+                    sections.push({
+                        id: this.generateId(),
+                        symbol: component.id,
+                        content: {}
+                    });
+                });
+                
+                return sections;
+            }
+            
+            createComponent(element) {
+                const hash = this.hashElement(element);
+                
+                if (this.componentMap.has(hash)) {
+                    return this.componentMap.get(hash);
+                }
+                
+                const fields = this.extractFields(element);
+                const component = {
+                    id: this.generateId(),
+                    name: this.getComponentName(element),
+                    html: this.processHtml(element, fields),
+                    css: '',
+                    js: '',
+                    fields: fields
+                };
+                
+                this.componentMap.set(hash, component);
+                return component;
+            }
+            
+            extractFields(element) {
+                const fields = [];
+                let fieldIndex = 0;
+                
+                // Extract text fields
+                const textElements = element.querySelectorAll('h1, h2, h3, p, a');
+                textElements.forEach(el => {
+                    const text = el.textContent.trim();
+                    if (text) {
+                        fields.push({
+                            id: this.generateId(),
+                            key: `text_${fieldIndex}`,
+                            label: `${el.tagName}: ${text.substring(0, 30)}${text.length > 30 ? '...' : ''}`,
+                            type: 'text',
+                            default: text
+                        });
+                        fieldIndex++;
+                    }
+                });
+                
+                // Extract image fields
+                const images = element.querySelectorAll('img');
+                images.forEach((img, index) => {
+                    const src = img.getAttribute('src');
+                    if (src) {
+                        fields.push({
+                            id: this.generateId(),
+                            key: `image_${index}`,
+                            label: `Image: ${img.getAttribute('alt') || 'Image ' + (index + 1)}`,
+                            type: 'image',
+                            default: src
+                        });
+                    }
+                });
+                
+                return fields;
+            }
+            
+            processHtml(element, fields) {
+                let html = element.outerHTML;
+                
+                // Replace field values with placeholders
+                fields.forEach(field => {
+                    if (field.type === 'text') {
+                        html = html.replace(field.default, `{${field.key}}`);
+                    } else if (field.type === 'image') {
+                        html = html.replace(field.default, `{${field.key}}`);
+                    }
+                });
+                
+                return html;
+            }
+            
+            hashElement(element) {
+                const structure = `${element.tagName}-${element.className}-${element.children.length}`;
+                return btoa(structure).substring(0, 10);
+            }
+            
+            getComponentName(element) {
+                const tag = element.tagName.toLowerCase();
+                const className = element.className.split(' ')[0];
+                const id = element.id;
+                
+                if (id) {
+                    return id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
+                } else if (className) {
+                    return className.charAt(0).toUpperCase() + className.slice(1).replace(/-/g, ' ');
+                } else {
+                    return tag.charAt(0).toUpperCase() + tag.slice(1) + ' Section';
+                }
+            }
+            
+            generateId() {
+                return 'id_' + Math.random().toString(36).substring(2, 9);
+            }
+        }
+        
+        // Run tests
+        async function runTests() {
+            console.log('Starting tests...');
+            
+            // Test 1: Basic HTML Parsing
+            const test1Result = document.getElementById('test1-result');
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString('<div><h1>Test</h1></div>', 'text/html');
+                const h1 = doc.querySelector('h1');
+                if (h1 && h1.textContent === 'Test') {
+                    test1Result.innerHTML = '<span class="success">✓ PASSED</span> - DOMParser working correctly';
+                } else {
+                    throw new Error('DOMParser not working');
+                }
+            } catch (error) {
+                test1Result.innerHTML = `<span class="error">✗ FAILED</span> - ${error.message}`;
+            }
+            
+            // Test 2: Component Extraction
+            const test2Result = document.getElementById('test2-result');
+            try {
+                const fetcher = new MockSiteFetcher('http://example.com');
+                const site = await fetcher.fetch();
+                const converter = new MockHtmlToPalaConverter(site);
+                const result = converter.convert();
+                
+                if (result.symbols.length > 0) {
+                    test2Result.innerHTML = `<span class="success">✓ PASSED</span> - Extracted ${result.symbols.length} components`;
+                    
+                    // Show components
+                    result.symbols.forEach(symbol => {
+                        test2Result.innerHTML += `<div class="component"><strong>${symbol.name}</strong> (${symbol.fields.length} fields)</div>`;
+                    });
+                } else {
+                    throw new Error('No components extracted');
+                }
+            } catch (error) {
+                test2Result.innerHTML = `<span class="error">✗ FAILED</span> - ${error.message}`;
+            }
+            
+            // Test 3: Field Extraction
+            const test3Result = document.getElementById('test3-result');
+            try {
+                const fetcher = new MockSiteFetcher('http://example.com');
+                const site = await fetcher.fetch();
+                const converter = new MockHtmlToPalaConverter(site);
+                const result = converter.convert();
+                
+                let totalFields = 0;
+                result.symbols.forEach(symbol => {
+                    totalFields += symbol.fields.length;
+                });
+                
+                if (totalFields > 0) {
+                    test3Result.innerHTML = `<span class="success">✓ PASSED</span> - Extracted ${totalFields} total fields`;
+                    
+                    // Show some fields
+                    result.symbols.forEach(symbol => {
+                        if (symbol.fields.length > 0) {
+                            test3Result.innerHTML += `<div class="component"><strong>${symbol.name}:</strong>`;
+                            symbol.fields.slice(0, 3).forEach(field => {
+                                test3Result.innerHTML += `<div class="field">${field.label} (${field.type})</div>`;
+                            });
+                            test3Result.innerHTML += '</div>';
+                        }
+                    });
+                } else {
+                    throw new Error('No fields extracted');
+                }
+            } catch (error) {
+                test3Result.innerHTML = `<span class="error">✗ FAILED</span> - ${error.message}`;
+            }
+            
+            // Full conversion result
+            const fullResult = document.getElementById('full-result');
+            try {
+                const fetcher = new MockSiteFetcher('http://example.com');
+                const site = await fetcher.fetch();
+                const converter = new MockHtmlToPalaConverter(site);
+                const result = converter.convert();
+                
+                fullResult.innerHTML = `
+                    <h3>Conversion Summary:</h3>
+                    <ul>
+                        <li>Site Name: <strong>${result.name}</strong></li>
+                        <li>Pages: <strong>${result.pages.length}</strong></li>
+                        <li>Components: <strong>${result.symbols.length}</strong></li>
+                        <li>Total Sections: <strong>${result.pages.reduce((acc, p) => acc + p.sections.length, 0)}</strong></li>
+                    </ul>
+                    <h3>JSON Output:</h3>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                
+                console.log('Full conversion result:', result);
+            } catch (error) {
+                fullResult.innerHTML = `<span class="error">✗ FAILED</span> - ${error.message}`;
+            }
+        }
+        
+        // Run tests when page loads
+        runTests();
+    </script>
+</body>
+</html>

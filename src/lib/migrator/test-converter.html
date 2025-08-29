@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Migrator</title>
+</head>
+<body>
+    <h1>Site Migrator Test</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        // Test HTML content
+        const testHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Company - Home</title>
+    <meta name="description" content="Welcome to Test Company">
+    <style>
+        body { font-family: sans-serif; }
+        .hero { background: #667eea; padding: 100px; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+        </nav>
+    </header>
+    
+    <section class="hero">
+        <h1>Welcome to Test Company</h1>
+        <p>Your trusted partner for innovative solutions</p>
+        <a href="/contact" class="btn">Get Started</a>
+    </section>
+    
+    <section class="features">
+        <h2>Our Features</h2>
+        <div class="feature-card">
+            <h3>Fast Performance</h3>
+            <p>Lightning-fast load times.</p>
+        </div>
+    </section>
+    
+    <footer>
+        <p>&copy; 2024 Test Company. All rights reserved.</p>
+    </footer>
+</body>
+</html>`;
+
+        // Import converter class
+        class HtmlToPalaConverter {
+            constructor(site) {
+                this.site = site;
+                this.componentMap = new Map();
+            }
+            
+            convert() {
+                const palaSite = {
+                    id: crypto.randomUUID(),
+                    name: this.site.domain.replace(/\./g, '_'),
+                    pages: [],
+                    symbols: [],
+                    styles: this.site.globalStyles,
+                    scripts: this.site.globalScripts
+                };
+                
+                for (const page of this.site.pages) {
+                    const palaPage = this.convertPage(page);
+                    palaSite.pages.push(palaPage);
+                }
+                
+                palaSite.symbols = Array.from(this.componentMap.values());
+                return palaSite;
+            }
+            
+            convertPage(page) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(page.html, 'text/html');
+                
+                const name = page.title || 'Untitled';
+                const slug = page.path === '/' ? '' : page.path.substring(1);
+                const sections = this.extractSections(doc, page);
+                
+                return {
+                    id: crypto.randomUUID(),
+                    name,
+                    slug,
+                    sections
+                };
+            }
+            
+            extractSections(doc, page) {
+                const sections = [];
+                const body = doc.body;
+                
+                // Find semantic sections
+                const sectionElements = body.querySelectorAll('header, nav, main, section, article, aside, footer');
+                
+                if (sectionElements.length > 0) {
+                    sectionElements.forEach(element => {
+                        const component = this.elementToComponent(element, page);
+                        if (component) {
+                            sections.push({
+                                id: crypto.randomUUID(),
+                                symbol: component.id,
+                                content: {}
+                            });
+                        }
+                    });
+                } else {
+                    // Treat whole body as one section
+                    const component = this.elementToComponent(body, page);
+                    if (component) {
+                        sections.push({
+                            id: crypto.randomUUID(),
+                            symbol: component.id,
+                            content: {}
+                        });
+                    }
+                }
+                
+                return sections;
+            }
+            
+            elementToComponent(element, page) {
+                const hash = this.hashElement(element);
+                
+                if (this.componentMap.has(hash)) {
+                    return this.componentMap.get(hash);
+                }
+                
+                const html = element.outerHTML;
+                const { processedHtml, fields } = this.extractDynamicContent(element);
+                
+                const component = {
+                    id: crypto.randomUUID(),
+                    name: this.generateComponentName(element),
+                    html: processedHtml,
+                    css: '',
+                    js: '',
+                    fields
+                };
+                
+                this.componentMap.set(hash, component);
+                return component;
+            }
+            
+            extractDynamicContent(element) {
+                const fields = [];
+                let processedHtml = element.outerHTML;
+                
+                // Extract text content as fields
+                const textElements = element.querySelectorAll('h1, h2, h3, h4, h5, h6, p, a');
+                textElements.forEach((el, index) => {
+                    const text = el.textContent?.trim();
+                    if (text && text.length > 0) {
+                        const fieldName = `text_${index}`;
+                        fields.push({
+                            id: crypto.randomUUID(),
+                            key: fieldName,
+                            label: `${el.tagName}: ${text.substring(0, 30)}`,
+                            type: 'text',
+                            default: text
+                        });
+                        
+                        // Simple text replacement (in real version would be more sophisticated)
+                        processedHtml = processedHtml.replace(text, `{${fieldName}}`);
+                    }
+                });
+                
+                return { processedHtml, fields };
+            }
+            
+            hashElement(element) {
+                const structure = `${element.tagName}:${element.className}:${element.children.length}`;
+                return btoa(structure).substring(0, 10);
+            }
+            
+            generateComponentName(element) {
+                const tag = element.tagName.toLowerCase();
+                const id = element.id;
+                const className = element.className.split(' ')[0];
+                
+                if (id) {
+                    return id.charAt(0).toUpperCase() + id.slice(1);
+                } else if (className) {
+                    return className.charAt(0).toUpperCase() + className.slice(1);
+                } else {
+                    return tag.charAt(0).toUpperCase() + tag.slice(1) + ' Section';
+                }
+            }
+        }
+        
+        // Create mock fetched site
+        const fetchedSite = {
+            url: 'http://localhost:3000',
+            domain: 'localhost',
+            pages: [{
+                url: 'http://localhost:3000/',
+                path: '/',
+                title: 'Test Company - Home',
+                html: testHTML,
+                styles: [],
+                scripts: [],
+                images: [],
+                meta: {}
+            }],
+            assets: {
+                styles: new Map(),
+                scripts: new Map(),
+                images: new Map(),
+                fonts: new Map()
+            },
+            globalStyles: '',
+            globalScripts: ''
+        };
+        
+        // Run converter
+        const converter = new HtmlToPalaConverter(fetchedSite);
+        const result = converter.convert();
+        
+        // Display results
+        const output = document.getElementById('output');
+        output.innerHTML = `
+            <h2>Conversion Results:</h2>
+            <pre>${JSON.stringify(result, null, 2)}</pre>
+            
+            <h3>Summary:</h3>
+            <ul>
+                <li>Site Name: ${result.name}</li>
+                <li>Pages: ${result.pages.length}</li>
+                <li>Components: ${result.symbols.length}</li>
+            </ul>
+            
+            <h3>Components:</h3>
+            <ul>
+                ${result.symbols.map(s => `
+                    <li>
+                        <strong>${s.name}</strong> - ${s.fields.length} fields
+                        <ul>
+                            ${s.fields.slice(0, 3).map(f => `<li>${f.label}</li>`).join('')}
+                        </ul>
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+        
+        console.log('Conversion complete!', result);
+    </script>
+</body>
+</html>

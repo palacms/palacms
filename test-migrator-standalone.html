@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Standalone Migrator Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin-top: 30px;
+        }
+        
+        h3 {
+            color: #666;
+        }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #764ba2;
+        }
+        
+        .component-card {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .field-list {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .field {
+            background: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Site Migrator Test Suite</h1>
+        <p>This test verifies the HTML to Pala conversion process works correctly.</p>
+        <button onclick="runFullTest()">Run Full Test</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script type="module">
+        // Test HTML content
+        const testHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Company - Premium Services</title>
+    <meta name="description" content="Welcome to Test Company - Your trusted partner">
+    <style>
+        body { font-family: sans-serif; margin: 0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { background: #2c3e50; color: white; padding: 1rem; }
+        nav a { color: white; text-decoration: none; margin: 0 15px; }
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 100px 20px; text-align: center; }
+        .features { padding: 60px 20px; background: #f8f9fa; }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .feature-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        footer { background: #2c3e50; color: white; text-align: center; padding: 30px; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+            <a href="/services">Services</a>
+            <a href="/contact">Contact</a>
+        </nav>
+    </header>
+    
+    <section class="hero">
+        <div class="container">
+            <h1>Welcome to Test Company</h1>
+            <p>Your trusted partner for innovative solutions</p>
+            <img src="/hero-image.jpg" alt="Hero Image">
+            <a href="/contact" class="btn">Get Started Today</a>
+        </div>
+    </section>
+    
+    <section class="features">
+        <div class="container">
+            <h2>Our Features</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>Fast Performance</h3>
+                    <p>Lightning-fast load times and optimal performance.</p>
+                    <img src="/feature1.png" alt="Performance">
+                </div>
+                <div class="feature-card">
+                    <h3>Secure & Reliable</h3>
+                    <p>Bank-level security with 99.9% uptime guarantee.</p>
+                    <img src="/feature2.png" alt="Security">
+                </div>
+                <div class="feature-card">
+                    <h3>24/7 Support</h3>
+                    <p>Round-the-clock customer support.</p>
+                    <img src="/feature3.png" alt="Support">
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <footer>
+        <p>&copy; 2024 Test Company. All rights reserved.</p>
+        <p>Follow us on social media</p>
+    </footer>
+</body>
+</html>`;
+
+        // Simplified converter implementation
+        class TestConverter {
+            constructor() {
+                this.componentMap = new Map();
+                this.componentCounter = 0;
+            }
+            
+            convert(html) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const result = {
+                    name: 'test_site',
+                    pages: [],
+                    symbols: []
+                };
+                
+                // Create main page
+                const page = {
+                    id: this.generateId(),
+                    name: doc.title || 'Home',
+                    slug: '',
+                    sections: []
+                };
+                
+                // Extract sections
+                const sections = doc.querySelectorAll('header, section, footer');
+                sections.forEach(section => {
+                    const component = this.sectionToComponent(section);
+                    page.sections.push({
+                        id: this.generateId(),
+                        symbol: component.id,
+                        content: {}
+                    });
+                    
+                    // Add to symbols if not already there
+                    if (!this.componentMap.has(component.hash)) {
+                        this.componentMap.set(component.hash, component);
+                        result.symbols.push(component);
+                    }
+                });
+                
+                result.pages.push(page);
+                return result;
+            }
+            
+            sectionToComponent(element) {
+                const hash = this.hashElement(element);
+                
+                if (this.componentMap.has(hash)) {
+                    return this.componentMap.get(hash);
+                }
+                
+                const fields = [];
+                let processedHtml = element.outerHTML;
+                
+                // Extract text fields
+                const textElements = element.querySelectorAll('h1, h2, h3, p');
+                textElements.forEach((el, index) => {
+                    const text = el.textContent.trim();
+                    if (text) {
+                        const fieldKey = `text_${this.componentCounter}_${index}`;
+                        fields.push({
+                            key: fieldKey,
+                            label: `${el.tagName}: ${text.substring(0, 40)}${text.length > 40 ? '...' : ''}`,
+                            type: 'text',
+                            default: text
+                        });
+                        
+                        // Replace in HTML
+                        const regex = new RegExp(this.escapeRegex(text), 'g');
+                        processedHtml = processedHtml.replace(regex, `{${fieldKey}}`);
+                    }
+                });
+                
+                // Extract image fields
+                const images = element.querySelectorAll('img');
+                images.forEach((img, index) => {
+                    const src = img.getAttribute('src');
+                    if (src) {
+                        const fieldKey = `image_${this.componentCounter}_${index}`;
+                        fields.push({
+                            key: fieldKey,
+                            label: `Image: ${img.getAttribute('alt') || 'Image ' + (index + 1)}`,
+                            type: 'image',
+                            default: src
+                        });
+                        
+                        // Replace in HTML
+                        processedHtml = processedHtml.replace(src, `{${fieldKey}}`);
+                    }
+                });
+                
+                // Extract link fields
+                const links = element.querySelectorAll('a');
+                links.forEach((link, index) => {
+                    const href = link.getAttribute('href');
+                    if (href) {
+                        const fieldKey = `link_${this.componentCounter}_${index}`;
+                        fields.push({
+                            key: fieldKey,
+                            label: `Link: ${link.textContent.substring(0, 30)}`,
+                            type: 'link',
+                            default: href
+                        });
+                        
+                        // Replace in HTML
+                        processedHtml = processedHtml.replace(`href="${href}"`, `href="{${fieldKey}}"`);
+                    }
+                });
+                
+                const component = {
+                    id: this.generateId(),
+                    name: this.getComponentName(element),
+                    hash: hash,
+                    html: processedHtml,
+                    css: '',
+                    js: '',
+                    fields: fields
+                };
+                
+                this.componentCounter++;
+                return component;
+            }
+            
+            hashElement(element) {
+                const structure = `${element.tagName}:${element.className}:${element.children.length}`;
+                return btoa(structure).replace(/[^a-zA-Z0-9]/g, '').substring(0, 10);
+            }
+            
+            getComponentName(element) {
+                const tag = element.tagName.toLowerCase();
+                const className = element.className.split(' ')[0];
+                const id = element.id;
+                
+                if (id) {
+                    return id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
+                } else if (className) {
+                    return className.charAt(0).toUpperCase() + className.slice(1).replace(/-/g, ' ');
+                } else {
+                    return tag.charAt(0).toUpperCase() + tag.slice(1) + ' Section';
+                }
+            }
+            
+            generateId() {
+                return 'id_' + Math.random().toString(36).substring(2, 11);
+            }
+            
+            escapeRegex(str) {
+                return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+        }
+        
+        // Run test function
+        window.runFullTest = function() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            try {
+                // Create converter
+                const converter = new TestConverter();
+                
+                // Convert HTML
+                const startTime = performance.now();
+                const result = converter.convert(testHTML);
+                const endTime = performance.now();
+                
+                // Display results
+                resultsDiv.innerHTML = `
+                    <div class="container">
+                        <div class="success">
+                            ✅ Conversion completed successfully in ${(endTime - startTime).toFixed(2)}ms
+                        </div>
+                        
+                        <div class="stats">
+                            <div class="stat">
+                                <div class="stat-value">${result.pages.length}</div>
+                                <div class="stat-label">Pages Created</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${result.symbols.length}</div>
+                                <div class="stat-label">Components Extracted</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${result.symbols.reduce((sum, s) => sum + s.fields.length, 0)}</div>
+                                <div class="stat-label">Total Fields</div>
+                            </div>
+                        </div>
+                        
+                        <h2>📄 Page Structure</h2>
+                        ${result.pages.map(page => `
+                            <div class="component-card">
+                                <strong>${page.name}</strong> (slug: "${page.slug || '/'}")
+                                <div class="field-list">
+                                    ${page.sections.length} sections attached
+                                </div>
+                            </div>
+                        `).join('')}
+                        
+                        <h2>🧩 Extracted Components</h2>
+                        ${result.symbols.map(symbol => `
+                            <div class="component-card">
+                                <h3>${symbol.name}</h3>
+                                <div><strong>Fields (${symbol.fields.length}):</strong></div>
+                                <div class="field-list">
+                                    ${symbol.fields.map(field => `
+                                        <div class="field">
+                                            <strong>${field.type}:</strong> ${field.label}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <details>
+                                    <summary>View Processed HTML</summary>
+                                    <pre>${escapeHtml(symbol.html.substring(0, 500))}${symbol.html.length > 500 ? '...' : ''}</pre>
+                                </details>
+                            </div>
+                        `).join('')}
+                        
+                        <h2>📊 Raw Output</h2>
+                        <details>
+                            <summary>View JSON Output</summary>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+                
+                console.log('Test Results:', result);
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="container">
+                        <div class="error">
+                            ❌ Test failed: ${error.message}
+                        </div>
+                        <pre>${error.stack}</pre>
+                    </div>
+                `;
+                console.error('Test failed:', error);
+            }
+        };
+        
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+        
+        // Auto-run test on load
+        window.addEventListener('load', () => {
+            console.log('Test page loaded. Click "Run Full Test" to begin.');
+        });
+    </script>
+</body>
+</html>

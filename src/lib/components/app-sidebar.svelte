@@ -5,7 +5,7 @@
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { Input } from '$lib/components/ui/input'
 	import { Button } from '$lib/components/ui/button'
-	import { Globe, Library, Store, ChevronsUpDown, LogOut, ChevronRight, Plus, LayoutTemplate, Cuboid } from 'lucide-svelte'
+	import { Globe, Library, Store, ChevronsUpDown, LogOut, ChevronRight, Plus, LayoutTemplate, Cuboid, Download } from 'lucide-svelte'
 	import * as Sidebar from '$lib/components/ui/sidebar'
 	import * as Collapsible from '$lib/components/ui/collapsible'
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu'
@@ -115,7 +115,7 @@
 									hidden: false
 								}}
 								onclick={() => {
-									goto('/admin/dashboard')
+									goto('/admin/dashboard/sites')
 									sidebar.setOpen(true)
 								}}
 								class="px-2.5 md:px-2"
@@ -163,6 +163,25 @@
 								{/snippet}
 								<Store />
 								<span>Marketplace</span>
+							</Sidebar.MenuButton>
+						</Sidebar.MenuItem>
+						<Sidebar.MenuItem>
+							<Sidebar.MenuButton
+								isActive={$page.url.pathname.startsWith('/admin/dashboard/migrate')}
+								tooltipContentProps={{
+									hidden: false
+								}}
+								onclick={() => {
+									goto('/admin/dashboard/migrate')
+									sidebar.setOpen(true)
+								}}
+								class="px-2.5 md:px-2"
+							>
+								{#snippet tooltipContent()}
+									Migrate
+								{/snippet}
+								<Download />
+								<span>Migrate</span>
 							</Sidebar.MenuButton>
 						</Sidebar.MenuItem>
 					</Sidebar.Menu>
