@@ -139,6 +139,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			else if (field.type === 'page' && field.key) {
 				const [entry] = fieldEntries
 				if (!entry) continue
+				if (!content[entry.locale]) content[entry.locale] = {}
 
 				const page = Pages.one(entry.value)
 				if (!page) return
@@ -159,8 +160,27 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 			// Handle page-list fields specially
 			else if (field.type === 'page-list' && field.key) {
-				// TODO: Figure out what should happen here.
-				continue
+				const pages = Pages.list({ filter: { page_type: field.config.page_type } })?.sort((a, b) => a.index - b.index)
+				if (!pages) return
+
+				const data = pages.map((page) => useContent(page))
+				if (data.some((content) => !content)) return
+
+				for (let index = 0; index < pages.length; index++) {
+					for (const locale in { en: {}, ...data[index] }) {
+						if (!content[locale]) content[locale] = {}
+						if (!content[locale][field.key]) content[locale][field.key] = []
+						content[locale][field.key].push({
+							...data[index]?.[locale],
+							_meta: {
+								created_at: pages[index].created, // TODO: Fix typing
+								name: pages[index].name,
+								slug: pages[index].slug,
+								url: `/${pages[index].slug}` // TODO: Fix URL (hierarchy)
+							}
+						})
+					}
+				}
 			}
 
 			// If field has a key but no entries, fill with empty value
