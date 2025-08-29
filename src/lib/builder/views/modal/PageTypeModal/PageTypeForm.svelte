@@ -6,7 +6,7 @@
 	import IconPicker from '../../../components/IconPicker.svelte'
 	import { clickOutside } from '../../../utilities.js'
 	import { createPopperActions } from 'svelte-popperjs'
-	import type { PageType } from '$lib/common/models/PageType'
+	import { offsetByFixedParents } from '$lib/builder/utils/popper-fix'
 
 	const dispatch = createEventDispatcher()
 
@@ -31,7 +31,8 @@
 
 	const [popperRef, popperContent] = createPopperActions({
 		placement: 'bottom',
-		strategy: 'fixed'
+		strategy: 'fixed',
+		modifiers: [offsetByFixedParents, { name: 'offset', options: { offset: [0, 3] } }]
 	})
 
 	let showing_icon_picker = $state(false)
@@ -82,9 +83,7 @@
 		</div>
 		{#if showing_icon_picker}
 			<div
-				use:popperContent={{
-					modifiers: [{ name: 'offset', options: { offset: [0, 3] } }]
-				}}
+				use:popperContent
 				use:clickOutside
 				onclick_outside={() => (showing_icon_picker = false)}
 				class="icon-picker"
