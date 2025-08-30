@@ -76,13 +76,30 @@
 	 * Note: Only copies root-level entries for now, nested entries are handled on-demand
 	 */
 	async function create_page_with_sections(page_data: Omit<Page, 'id' | 'index'>) {
-		// Calculate the next index - just use the count of existing siblings
+		// Get existing siblings and sort them
 		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent)
-		const next_index = page_data.parent === home_page?.id ? sibling_pages.length + 1 : sibling_pages.length
+			.sort((a, b) => a.index - b.index)
+		
+		// For home page children, index 0 is reserved for home, so start at 1
+		// For other children, start at 0
+		const new_index = page_data.parent === home_page?.id ? 1 : 0
+		
+		// Shift existing siblings down to make room at the top
+		sibling_pages.forEach((sibling) => {
+			if (page_data.parent === home_page?.id) {
+				// For home page children, only shift if index >= 1
+				if (sibling.index >= 1) {
+					Pages.update(sibling.id, { index: sibling.index + 1 })
+				}
+			} else {
+				// For other children, shift all siblings
+				Pages.update(sibling.id, { index: sibling.index + 1 })
+			}
+		})
 
 		new_page = Pages.create({
 			...page_data,
-			index: next_index
+			index: new_index
 		})
 	}
 </script>
@@ -115,7 +132,7 @@
 			<PageForm
 				oncreate={async (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => {
 					creating_page = false
-					const url_taken = all_pages.some((page) => page?.slug === new_page.slug)
+					const url_taken = all_pages.some((page) => page?.slug === new_page.slug && page.parent === home_page.id)
 					if (url_taken) {
 						alert(`That URL is already in use`)
 					} else {
