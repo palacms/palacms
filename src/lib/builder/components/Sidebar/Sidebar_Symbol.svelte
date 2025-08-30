@@ -70,34 +70,33 @@
 	let component_error = $state()
 	let is_loading = $state(true)
 
-	// Watch for changes in symbol code or data and regenerate
-	let seen_code = $state()
-	let seen_data = $state()
-	watch(
-		() => ({ code, data }),
-		async ({ code, data }) => {
-			if (!data) return
-			if (_.isEqual(seen_code, code) && _.isEqual(seen_data, data)) return
-			seen_code = _.cloneDeep(code)
-			seen_data = _.cloneDeep(data)
+	// Create a cache key based on symbol ID and update timestamp
+	const cache_key = $derived(`${symbol.id}-${symbol.updated}`)
+	let last_cache_key = $state('')
+	
+	// Only regenerate if cache key changes (symbol updated)
+	$effect(async () => {
+		// Skip if cache key hasn't changed (symbol not updated)
+		if (cache_key === last_cache_key && componentCode) return
+		
+		last_cache_key = cache_key
+		is_loading = true
+		component_error = undefined
 
-			is_loading = true
-			component_error = undefined
-
-			try {
-				const res = await block_html({ code, data })
-				// Only set componentCode if we have actual content
-				if (res && res.body) {
-					componentCode = res
-				}
-			} catch (error) {
-				console.error('Sidebar symbol error for', symbol.name, ':', error)
-				component_error = error
-			} finally {
-				is_loading = false
+		try {
+			const blockData = data || {}
+			const res = await block_html({ code, data: blockData })
+			// Only set componentCode if we have actual content
+			if (res && res.body) {
+				componentCode = res
 			}
+		} catch (error) {
+			console.error('Sidebar symbol error for', symbol.name, ':', error)
+			component_error = error
+		} finally {
+			is_loading = false
 		}
-	)
+	})
 
 	let element = $state()
 	$effect(() => {
@@ -106,6 +105,7 @@
 				element,
 				getInitialData: () => ({ block: symbol }),
 				onDragStart: () => {
+					console.log('Sidebar_Symbol onDragStart - dispatching palaDragStart with block:', symbol)
 					if (typeof window !== 'undefined') {
 						window.dispatchEvent(new CustomEvent('palaDragStart', { 
 							detail: { block: symbol } 

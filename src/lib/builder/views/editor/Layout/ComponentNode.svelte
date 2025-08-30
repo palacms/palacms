@@ -72,7 +72,6 @@
 	let bubble_menu = $state()
 	let image_editor = $state()
 	let image_editor_is_visible = $state(false)
-	
 	const site = site_context.getOr(null)
 
 	let link_editor_is_visible = $state(false)
@@ -534,7 +533,7 @@
 				current_image_value = {
 					url: element.src || '',
 					alt: element.alt || '',
-					upload: null  // Clear any previous upload
+					upload: null // Clear any previous upload
 				}
 				editing_image = true
 				image_editor_is_visible = false
@@ -627,7 +626,8 @@
 	watch(
 		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
 		({ html, data }) => {
-			if (component_data && typeof component_data === 'object' && Object.keys(component_data).length > 0 && compiled_code !== html) {
+			// Generate code even if there's no data (for blocks without fields)
+			if (compiled_code !== html && component_data) {
 				generate_component_code(block)
 				compiled_code = html
 			}
@@ -823,12 +823,12 @@
 		<form
 			onsubmit={async (e) => {
 				e.preventDefault()
-				
+
 				// Handle submit - same logic as Done button
-				
+
 				if (!current_image_element && active_editor) {
 					// Handle TipTap editor images - only for NEW images from floating menu
-					
+
 					// Get the image URL - either from direct URL or from upload
 					let imageUrl = current_image_value.url
 					if (!imageUrl && current_image_value.upload) {
@@ -837,7 +837,7 @@
 						if (upload) {
 							const baseURL = self.baseURL
 							const collection = site ? 'site_uploads' : 'library_uploads'
-							
+
 							// Only use the PocketBase URL if the file is saved server-side (string)
 							// If it's still a File object, we need to commit it first
 							if (typeof upload.file === 'string') {
@@ -846,10 +846,10 @@
 								try {
 									// Force commit the upload to save it server-side
 									await manager.commit()
-									
+
 									// Refresh the upload record to get the server-side filename
 									const refreshedUpload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
-									
+
 									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
 										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
 									} else {
@@ -867,13 +867,12 @@
 							}
 						}
 					}
-					
-					
+
 					// Just insert the image and let TipTap's onUpdate handle the save automatically
 					active_editor.chain().focus().setImage({ src: imageUrl, alt: current_image_value.alt }).run()
 				} else if (current_image_element && !current_image_id) {
 					// Handle existing TipTap markdown images (no entry)
-					
+
 					// Get the image URL - prioritize upload over direct URL for new uploads
 					let imageUrl = ''
 					if (current_image_value.upload) {
@@ -882,7 +881,7 @@
 						if (upload) {
 							const baseURL = self.baseURL
 							const collection = site ? 'site_uploads' : 'library_uploads'
-							
+
 							// Only use the PocketBase URL if the file is saved server-side (string)
 							// If it's still a File object, we need to commit it first
 							if (typeof upload.file === 'string') {
@@ -891,10 +890,10 @@
 								try {
 									// Force commit the upload to save it server-side
 									await manager.commit()
-									
+
 									// Refresh the upload record to get the server-side filename
 									const refreshedUpload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
-									
+
 									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
 										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
 									} else {
@@ -915,8 +914,7 @@
 						// Use direct URL if no upload
 						imageUrl = current_image_value.url
 					}
-					
-					
+
 					const markdownContainer = current_image_element.closest('[data-markdown-id]')
 					if (markdownContainer) {
 						const markdownId = markdownContainer.getAttribute('data-markdown-id')
@@ -943,7 +941,7 @@
 										alt: current_image_value.alt
 									})
 									.run()
-								
+
 								// The editor's onUpdate callback should handle the save automatically
 								// but let's trigger it manually to be sure
 								setTimeout(() => {
@@ -956,7 +954,7 @@
 										extensions: tiptapExtensions,
 										content: json
 									})
-									
+
 									save_edited_value({ id: markdownId, value: { html, markdown } })
 								}, 100)
 							} else {
@@ -986,12 +984,12 @@
 					// Extract the actual value from the nested structure
 					const fieldKey = Object.keys(changeData)[0]
 					const newValue = changeData[fieldKey][0].value
-					
+
 					// If there's a new upload, populate the URL field with the upload URL
 					// This handles both new uploads and replacements
 					if (newValue.upload) {
 						const upload = site ? SiteUploads.one(newValue.upload) : LibraryUploads.one(newValue.upload)
-						
+
 						if (upload) {
 							// If file is not yet saved to server, commit first
 							if (typeof upload.file !== 'string') {
@@ -1014,14 +1012,14 @@
 							}
 						}
 					}
-					
+
 					current_image_value = newValue
 				}}
 			/>
 			<div class="flex justify-end gap-2 mt-2">
 				{#if current_image_element && !current_image_id}
-					<button 
-						type="button" 
+					<button
+						type="button"
 						onclick={() => {
 							// Delete the image from TipTap markdown only (not for image fields)
 							if (current_image_element) {
@@ -1045,7 +1043,7 @@
 								}
 							}
 							editing_image = false
-						}} 
+						}}
 						class="px-4 py-2 text-sm bg-red-100 hover:bg-red-200 text-red-900 rounded-md"
 					>
 						Delete

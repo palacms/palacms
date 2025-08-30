@@ -12,7 +12,7 @@
 	import DropIndicator from './Layout/DropIndicator.svelte'
 	import LockedOverlay from './Layout/LockedOverlay.svelte'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
-	import { locale } from '../../stores/app/misc.js'
+	import { locale, dragging_symbol } from '../../stores/app/misc.js'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import { manager, PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
@@ -88,6 +88,19 @@
 
 	let hovered_section_id: string | null = $state(null)
 	let hovered_section = $derived(page_type_sections.find((s) => s.id === hovered_section_id))
+
+	// Zone-aware position calculations for toolbar
+	const hovered_section_zone_position = $derived.by(() => {
+		if (!hovered_section_id || !hovered_section) return { index: 0, is_last: false }
+		const section_zone = hovered_section.zone || 'body'
+		const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone).sort((a, b) => a.index - b.index)
+		const position = zone_sections.findIndex((s) => s.id === hovered_section_id)
+		const result = {
+			index: position,
+			is_last: position === zone_sections.length - 1
+		}
+		return result
+	})
 
 	let block_toolbar_element = $state()
 	let page_el = $state()
@@ -200,12 +213,18 @@
 
 	let drop_indicator_element = $state()
 	let showing_drop_indicator = $state(false)
+	
 
 	async function show_drop_indicator() {
 		if (!showing_drop_indicator) {
 			showing_drop_indicator = true
 			await tick()
 			page_el.addEventListener('scroll', position_drop_indicator)
+			
+			// Reset display when showing
+			if (drop_indicator_element) {
+				drop_indicator_element.style.display = 'block'
+			}
 		}
 	}
 
@@ -244,158 +263,83 @@
 	function hide_drop_indicator() {
 		showing_drop_indicator = false
 		page_el.removeEventListener('scroll', position_drop_indicator)
+		
+		// Force reset the drop indicator element position
+		if (drop_indicator_element) {
+			drop_indicator_element.style.display = 'none'
+			drop_indicator_element.style.left = '-9999px'
+			drop_indicator_element.style.top = '-9999px'
+		}
 	}
 
 	// Simple drag state tracking
-	let dragging_over_section = false
-	let drop_handled = false
-	let is_dragging = false
-	let active_drop_zone = null
+	let dragging_over_section = $state(false)
 	let hovering_over_zone = $state(null)
-	let current_dragged_block = null
-	let hovered_section_during_drag = null
-	
+
 	let dragging = $state({
 		id: null,
 		position: null
 	})
-	
-	function reset_drag() {
-		if (current_dragged_block) return // Don't reset if we're in the middle of a custom drag operation
-		
-		dragging = { id: null, position: null }
-		hide_drop_indicator()
-		drop_handled = false
-		is_dragging = false
-		dragging_over_section = false
-		active_drop_zone = null
-		hovering_over_zone = null
-	}
-	
-	// Listen for drag events from sidebar - this is our PRIMARY drop handler
+
+	// Clean up when global drag ends
 	$effect(() => {
-		if (typeof window !== 'undefined') {
-			const handleDragStart = (e) => {
-				is_dragging = true
-				current_dragged_block = e.detail.block
-				hovered_section_during_drag = null
-				showing_block_toolbar = false
-				hovered_section_id = null
-				drop_handled = false // Reset drop_handled for new drag
-			}
-			
-			const handleDragEnd = (e) => {
-				// This is the ONLY place that handles drops to prevent duplication
-				if (current_dragged_block && page_type && !drop_handled) {
-					drop_handled = true // Set immediately to prevent other handlers
-					
-					if (hovered_section_during_drag) {
-						handleSectionDrop(hovered_section_during_drag, current_dragged_block)
-					} else if (hovering_over_zone) {
-						handleZoneDrop(hovering_over_zone, current_dragged_block)
-					}
-				}
-				
-				// Reset state after handling drop
-				is_dragging = false
-				current_dragged_block = null
-				hovered_section_during_drag = null
-				
-				setTimeout(() => {
-					dragging = { id: null, position: null }
-					hide_drop_indicator()
-					drop_handled = false
-					dragging_over_section = false
-					active_drop_zone = null
-					hovering_over_zone = null
-				}, 100)
-			}
-			
-			window.addEventListener('palaDragStart', handleDragStart)
-			window.addEventListener('palaDragEnd', handleDragEnd)
-			
-			return () => {
-				window.removeEventListener('palaDragStart', handleDragStart)
-				window.removeEventListener('palaDragEnd', handleDragEnd)
-			}
+		if (!$dragging_symbol) {
+			// Drag ended, clean up everything
+			hide_drop_indicator()
+			dragging_over_section = false
+			hovering_over_zone = null
+			dragging = { id: null, position: null }
 		}
 	})
 
-	// Zone hover detection using mouse events during drag
-	function drag_zone(element, zone) {
-		// No longer using pragmatic drag-and-drop for zones
-		// We'll use simple mouse events instead
-	}
-
-	// detect drags over the page (fallback)
-	function drag_fallback(element) {
+	// Empty zone drop handler
+	function empty_zone_drop(element, zone) {
 		dropTargetForElements({
 			element,
-			getData({ input, element }) {
-				return attachClosestEdge(
-					{},
-					{
-						element,
-						input,
-						allowedEdges: ['top', 'bottom']
-					}
-				)
+			getData() {
+				return { zone }
 			},
-			async onDrag({ self, source }) {
-				if (dragging_over_section || active_drop_zone) return // Don't interfere with zone or section drops
-
-				active_drop_zone = 'fallback'
-
-				// Set body zone visual feedback for fallback drags
-				hovering_over_zone = 'body'
-
-				if (!showing_drop_indicator) {
-					await show_drop_indicator()
-				}
-				position_drop_indicator()
-				if (dragging.id !== 'PAGE' || dragging.position !== extractClosestEdge(self.data)) {
-					dragging = {
-						id: 'PAGE',
-						position: extractClosestEdge(self.data)
-					}
+			onDragEnter({ source }) {
+				if (source.data?.block) {
+					hovering_over_zone = zone
 				}
 			},
-			onDragLeave() {
-				// Don't immediately reset - only reset if we're truly leaving the page
-				setTimeout(() => {
-					if (!dragging_over_section && active_drop_zone !== 'fallback') {
-						reset_drag()
-					}
-				}, 100)
+			onDragLeave({ source }) {
+				if (source.data?.block) {
+					hovering_over_zone = null
+					hide_drop_indicator()
+				}
 			},
-			// DISABLED: onDrop handler to prevent duplicate block creation
-			// All drops are now handled by the palaDragEnd custom event
-			/*
-			async onDrop({ self, source }) {
-				if (!page_type || dragging_over_section || drop_handled || active_drop_zone !== 'fallback') return
-				drop_handled = true
+			async onDrop({ source }) {
+				if (!source.data?.block || !page_type) return
 
 				const block_being_dragged = source.data.block
-				const closestEdgeOfTarget = extractClosestEdge(self.data)
+				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === zone)
+				const target_index = zone_sections.length
 
-				const body_target_index = closestEdgeOfTarget === 'top' ? 0 : body_sections.length
+				try {
+					const new_section = PageTypeSections.create({
+						page_type: page_type.id,
+						symbol: block_being_dragged.id,
+						index: target_index,
+						zone: zone
+					})
 
-				const new_section = PageTypeSections.create({
-					page_type: page_type.id,
-					symbol: block_being_dragged.id,
-					index: body_target_index,
-					zone: 'body'
-				})
+					if (new_section) {
+						await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+					}
 
-				if (new_section) {
-					await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+					await manager.commit()
+				} catch (error) {
+					console.error('Database insertion error (empty zone):', error)
+					throw error
 				}
 
-				await manager.commit()
-				reset_drag()
-				active_drop_zone = null
+				// Clean up drag state
+				hide_drop_indicator()
+				dragging_over_section = false
+				hovering_over_zone = null
 			}
-			*/
 		})
 	}
 
@@ -419,18 +363,27 @@
 				const canDrop = !!source.data?.block
 				return canDrop
 			},
-			onDragStart({ source }) {
-				// Hide toolbar when any drag starts
-				if (source.data.block) {
-					showing_block_toolbar = false
-					hovered_section_id = null
+			onDragEnter({ source }) {
+				if (source.data?.block) {
+					dragging_over_section = true
+					hovering_over_zone = section.zone || 'body'
+				}
+			},
+			onDragLeave({ source }) {
+				if (source.data?.block) {
+					dragging_over_section = false
+					hovering_over_zone = null
+					// Hide drop indicator when leaving section
+					setTimeout(() => {
+						if (!dragging_over_section) {
+							hide_drop_indicator()
+						}
+					}, 50)
 				}
 			},
 			async onDrag({ self, source }) {
-				
-				// Only process if a block is being dragged
 				if (!source.data?.block) return
-				
+
 				hovered_block_el = self.element
 				if (dragging.id !== self.data.section.id || dragging.position !== extractClosestEdge(self.data)) {
 					dragging = {
@@ -439,72 +392,56 @@
 					}
 				}
 
-				// Also provide zone visual feedback when dragging over sections
-				const section_zone = self.data.section.zone || 'body'
-				hovering_over_zone = section_zone
-				
 				// Show drop indicator
 				if (!showing_drop_indicator) {
 					await show_drop_indicator()
 				}
 				position_drop_indicator()
 			},
-			onDragEnter({ source }) {
-				
-				if (!source.data?.block) return
-				
-				dragging_over_section = true
-				// Also set zone hover when entering a section
-				const section_zone = section.zone || 'body'
-				hovering_over_zone = section_zone
-			},
-			onDragLeave({ source }) {
-				
-				if (!source.data?.block) return
-				
-				dragging_over_section = false
-				// Don't clear zone hover feedback here - let the zone handlers manage it
-			},
-			onDragEnd({ source }) {
-				
-				// Clean up after drag ends
-				setTimeout(() => {
-					if (!drop_handled) {
-						reset_drag()
-					}
-				}, 100)
-			},
-			// DISABLED: onDrop handler to prevent duplicate block creation  
-			// All drops are now handled by the palaDragEnd custom event
-			/*
 			async onDrop({ self, source }) {
-				if (!source.data?.block || drop_handled || !page_type) return
-				
-				drop_handled = true
+				if (!source.data?.block || !page_type) return
 
 				const block_being_dragged = source.data.block
 				const section_dragged_over = self.data.section
 				const closestEdgeOfTarget = extractClosestEdge(self.data)
 				const section_zone = section_dragged_over.zone || 'body'
 
-				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone)
-				const section_dragged_over_zone_index = zone_sections.findIndex((s) => s.id === section_dragged_over.id)
-				const target_index = closestEdgeOfTarget === 'top' ? section_dragged_over_zone_index : section_dragged_over_zone_index + 1
+				// Get sections in this zone, sorted by index
+				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone).sort((a, b) => a.index - b.index)
 
-				const new_section = PageTypeSections.create({
-					page_type: page_type.id,
-					symbol: block_being_dragged.id,
-					index: target_index,
-					zone: section_zone
-				})
+				// Find the position of the dragged-over section within this zone
+				const section_position_in_zone = zone_sections.findIndex((s) => s.id === section_dragged_over.id)
+				const target_position = closestEdgeOfTarget === 'top' ? section_position_in_zone : section_position_in_zone + 1
 
-				if (new_section) {
-					await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+				// Update indices of existing sections in this zone that come after the insertion position
+				const sections_to_update = zone_sections.slice(target_position)
+				for (const section of sections_to_update) {
+					PageTypeSections.update(section.id, { index: section.index + 1 })
 				}
 
-				await manager.commit()
+				try {
+					const new_section = PageTypeSections.create({
+						page_type: page_type.id,
+						symbol: block_being_dragged.id,
+						index: target_position,
+						zone: section_zone
+					})
+
+					if (new_section) {
+						await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+					}
+
+					await manager.commit()
+				} catch (error) {
+					console.error('Database insertion error:', error)
+					throw error
+				}
+
+				// Clean up drag state
+				hide_drop_indicator()
+				dragging_over_section = false
+				hovering_over_zone = null
 			}
-			*/
 		})
 	}
 	$effect(() => {
@@ -516,49 +453,6 @@
 	let editing_section = $state(false)
 	let editing_section_target = $state<ObjectOf<typeof PageTypeSections>>()
 
-	// Helper function to copy symbol entries to page type section (root-level only)
-	async function handleSectionDrop(section, block) {
-		
-		// Add the block after the hovered section
-		const section_zone = section.zone || 'body'
-		const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone)
-		const section_index = zone_sections.findIndex((s) => s.id === section.id)
-		const target_index = section_index + 1
-		
-		const new_section = PageTypeSections.create({
-			page_type: page_type.id,
-			symbol: block.id,
-			index: target_index,
-			zone: section_zone
-		})
-		
-		if (new_section) {
-			await copy_symbol_entries_to_section(block.id, new_section.id)
-		}
-		
-		await manager.commit()
-	}
-	
-	async function handleZoneDrop(zone, block) {
-		
-		// Add to end of zone
-		const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === zone)
-		const target_index = zone_sections.length
-		
-		const new_section = PageTypeSections.create({
-			page_type: page_type.id,
-			symbol: block.id,
-			index: target_index,
-			zone: zone
-		})
-		
-		if (new_section) {
-			await copy_symbol_entries_to_section(block.id, new_section.id)
-		}
-		
-		await manager.commit()
-	}
-	
 	async function copy_symbol_entries_to_section(symbol_id: string, section_id: string) {
 		try {
 			// First get the symbol's fields
@@ -594,7 +488,6 @@
 			console.error('Failed to copy symbol entries:', error)
 		}
 	}
-
 </script>
 
 <Dialog.Root
@@ -642,6 +535,9 @@
 <!-- Drop Indicator -->
 {#if showing_drop_indicator}
 	<DropIndicator bind:node={drop_indicator_element} />
+{:else}
+	<!-- Debug: indicator should be hidden -->
+	<!-- {console.log('Drop indicator should be hidden')} -->
 {/if}
 
 <!-- Block Buttons -->
@@ -660,14 +556,30 @@
 		<BlockToolbar
 			bind:node={block_toolbar_element}
 			id={hovered_section_id}
-			i={page_type_sections.findIndex((s) => s.id === hovered_section_id)}
-			is_last={page_type_sections.findIndex((s) => s.id === hovered_section_id) === page_type_sections.length - 1}
+			i={hovered_section_zone_position.index}
+			is_last={hovered_section_zone_position.is_last}
 			on:delete={async () => {
 				if (!hovered_section_id) return
+				const section_to_delete = page_type_sections.find((s) => s.id === hovered_section_id)
+				if (!section_to_delete) return
+
 				const section_id = hovered_section_id
 				showing_block_toolbar = false
 				hovered_section_id = null
+
+				// Delete the section
 				PageTypeSections.delete(section_id)
+
+				// Reindex sections in the same zone that come after the deleted section
+				const section_zone = section_to_delete.zone || 'body'
+				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone && s.id !== section_id).sort((a, b) => a.index - b.index)
+
+				// Update indices of sections that come after the deleted section
+				const sections_after_deleted = zone_sections.filter((s) => s.index > section_to_delete.index)
+				for (const section of sections_after_deleted) {
+					PageTypeSections.update(section.id, { index: section.index - 1 })
+				}
+
 				await manager.commit()
 			}}
 			on:edit-code={() => edit_component('code')}
@@ -725,7 +637,7 @@
 {/if}
 
 <!-- Page Type Layout -->
-<main id="#Page" data-test bind:this={page_el} class:fadein={page_mounted} lang={$locale} use:drag_fallback>
+<main id="#Page" data-test bind:this={page_el} class:fadein={page_mounted} class:dragging={$dragging_symbol} lang={$locale}>
 	<!-- Head Zone -->
 	<div class="zone-label">Head</div>
 	<section class="code-zone head-zone">
@@ -734,7 +646,7 @@
 
 	<!-- Header Zone -->
 	<div class="zone-label">Header</div>
-	<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header" use:drag_zone={'header'}>
+	<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header">
 		{#each header_sections as section (section.id)}
 			{@const locked = undefined}
 			{@const in_current_tab = false}
@@ -747,35 +659,18 @@
 				id="section-{section.id}"
 				class:locked
 				onmousemove={() => {
-					if (!moving && !showing_block_toolbar && !is_dragging) {
+					if (!moving && !showing_block_toolbar) {
 						show_block_toolbar()
 					}
 				}}
 				onmouseenter={async ({ target }) => {
 					hovered_section_id = section.id
 					hovered_block_el = target
-					
-					if (is_dragging && current_dragged_block) {
-						const section_zone = section.zone || 'body'
-						hovering_over_zone = section_zone
-						dragging_over_section = true
-						hovered_section_during_drag = section
-					} else if (!moving) {
+					if (!moving) {
 						show_block_toolbar()
 					}
 				}}
-				onmouseleave={(e) => {
-					const isMovingToChild = e.relatedTarget && e.currentTarget.contains(e.relatedTarget)
-					
-					if (isMovingToChild) return
-					
-					if (is_dragging) {
-						dragging_over_section = false
-						if (hovered_section_during_drag?.id === section.id) {
-							hovered_section_during_drag = null
-						}
-					}
-					
+				onmouseleave={() => {
 					setTimeout(() => {
 						if (hovered_section_id === section.id) {
 							hide_block_toolbar()
@@ -811,7 +706,7 @@
 			</div>
 		{/each}
 		{#if header_sections.length === 0}
-			<div class="empty-zone">
+			<div class="empty-zone" use:empty_zone_drop={'header'}>
 				<span>Drag blocks here for the header</span>
 			</div>
 		{/if}
@@ -826,7 +721,7 @@
 			<span class="zone-mode">(Dynamic)</span>
 		{/if}
 	</div>
-	<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body" use:drag_zone={'body'}>
+	<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body">
 		{#each body_sections as section (section.id)}
 			{@const locked = undefined}
 			{@const in_current_tab = false}
@@ -839,35 +734,18 @@
 				id="section-{section.id}"
 				class:locked
 				onmousemove={() => {
-					if (!moving && !showing_block_toolbar && !is_dragging) {
+					if (!moving && !showing_block_toolbar) {
 						show_block_toolbar()
 					}
 				}}
 				onmouseenter={async ({ target }) => {
 					hovered_section_id = section.id
 					hovered_block_el = target
-					
-					if (is_dragging && current_dragged_block) {
-						const section_zone = section.zone || 'body'
-						hovering_over_zone = section_zone
-						dragging_over_section = true
-						hovered_section_during_drag = section
-					} else if (!moving) {
+					if (!moving) {
 						show_block_toolbar()
 					}
 				}}
-				onmouseleave={(e) => {
-					const isMovingToChild = e.relatedTarget && e.currentTarget.contains(e.relatedTarget)
-					
-					if (isMovingToChild) return
-					
-					if (is_dragging) {
-						dragging_over_section = false
-						if (hovered_section_during_drag?.id === section.id) {
-							hovered_section_during_drag = null
-						}
-					}
-					
+				onmouseleave={() => {
 					setTimeout(() => {
 						if (hovered_section_id === section.id) {
 							hide_block_toolbar()
@@ -903,7 +781,7 @@
 			</div>
 		{/each}
 		{#if body_sections.length === 0}
-			<div class="empty-zone main-body">
+			<div class="empty-zone main-body" use:empty_zone_drop={'body'}>
 				{#if is_static_page_type}
 					<span>Drag blocks here for static body content</span>
 				{:else}
@@ -915,7 +793,7 @@
 
 	<!-- Footer Zone -->
 	<div class="zone-label">Footer</div>
-	<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer" use:drag_zone={'footer'}>
+	<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer">
 		{#each footer_sections as section (section.id)}
 			{@const locked = undefined}
 			{@const in_current_tab = false}
@@ -928,35 +806,18 @@
 				id="section-{section.id}"
 				class:locked
 				onmousemove={() => {
-					if (!moving && !showing_block_toolbar && !is_dragging) {
+					if (!moving && !showing_block_toolbar) {
 						show_block_toolbar()
 					}
 				}}
 				onmouseenter={async ({ target }) => {
 					hovered_section_id = section.id
 					hovered_block_el = target
-					
-					if (is_dragging && current_dragged_block) {
-						const section_zone = section.zone || 'body'
-						hovering_over_zone = section_zone
-						dragging_over_section = true
-						hovered_section_during_drag = section
-					} else if (!moving) {
+					if (!moving) {
 						show_block_toolbar()
 					}
 				}}
-				onmouseleave={(e) => {
-					const isMovingToChild = e.relatedTarget && e.currentTarget.contains(e.relatedTarget)
-					
-					if (isMovingToChild) return
-					
-					if (is_dragging) {
-						dragging_over_section = false
-						if (hovered_section_during_drag?.id === section.id) {
-							hovered_section_during_drag = null
-						}
-					}
-					
+				onmouseleave={() => {
 					setTimeout(() => {
 						if (hovered_section_id === section.id) {
 							hide_block_toolbar()
@@ -992,7 +853,7 @@
 			</div>
 		{/each}
 		{#if footer_sections.length === 0}
-			<div class="empty-zone">
+			<div class="empty-zone" use:empty_zone_drop={'footer'}>
 				<span>Drag blocks here for the footer</span>
 			</div>
 		{/if}
@@ -1035,6 +896,9 @@
 	}
 	main.fadein {
 		opacity: 1;
+	}
+	main.dragging :global(iframe) {
+		pointer-events: none !important;
 	}
 
 	.page-zone {
@@ -1082,7 +946,7 @@
 		font-weight: 500;
 		color: white;
 		margin-left: 0.5rem;
-		margin-top: 0.25rem;
+		margin-top: 0.75rem;
 		user-select: none;
 	}
 

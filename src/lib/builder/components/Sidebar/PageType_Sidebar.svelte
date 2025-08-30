@@ -18,6 +18,7 @@
 	import { page } from '$app/state'
 	import { PageTypes, SiteSymbols, PageTypeSymbols, PageTypeFields, PageTypeEntries, manager } from '$lib/pocketbase/collections'
 	import { site_html } from '$lib/builder/stores/app/page.js'
+	import { dragging_symbol } from '$lib/builder/stores/app/misc'
 	import DropZone from '$lib/components/DropZone.svelte'
 	import { Button } from '$lib/components/ui/button'
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
@@ -101,6 +102,12 @@
 						allowedEdges: ['top', 'bottom']
 					}
 				)
+			},
+			onDragStart() {
+				$dragging_symbol = true
+			},
+			onDragEnd() {
+				$dragging_symbol = false
 			},
 			onDrop({ self, source }) {
 				if (!site) return
