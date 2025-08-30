@@ -6,6 +6,7 @@
 	import axios from 'axios'
 	import { createPopperActions } from 'svelte-popperjs'
 	import { clickOutside } from '../utilities'
+	import { offsetByFixedParents } from '../utils/popper-fix'
 
 	const dispatch = createEventDispatcher()
 
@@ -22,7 +23,8 @@
 
 	const [popperRef, popperContent] = createPopperActions({
 		placement: 'bottom-start',
-		strategy: 'fixed'
+		strategy: 'fixed',
+		modifiers: [offsetByFixedParents]
 	})
 
 	let searched = $state(false)
