@@ -5,6 +5,7 @@
 	import Icon from '@iconify/svelte'
 	import { clickOutside, createUniqueID } from '../utilities.js'
 	import { createPopperActions } from 'svelte-popperjs'
+	import { offsetByFixedParents } from '../utils/popper-fix'
 
 	const dispatch = createEventDispatcher()
 
@@ -41,6 +42,7 @@
 		strategy: 'fixed',
 		modifiers: fullwidth
 			? [
+					offsetByFixedParents,
 					{ name: 'offset', options: { offset: [0, 3] } },
 					{
 						name: 'sameWidth',
@@ -52,7 +54,7 @@
 						requires: ['computeStyles']
 					}
 				]
-			: [{ name: 'offset', options: { offset: [0, 3] } }]
+			: [offsetByFixedParents, { name: 'offset', options: { offset: [0, 3] } }]
 	})
 
 	let showing_dropdown = $state(false)

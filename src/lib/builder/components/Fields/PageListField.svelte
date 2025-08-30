@@ -2,6 +2,9 @@
 	import UI from '../../ui/index.js'
 	import type { PageListField } from '$lib/common/models/fields/PageListField.js'
 	import { site_context } from '$lib/builder/stores/context'
+	import { createEventDispatcher } from 'svelte'
+
+	const dispatch = createEventDispatcher()
 
 	const site = site_context.getOr(null)
 	const { field }: { field: PageListField } = $props()
@@ -12,14 +15,19 @@
 		<!-- Entity type -->
 		<UI.Select
 			on:input={({ detail }) => {
-				field.page_type = detail
+				dispatch('input', {
+					config: {
+						...field.config,
+						page_type: detail
+					}
+				})
 			}}
 			label="Page Type"
-			value={field.page_type}
+			value={field.config?.page_type || ''}
 			fullwidth={true}
-			options={site.page_types()?.map((page_type) => ({
+			options={site?.page_types()?.map((page_type) => ({
 				label: page_type.name,
-				value: page_type,
+				value: page_type.id,
 				icon: page_type.icon
 			}))}
 		/>

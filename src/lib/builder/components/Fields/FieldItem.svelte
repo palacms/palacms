@@ -212,15 +212,17 @@
 					selected_field_type_id = field_type_id
 
 					// Set default config based on field type
-					let defaultConfig = {}
+					let defaultConfig: unknown = {}
 					if (field_type_id === 'page') {
 						// Page field requires page_type - get the first available page type
-						const firstPageType = page_types[0]?.id || 'default'
+						const firstPageType = page_types[0]?.id || ''
 						defaultConfig = { page_type: firstPageType }
 					} else if (field_type_id === 'page-list') {
 						// Page list might also need page_type
-						const firstPageType = page_types[0]?.id || 'default'
+						const firstPageType = page_types[0]?.id || ''
 						defaultConfig = { page_type: firstPageType }
+					} else {
+						defaultConfig = null
 					}
 
 					onchange({ id: field.id, data: { type: field_type_id, config: defaultConfig } })
@@ -504,7 +506,12 @@
 			/>
 		{/if}
 		{#if field.type === 'page-list'}
-			<PageListField {field} />
+			<PageListField
+				{field}
+				on:input={(event) => {
+					onchange({ id: field.id, data: event.detail })
+				}}
+			/>
 		{/if}
 		{#if field.config?.condition}
 			<Condition
