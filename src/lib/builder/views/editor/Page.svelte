@@ -134,8 +134,9 @@
 	let block_toolbar_element = $state()
 	let showing_block_toolbar = $state(false)
 
-	// Add this state variable to track if we're hovering over the toolbar
+	// Add state variables to track hover states
 	let hovering_toolbar = $state(false)
+	let hovering_section = $state(false)
 
 	async function show_block_toolbar() {
 		// Clear any pending hide timeout
@@ -179,7 +180,8 @@
 		if (hide_toolbar_timeout) {
 			clearTimeout(hide_toolbar_timeout)
 		}
-		if (!hovering_toolbar) {
+		// Only hide if we're not hovering over either the toolbar or the section
+		if (!hovering_toolbar && !hovering_section) {
 			showing_block_toolbar = false
 			page_el.removeEventListener('scroll', position_block_toolbar)
 		}
@@ -598,14 +600,21 @@
 		class="absolute z-50"
 		onmouseenter={() => {
 			hovering_toolbar = true
+			// Clear any pending hide timeout when entering toolbar
+			if (hide_toolbar_timeout) {
+				clearTimeout(hide_toolbar_timeout)
+				hide_toolbar_timeout = null
+			}
 		}}
 		onmouseleave={() => {
 			hovering_toolbar = false
-			setTimeout(() => {
-				if (!hovering_toolbar) {
-					showing_block_toolbar = false
-				}
-			}, 50)
+			// Use the same timeout system
+			if (hide_toolbar_timeout) {
+				clearTimeout(hide_toolbar_timeout)
+			}
+			hide_toolbar_timeout = setTimeout(() => {
+				hide_block_toolbar()
+			}, 100)
 		}}
 	>
 		<BlockToolbar
@@ -717,18 +726,23 @@
 				onmouseenter={async (e) => {
 					hovered_section_id = section.id
 					hovered_block_el = e.currentTarget
+					hovering_section = true
 					if (show_block_toolbar_on_hover) {
 						show_block_toolbar()
 					}
 				}}
 				onmouseleave={(e) => {
-					// Only hide if we're not immediately entering another section
-					setTimeout(() => {
+					hovering_section = false
+					// Use a single timeout system
+					if (hide_toolbar_timeout) {
+						clearTimeout(hide_toolbar_timeout)
+					}
+					hide_toolbar_timeout = setTimeout(() => {
 						// Check if we've hovered over a different section in the meantime
 						if (hovered_section_id === section.id) {
 							hide_block_toolbar()
 						}
-					}, 50)
+					}, 100)
 				}}
 				animate:flip={{ duration: 100 }}
 				use:drag_item={section}

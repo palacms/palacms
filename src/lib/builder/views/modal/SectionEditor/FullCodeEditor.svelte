@@ -1,5 +1,30 @@
 <script module>
 	import { writable } from 'svelte/store'
+	
+	// Global pane size stores that persist across component instances
+	// Keyed by storage_key to maintain separate states for different editors
+	const pane_states = new Map()
+	
+	function get_pane_stores(storage_key) {
+		if (!storage_key) {
+			// Return default stores for editors without a storage key
+			return {
+				left_pane_size: writable(33),
+				center_pane_size: writable(33),
+				right_pane_size: writable(33)
+			}
+		}
+		
+		if (!pane_states.has(storage_key)) {
+			pane_states.set(storage_key, {
+				left_pane_size: writable(33),
+				center_pane_size: writable(33),
+				right_pane_size: writable(33)
+			})
+		}
+		
+		return pane_states.get(storage_key)
+	}
 </script>
 
 <script>
@@ -10,10 +35,6 @@
 	import { get, set } from 'idb-keyval'
 
 	const dispatch = createEventDispatcher()
-
-	const left_pane_size = writable(33)
-	const center_pane_size = writable(33)
-	const right_pane_size = writable(33)
 
 	/**
 	 * @typedef {Object} Props
@@ -26,6 +47,39 @@
 
 	/** @type {Props} */
 	let { data = {}, completions, html = $bindable(''), css = $bindable(''), js = $bindable(''), storage_key, onmod_e = () => {}, onmod_r = () => {}, oninput = () => {} } = $props()
+	
+	// Get the appropriate pane stores for this editor instance
+	const { left_pane_size, center_pane_size, right_pane_size } = get_pane_stores(storage_key)
+	
+	// Set up keyboard shortcuts for tab switching
+	// Use a simple global keydown listener for when CodeMirror isn't focused
+	function handleGlobalKeydown(e) {
+		// Check if CodeMirror has focus by checking if the active element is within a .cm-editor
+		const isCodeMirrorFocused = document.activeElement?.closest('.cm-editor')
+		
+		// Only handle shortcuts when CodeMirror is NOT focused (CodeMirror handles its own)
+		if (!isCodeMirrorFocused && (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+			if (e.key === '1') {
+				e.preventDefault()
+				toggleTab(0)
+			} else if (e.key === '2') {
+				e.preventDefault()
+				toggleTab(1)
+			} else if (e.key === '3') {
+				e.preventDefault()
+				toggleTab(2)
+			}
+		}
+	}
+	
+	// Add the global listener on mount
+	$effect(() => {
+		window.addEventListener('keydown', handleGlobalKeydown)
+		
+		return () => {
+			window.removeEventListener('keydown', handleGlobalKeydown)
+		}
+	})
 
 	let html_pane_component = $state()
 	let css_pane_component = $state()
@@ -173,9 +227,20 @@
 		}
 	}
 
-	// close empty tabs on mount only
+	// Load saved sizes from IndexedDB once, or initialize based on content
 	onMount(async () => {
-		// First, try to load saved pane sizes if we have a storage key
+		// Check if we've already loaded sizes for this storage_key in this session
+		const current_left = $left_pane_size
+		const current_center = $center_pane_size
+		const current_right = $right_pane_size
+		
+		// If stores already have non-default values, the state is already loaded
+		if (current_left !== 33 || current_center !== 33 || current_right !== 33) {
+			initial_load_complete = true
+			return
+		}
+		
+		// First, try to load saved pane sizes from IndexedDB if we have a storage key
 		if (idb_key) {
 			try {
 				const saved_sizes = await get(idb_key)
@@ -240,6 +305,29 @@
 	})
 
 	let showing_local_key_hint = $state(false)
+	
+	// Show/hide keyboard hint when mod key is pressed
+	function handleModKeyPress(e) {
+		if (e.metaKey || e.ctrlKey) {
+			showing_local_key_hint = true
+		}
+	}
+	
+	function handleModKeyRelease(e) {
+		if (!e.metaKey && !e.ctrlKey) {
+			showing_local_key_hint = false
+		}
+	}
+	
+	$effect(() => {
+		window.addEventListener('keydown', handleModKeyPress)
+		window.addEventListener('keyup', handleModKeyRelease)
+		
+		return () => {
+			window.removeEventListener('keydown', handleModKeyPress)
+			window.removeEventListener('keyup', handleModKeyRelease)
+		}
+	})
 </script>
 
 <PaneGroup direction="horizontal" class="flex h-full" autoSaveId="page-view">
@@ -279,8 +367,6 @@
 				bind:selection={selections['html']}
 				on:mod-e
 				on:mod-r
-				on:modkeydown={() => (showing_local_key_hint = true)}
-				on:modkeyup={() => (showing_local_key_hint = false)}
 				on:tab-switch={({ detail }) => toggleTab(detail)}
 				on:change={() => {
 					dispatch('htmlChange')
@@ -331,8 +417,6 @@
 				{/if}
 			</button>
 			<CodeMirror
-				on:modkeydown={() => (showing_local_key_hint = true)}
-				on:modkeyup={() => (showing_local_key_hint = false)}
 				on:tab-switch={({ detail }) => toggleTab(detail)}
 				bind:selection={selections['css']}
 				bind:value={css}
@@ -388,8 +472,6 @@
 				{/if}
 			</button>
 			<CodeMirror
-				on:modkeydown={() => (showing_local_key_hint = true)}
-				on:modkeyup={() => (showing_local_key_hint = false)}
 				on:tab-switch={({ detail }) => toggleTab(detail)}
 				bind:selection={selections['js']}
 				bind:value={js}
