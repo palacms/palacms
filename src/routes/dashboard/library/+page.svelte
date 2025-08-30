@@ -24,8 +24,18 @@
 	import { useExportLibrarySymbol } from '$lib/workers/ExportSymbol.svelte'
 
 	const active_symbol_group_id = $derived(page.url.searchParams.get('group'))
-	const active_symbol_group = $derived(active_symbol_group_id ? LibrarySymbolGroups.one(active_symbol_group_id) : undefined)
 	const symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
+	
+	// Auto-select first group if none selected and groups exist
+	$effect(() => {
+		if (!active_symbol_group_id && symbol_groups.length > 0) {
+			const url = new URL(page.url)
+			url.searchParams.set('group', symbol_groups[0].id)
+			goto(url, { replaceState: true })
+		}
+	})
+	
+	const active_symbol_group = $derived(active_symbol_group_id ? LibrarySymbolGroups.one(active_symbol_group_id) : undefined)
 
 	// Get symbols for the active group using direct query instead of relationship method
 	const group_symbols = $derived(active_symbol_group?.symbols() ?? [])
