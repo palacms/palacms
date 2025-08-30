@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
 	optimizeDeps: {
-		exclude: ['@rollup/browser', 'prettier']
+		exclude: ['@rollup/browser']
 	},
 	plugins: [sveltekit()]
 })

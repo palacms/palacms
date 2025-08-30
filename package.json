@@ -23,7 +23,7 @@
 		"@replit/codemirror-lang-svelte": "^6.0.0",
 		"@rollup/browser": "^4.49.0",
 		"@sveltejs/adapter-static": "^3.0.9",
-		"@sveltejs/kit": "^2.36.3",
+		"@sveltejs/kit": "^2.37.0",
 		"@tailwindcss/postcss": "^4.1.12",
 		"@tiptap/core": "^3.2.0",
 		"@tiptap/extension-bubble-menu": "^3.3.0",
@@ -82,12 +82,12 @@
 		"svelte-sonner": "^1.0.5",
 		"svelte-toggle": "^4.0.1",
 		"tailwind-merge": "^3.3.1",
-		"tailwind-variants": "^2.1.0",
+		"tailwind-variants": "^3.1.0",
 		"tailwindcss": "^4.1.12",
 		"tailwindcss-animate": "^1.0.7",
 		"typescript": "^5.9.2",
 		"uuid": "^11.1.0",
-		"zod": "^4.1.4"
+		"zod": "^4.1.5"
 	},
 	"dependencies": {
 		"resolve.exports": "^2.0.3"

@@ -104,7 +104,21 @@
 		if (element) {
 			draggable({
 				element,
-				getInitialData: () => ({ block: symbol })
+				getInitialData: () => ({ block: symbol }),
+				onDragStart: () => {
+					if (typeof window !== 'undefined') {
+						window.dispatchEvent(new CustomEvent('palaDragStart', { 
+							detail: { block: symbol } 
+						}))
+					}
+				},
+				onDrop: () => {
+					if (typeof window !== 'undefined') {
+						window.dispatchEvent(new CustomEvent('palaDragEnd', { 
+							detail: { block: symbol } 
+						}))
+					}
+				}
 			})
 		}
 	})

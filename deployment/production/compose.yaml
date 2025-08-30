@@ -38,6 +38,8 @@ services:
 
       - traefik.http.middlewares.marketplace-palacms-redirect.redirectregex.regex=.*
       - traefik.http.middlewares.marketplace-palacms-redirect.redirectregex.replacement=https://palacms.com
+      - traefik.http.middlewares.marketplace-palacms-cors.headers.accesscontrolallowmethods=*
+      - traefik.http.middlewares.marketplace-palacms-cors.headers.accesscontrolallowheaders=*
       - traefik.http.middlewares.marketplace-palacms-cors.headers.accesscontrolalloworiginlist=*
 
 volumes:

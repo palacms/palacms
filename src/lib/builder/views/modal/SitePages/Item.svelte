@@ -91,9 +91,9 @@
 				if (edge === 'bottom') {
 					// Set hover position to show indicator below this item
 					// Special handling for the last item in the list
-					const siblings = allPages.filter(p => p.parent === page.parent).sort((a, b) => a.index - b.index)
+					const siblings = allPages.filter((p) => p.parent === page.parent).sort((a, b) => a.index - b.index)
 					const isLastItem = siblings[siblings.length - 1]?.id === page.id
-					
+
 					if (page.index === 0) {
 						hover_position = 'home-bottom'
 					} else if (isLastItem && page.parent === home_page?.id) {
@@ -111,8 +111,8 @@
 						hover_position = 'home-bottom'
 					} else {
 						// Find the previous sibling
-						const siblings = allPages.filter(p => p.parent === page.parent).sort((a, b) => a.index - b.index)
-						const prevIndex = siblings.findIndex(p => p.id === page.id) - 1
+						const siblings = allPages.filter((p) => p.parent === page.parent).sort((a, b) => a.index - b.index)
+						const prevIndex = siblings.findIndex((p) => p.id === page.id) - 1
 						if (prevIndex >= 0) {
 							hover_position = `${siblings[prevIndex].id}-bottom`
 						}
@@ -168,7 +168,7 @@
 				for (let i = 0; i < siblings.length; i++) {
 					const sibling = siblings[i]
 					let new_index = sibling.index
-					
+
 					if (sibling.id === page_being_dragged.id) {
 						new_index = final_index
 					} else if (old_index < final_index) {
@@ -182,7 +182,7 @@
 							new_index = sibling.index + 1
 						}
 					}
-					
+
 					if (new_index !== sibling.index) {
 						Pages.update(sibling.id, { index: new_index })
 					}
@@ -332,7 +332,6 @@
 </div>
 
 <style lang="postcss">
-
 	button.create-page {
 		padding: 0.5rem;
 		background: var(--primo-color-codeblack);
@@ -357,10 +356,12 @@
 	.Item {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		transition: transform 0.2s ease, opacity 0.2s ease;
+		/* gap: 4px; */
+		transition:
+			transform 0.2s ease,
+			opacity 0.2s ease;
 		/* padding-bottom: 0.5rem; */
-		
+
 		&.dragging {
 			opacity: 0.5;
 			transform: scale(0.98);
