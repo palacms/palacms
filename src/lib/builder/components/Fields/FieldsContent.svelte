@@ -72,8 +72,20 @@
 		ondelete_entry?: (entry_id: string) => void
 	} = $props()
 
-	// TABS
-	let selected_tabs = $state<Record<string, 'field' | 'entry'>>(Object.fromEntries(fields.map((f) => [f.id, f.key === '' ? 'field' : 'entry'])))
+	// TABS - Simple persistent approach
+	let selected_tabs = $state<Record<string, 'field' | 'entry'>>({})
+
+	// Initialize tabs for new fields when they appear
+	$effect(() => {
+		const rootFields = fields.filter((f) => !f.parent || f.parent === '')
+
+		rootFields.forEach((f) => {
+			if (!(f.id in selected_tabs)) {
+				// All new fields default to 'field' tab to avoid unexpected switches
+				selected_tabs[f.id] = 'field'
+			}
+		})
+	})
 
 	function select_tab(field_id, tab) {
 		selected_tabs[field_id] = tab
@@ -132,7 +144,7 @@
 
 <div class="Fields">
 	{#each (fields || []).filter((f) => !f.parent || f.parent === '').sort((a, b) => a.index - b.index) as field (field.id)}
-		{@const active_tab = selected_tabs[field.id] || 'field'}
+		{@const active_tab = selected_tabs[field.id] ?? 'field'}
 		<div class="entries-item">
 			<!-- TODO: hotkeys for tab switching  -->
 			{#if $current_user?.siteRole === 'developer'}

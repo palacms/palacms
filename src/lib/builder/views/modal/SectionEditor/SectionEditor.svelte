@@ -1,5 +1,5 @@
 <script module>
-	import { writable, get } from 'svelte/store'
+	import { writable } from 'svelte/store'
 	const orientation = writable('horizontal')
 </script>
 
@@ -237,6 +237,8 @@
 					{fields}
 					{entries}
 					create_field={(data) => {
+						console.log('create_field')
+
 						if (!symbol) {
 							return
 						}
@@ -282,6 +284,7 @@
 						}
 					}}
 					onchange={({ id, data }) => {
+						console.log('onchange')
 						SiteSymbolFields.update(id, data)
 					}}
 					ondelete={(field_id) => {
