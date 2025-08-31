@@ -57,6 +57,7 @@
 		if (!userId) return
 		LibrarySymbolGroups.create({ name: new_symbol_group_name, index: 0 })
 		await manager.commit()
+		new_symbol_group_name = ''
 		is_creating_symbol_group = false
 	}
 
