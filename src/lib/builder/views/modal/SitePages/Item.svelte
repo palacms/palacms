@@ -16,6 +16,7 @@
 	import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import type { Page } from '$lib/common/models/Page'
+	import { build_cms_page_url } from '$lib/pages'
 
 	let editing_page = $state(false)
 
@@ -38,10 +39,7 @@
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
-	const full_url = $derived(() => {
-		const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
-		return `${base_path}/${page.slug}`
-	})
+	const full_url = $derived(build_cms_page_url(page, pageState.url))
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
 	const home_page = $derived(site.homepage())
@@ -59,11 +57,6 @@
 	})
 
 	let creating_page = $state(false)
-	let new_page_url = $state('')
-	$effect(() => {
-		new_page_url = validate_url(new_page_url)
-	})
-
 	let delete_warning_dialog = $state(false)
 	let pages_to_delete = $state<any[]>([])
 	let pending_delete = $state<(() => Promise<void>) | null>(null)
@@ -72,17 +65,17 @@
 	function getAllDescendants(pageId: string): any[] {
 		const descendants: any[] = []
 		const queue = [pageId]
-		
+
 		while (queue.length > 0) {
 			const currentId = queue.shift()!
-			const children = allPages.filter(p => p.parent === currentId)
-			
+			const children = allPages.filter((p) => p.parent === currentId)
+
 			for (const child of children) {
 				descendants.push(child)
 				queue.push(child.id)
 			}
 		}
-		
+
 		return descendants
 	}
 
@@ -171,7 +164,7 @@
 				}
 
 				hover_position = null
-				
+
 				// Only allow reordering within same parent (root level only since drag handles are hidden for child pages)
 				if (same_parent) {
 					// Delay the actual updates to prevent jerky animations
@@ -258,7 +251,7 @@
 					<span class="icon" style:background={page_type?.color}>
 						<Icon icon={page_type?.icon} />
 					</span>
-					<a class:active href={full_url()} onclick={() => {}} class="name">{page.name}</a>
+					<a class:active href={full_url?.href} onclick={() => {}} class="name">{page.name}</a>
 					<span class="url">/{page.slug}</span>
 				</div>
 			{/if}
@@ -316,19 +309,19 @@
 									icon: 'ic:outline-delete',
 									on_click: async () => {
 										const descendants = getAllDescendants(page.id)
-										
+
 										if (descendants.length > 0) {
 											// Show warning dialog for pages with children
 											pages_to_delete = [page, ...descendants]
 											pending_delete = async () => {
 												const parent_id = page.parent
-												
+
 												// Delete the page and all descendants
 												Pages.delete(page.id)
-												descendants.forEach(desc => Pages.delete(desc.id))
+												descendants.forEach((desc) => Pages.delete(desc.id))
 
 												// Reindex remaining sibling pages
-												const sibling_pages = allPages.filter((p) => p.parent === parent_id && p.id !== page.id && !descendants.some(d => d.id === p.id)).sort((a, b) => a.index - b.index)
+												const sibling_pages = allPages.filter((p) => p.parent === parent_id && p.id !== page.id && !descendants.some((d) => d.id === p.id)).sort((a, b) => a.index - b.index)
 
 												sibling_pages.forEach((sibling_page, i) => {
 													const index = parent_id === home_page?.id ? i + 1 : i
