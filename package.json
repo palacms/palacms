@@ -21,7 +21,7 @@
 		"@emmetio/codemirror6-plugin": "^0.4.0",
 		"@iconify/svelte": "^5.0.1",
 		"@replit/codemirror-lang-svelte": "^6.0.0",
-		"@rollup/browser": "^4.49.0",
+		"@rollup/browser": "^4.50.0",
 		"@sveltejs/adapter-static": "^3.0.9",
 		"@sveltejs/kit": "^2.37.0",
 		"@tailwindcss/postcss": "^4.1.12",
