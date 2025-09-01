@@ -44,9 +44,12 @@
 		e.preventDefault()
 		const userId = $current_user?.id
 		if (!userId) return
-		SiteGroups.create({ name: new_site_group_name, index: 0 })
+		const newGroup = SiteGroups.create({ name: new_site_group_name, index: 0 })
 		await manager.commit()
+		new_site_group_name = ''
 		is_creating_site_group = false
+		// Navigate to the newly created group
+		goto(`/admin/dashboard/sites?group=${newGroup.id}`)
 	}
 
 	let is_creating_symbol_group = $state(false)
@@ -55,10 +58,12 @@
 		e.preventDefault()
 		const userId = $current_user?.id
 		if (!userId) return
-		LibrarySymbolGroups.create({ name: new_symbol_group_name, index: 0 })
+		const newGroup = LibrarySymbolGroups.create({ name: new_symbol_group_name, index: 0 })
 		await manager.commit()
 		new_symbol_group_name = ''
 		is_creating_symbol_group = false
+		// Navigate to the newly created group
+		goto(`/admin/dashboard/library?group=${newGroup.id}`)
 	}
 
 	const path = $derived($page.url.pathname.split('/').slice(0, 4).join('/'))
