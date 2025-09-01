@@ -282,7 +282,6 @@
 						}
 					}}
 					onchange={({ id, data }) => {
-						console.log('onchange')
 						SiteSymbolFields.update(id, data)
 					}}
 					ondelete={(field_id) => {
