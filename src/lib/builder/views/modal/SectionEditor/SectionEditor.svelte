@@ -237,8 +237,6 @@
 					{fields}
 					{entries}
 					create_field={(data) => {
-						console.log('create_field')
-
 						if (!symbol) {
 							return
 						}
