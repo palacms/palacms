@@ -10,9 +10,9 @@
 	import * as Collapsible from '$lib/components/ui/collapsible'
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu'
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js'
-	import { marketplace, self } from '$lib/pocketbase/PocketBase'
+	import { self } from '$lib/pocketbase/PocketBase'
 	import type { Component } from 'svelte'
-	import { LibrarySymbolGroups, manager, SiteGroups } from '$lib/pocketbase/collections'
+	import { LibrarySymbolGroups, MarketplaceSymbolGroups, manager, SiteGroups } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
 
 	const sidebar = useSidebar()
@@ -327,7 +327,7 @@
 								<Collapsible.Content>
 									<Sidebar.GroupContent>
 										<Sidebar.Menu>
-											{#each LibrarySymbolGroups.from(marketplace).list() ?? [] as group}
+											{#each MarketplaceSymbolGroups.list() ?? [] as group}
 												{@const url = `/admin/dashboard/marketplace/blocks?group=${group.id}`}
 												<Sidebar.MenuItem>
 													<Sidebar.MenuButton isActive={$page.url.pathname + $page.url.search === url}>
