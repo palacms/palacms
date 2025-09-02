@@ -35,8 +35,6 @@
 	const body_sections = $derived(page_type_sections.filter((s) => s.zone === 'body'))
 	const footer_sections = $derived(page_type_sections.filter((s) => s.zone === 'footer'))
 
-	$inspect({ body_sections })
-
 	// Page type head and foot editors
 	let head = $state('')
 	let foot = $state('')
@@ -594,9 +592,7 @@
 				if (!section) return
 
 				const section_zone = section.zone || 'body'
-				const zone_sections = page_type_sections
-					.filter((s) => (s.zone || 'body') === section_zone)
-					.sort((a, b) => a.index - b.index)
+				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone).sort((a, b) => a.index - b.index)
 				const current_position = zone_sections.findIndex((s) => s.id === section.id)
 
 				if (current_position > 0) {
@@ -604,19 +600,19 @@
 					const section_above = zone_sections[current_position - 1]
 					const section_index = section.index
 					const above_index = section_above.index
-					
+
 					// Find a temporary index that won't conflict (use max + 1000)
-					const max_index = Math.max(...zone_sections.map(s => s.index))
+					const max_index = Math.max(...zone_sections.map((s) => s.index))
 					const temp_index = max_index + 1000
-					
+
 					// Step 1: Move current section to temp position and commit
 					PageTypeSections.update(section.id, { index: temp_index })
 					await manager.commit()
-					
+
 					// Step 2: Move above section to current position and commit
 					PageTypeSections.update(section_above.id, { index: section_index })
 					await manager.commit()
-					
+
 					// Step 3: Move current section to above position and commit
 					PageTypeSections.update(section.id, { index: above_index })
 					await manager.commit()
@@ -635,9 +631,7 @@
 				if (!section) return
 
 				const section_zone = section.zone || 'body'
-				const zone_sections = page_type_sections
-					.filter((s) => (s.zone || 'body') === section_zone)
-					.sort((a, b) => a.index - b.index)
+				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone).sort((a, b) => a.index - b.index)
 				const current_position = zone_sections.findIndex((s) => s.id === section.id)
 
 				if (current_position < zone_sections.length - 1) {
@@ -645,19 +639,19 @@
 					const section_below = zone_sections[current_position + 1]
 					const section_index = section.index
 					const below_index = section_below.index
-					
+
 					// Find a temporary index that won't conflict (use max + 1000)
-					const max_index = Math.max(...zone_sections.map(s => s.index))
+					const max_index = Math.max(...zone_sections.map((s) => s.index))
 					const temp_index = max_index + 1000
-					
+
 					// Step 1: Move current section to temp position and commit
 					PageTypeSections.update(section.id, { index: temp_index })
 					await manager.commit()
-					
+
 					// Step 2: Move below section to current position and commit
 					PageTypeSections.update(section_below.id, { index: section_index })
 					await manager.commit()
-					
+
 					// Step 3: Move current section to below position and commit
 					PageTypeSections.update(section.id, { index: below_index })
 					await manager.commit()
