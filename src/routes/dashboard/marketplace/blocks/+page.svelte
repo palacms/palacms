@@ -1,4 +1,5 @@
 <script>
+	import { fade } from 'svelte/transition'
 	import * as Popover from '$lib/components/ui/popover'
 	import * as Sidebar from '$lib/components/ui/sidebar'
 	import { processCode } from '$lib/builder/utils.js'
@@ -6,17 +7,17 @@
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Cuboid, CirclePlus, CircleCheck } from 'lucide-svelte'
 	import SymbolButton from '$lib/components/SymbolButton.svelte'
+	import Masonry from '$lib/components/Masonry.svelte'
 	import { Button, buttonVariants } from '$lib/components/ui/button'
 	import { toast } from 'svelte-sonner'
 	import * as RadioGroup from '$lib/components/ui/radio-group'
 	import { Label } from '$lib/components/ui/label'
 	import { page } from '$app/state'
-	import { LibrarySymbolGroups, LibrarySymbols } from '$lib/pocketbase/collections'
-	import { marketplace } from '$lib/pocketbase/PocketBase'
+	import { LibrarySymbolGroups, MarketplaceSymbolGroups } from '$lib/pocketbase/collections'
 
 	const group_id = $derived(page.url.searchParams.get('group') ?? undefined)
-	const marketplace_symbol_group = $derived(group_id ? LibrarySymbolGroups.from(marketplace).one(group_id) : undefined)
-	const marketplace_symbols = $derived(marketplace_symbol_group?.symbols() ?? [])
+	const marketplace_symbol_group = $derived(group_id ? MarketplaceSymbolGroups.one(group_id) : undefined)
+	const marketplace_symbols = $derived(marketplace_symbol_group?.symbols() ?? undefined)
 	const library_symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
 
 	async function compile_component_head(html) {
@@ -53,11 +54,11 @@
 	</div>
 </header>
 
-<div class="flex flex-1 flex-col gap-4 px-4 pb-4">
-	{#if marketplace_symbols?.length}
-		<ul class="blocks">
-			{#each marketplace_symbols as symbol (symbol.id)}
-				<li>
+<div class="flex flex-1 flex-col gap-4 px-4 pb-4 overflow-hidden">
+	{#key group_id}
+		{#if marketplace_symbols?.length || marketplace_symbols === undefined}
+			<Masonry items={marketplace_symbols} loading={marketplace_symbols === undefined} skeletonCount={12}>
+				{#snippet children(symbol)}
 					<SymbolButton {symbol}>
 						<Popover.Root bind:open={is_popover_open}>
 							<Popover.Trigger class={buttonVariants({ variant: 'ghost', class: 'h-4 p-0' })}>
@@ -95,35 +96,10 @@
 							</Popover.Content>
 						</Popover.Root>
 					</SymbolButton>
-				</li>
-			{/each}
-		</ul>
-	{:else}
-		<EmptyState icon={Cuboid} title="No Blocks to display" description="Blocks are components you can add to any site. When you create one it'll show up here." />
-	{/if}
+				{/snippet}
+			</Masonry>
+		{:else}
+			<EmptyState icon={Cuboid} title="No Blocks to display" description="Blocks are components you can add to any site. When you create one it'll show up here." />
+		{/if}
+	{/key}
 </div>
-
-<style lang="postcss">
-	ul.blocks {
-		display: grid;
-		gap: 1rem;
-	}
-
-	@media (min-width: 600px) {
-		ul.blocks {
-			grid-template-columns: 1fr 1fr;
-		}
-	}
-
-	@media (min-width: 900px) {
-		ul.blocks {
-			grid-template-columns: 1fr 1fr 1fr;
-		}
-	}
-
-	@media (min-width: 1200px) {
-		ul.blocks {
-			grid-template-columns: 1fr 1fr 1fr 1fr;
-		}
-	}
-</style>
