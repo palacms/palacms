@@ -199,7 +199,7 @@
 						})
 					}}
 				/>
-			{:else if tab === 'content' && fields && entries}
+			{:else if tab === 'content' && fields}
 				<Fields
 					entity={block}
 					{fields}
