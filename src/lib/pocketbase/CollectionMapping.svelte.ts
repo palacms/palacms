@@ -69,7 +69,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 
 			if (change && change.operation === 'delete') {
 				return undefined
-			} else if (change && !change.committed) {
+			} else if (change) {
 				data = Object.assign({}, data, change.data)
 			} else if (!data) {
 				$effect(() => {
