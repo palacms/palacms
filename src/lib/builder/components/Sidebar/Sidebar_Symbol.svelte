@@ -105,7 +105,6 @@
 				element,
 				getInitialData: () => ({ block: symbol }),
 				onDragStart: () => {
-					console.log('Sidebar_Symbol onDragStart - dispatching palaDragStart with block:', symbol)
 					if (typeof window !== 'undefined') {
 						window.dispatchEvent(new CustomEvent('palaDragStart', { 
 							detail: { block: symbol } 
