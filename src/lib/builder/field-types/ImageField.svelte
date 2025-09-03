@@ -68,7 +68,7 @@
 				upload = LibraryUploads.create({ file: compressedImageFile })
 			}
 
-			onchange({ [field.key]: { 0: { value: { ...entry.value, upload: upload.id } } } })
+			onchange({ [field.key]: { 0: { value: { ...entry.value, upload: upload.id, url: '' } } } })
 		} finally {
 			loading = false
 		}
@@ -129,7 +129,7 @@
 				value={entry.value.url}
 				label="URL"
 				oninput={(value) => {
-					onchange({ [field.key]: { 0: { value: { ...entry.value, url: value } } } })
+					onchange({ [field.key]: { 0: { value: { ...entry.value, url: value, upload: undefined } } } })
 				}}
 			/>
 		</div>

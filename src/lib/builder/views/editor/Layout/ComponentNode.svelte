@@ -25,12 +25,13 @@
 	import { watch } from 'runed'
 	import { component_iframe_srcdoc } from '$lib/builder/components/misc'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites, SiteUploads, LibraryUploads } from '$lib/pocketbase/collections'
+	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites, SiteUploads, LibraryUploads, Pages } from '$lib/pocketbase/collections'
 	import { self } from '$lib/pocketbase/PocketBase'
 	import { site_context } from '$lib/builder/stores/context'
 	import { Editor, Extension } from '@tiptap/core'
 	import { renderToHTMLString, renderToMarkdown } from '@tiptap/static-renderer'
 	import { useContent } from '$lib/Content.svelte'
+	import { build_live_page_url } from '$lib/pages'
 
 	const lowlight = createLowlight(all)
 
@@ -812,6 +813,8 @@
 	let current_link_element = $state(null)
 	let current_link_id = $state(null)
 	let current_link_value = $state({ url: '', label: '', active: true })
+	let current_link_page = $derived(current_link_value.page ? Pages.one(current_link_value.page) : null)
+	let current_link_url = $derived(current_link_page ? build_live_page_url(current_link_page)?.pathname : current_link_value.url)
 </script>
 
 <Dialog.Root bind:open={editing_image}>
@@ -873,44 +876,8 @@
 				} else if (current_image_element && !current_image_id) {
 					// Handle existing TipTap markdown images (no entry)
 
-					// Get the image URL - prioritize upload over direct URL for new uploads
 					let imageUrl = ''
-					if (current_image_value.upload) {
-						// Get upload URL from the upload record
-						const upload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
-						if (upload) {
-							const baseURL = self.baseURL
-							const collection = site ? 'site_uploads' : 'library_uploads'
-
-							// Only use the PocketBase URL if the file is saved server-side (string)
-							// If it's still a File object, we need to commit it first
-							if (typeof upload.file === 'string') {
-								imageUrl = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
-							} else {
-								try {
-									// Force commit the upload to save it server-side
-									await manager.commit()
-
-									// Refresh the upload record to get the server-side filename
-									const refreshedUpload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
-
-									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
-										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
-									} else {
-										console.error('Upload still not committed after manager.commit() for existing image')
-										alert('Upload failed to complete. Please try again.')
-										editing_image = false
-										return
-									}
-								} catch (error) {
-									console.error('Failed to commit upload for existing image:', error)
-									alert('Failed to save image. Please try again.')
-									editing_image = false
-									return
-								}
-							}
-						}
-					} else if (current_image_value.url) {
+					if (current_image_value.url) {
 						// Use direct URL if no upload
 						imageUrl = current_image_value.url
 					}
@@ -971,7 +938,12 @@
 					// Handle direct image editing (entry-based)
 					current_image_element.src = current_image_value.url
 					current_image_element.alt = current_image_value.alt
-					save_edited_value({ id: current_image_id, value: current_image_value })
+					save_edited_value({
+						id: current_image_id,
+
+						// Only save either the upload ID, or custom URL
+						value: current_image_value.upload ? { ...current_image_value, url: undefined } : { ...current_image_value, upload: undefined }
+					})
 				}
 				editing_image = false
 			}}
@@ -995,12 +967,10 @@
 							if (typeof upload.file !== 'string') {
 								try {
 									await manager.commit()
-									// Re-fetch the upload after commit
-									const refreshedUpload = site ? SiteUploads.one(newValue.upload) : LibraryUploads.one(newValue.upload)
-									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
+									if (typeof upload.file === 'string') {
 										const baseURL = self.baseURL
 										const collection = site ? 'site_uploads' : 'library_uploads'
-										newValue.url = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
+										newValue.url = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
 									}
 								} catch (error) {
 									console.error('Failed to commit upload in onchange:', error)
@@ -1059,7 +1029,7 @@
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12 overflow-visible">
 		{@const field = fields?.find((f) => entries?.find((e) => e.id === current_link_id)?.field === f.id) || { label: 'Link', key: 'link', type: 'link', config: {} }}
 		{@const entry = {
-			value: current_link_value || { url: '', label: '', active: true }
+			value: current_link_value || { url: '', label: '' }
 		}}
 		<form
 			onsubmit={(e) => {
@@ -1077,20 +1047,21 @@
 							.insertContent({
 								type: 'text',
 								text: current_link_value.label,
-								marks: [{ type: 'link', attrs: { href: current_link_value.url } }]
+								marks: [{ type: 'link', attrs: { href: current_link_url } }]
 							})
 							.run()
 					} else {
 						// Just wrap existing text in link
-						chain.setLink({ href: current_link_value.url }).run()
+						chain.setLink({ href: current_link_url }).run()
 					}
 				} else if (current_link_element && !current_link_id) {
 					// Handle existing TipTap markdown links (clicked from content)
-					current_link_element.href = current_link_value.url
+					current_link_element.href = current_link_url
 					current_link_element.textContent = current_link_value.label
+					// TODO: Save link into Markdown content
 				} else if (current_link_element && current_link_id) {
 					// Handle direct link editing (entry-based)
-					current_link_element.href = current_link_value.url
+					current_link_element.href = current_link_url
 					current_link_element.innerText = current_link_value.label
 					save_edited_value({ id: current_link_id, value: _.cloneDeep(current_link_value) })
 				}
