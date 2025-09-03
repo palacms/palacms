@@ -9,6 +9,14 @@
 	let { site, onsave } = $props()
 
 	let selected_symbol_group = $state<ObjectOf<typeof LibrarySymbolGroups> | null>(null)
+
+	// Auto-select first group when groups are available
+	$effect(() => {
+		const groups = LibrarySymbolGroups.list() ?? []
+		if (groups.length > 0 && !selected_symbol_group) {
+			selected_symbol_group = groups[0]
+		}
+	})
 	const symbols = $derived(selected_symbol_group?.symbols() ?? [])
 	const columns = $derived(
 		selected_symbol_group

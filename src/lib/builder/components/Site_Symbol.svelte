@@ -5,27 +5,19 @@
 	import { processCode } from '../utils'
 	import IFrame from '../components/IFrame.svelte'
 	import type { SiteSymbol } from '$lib/common/models/SiteSymbol'
-	import { page } from '$app/state'
-	import { Sites } from '$lib/pocketbase/collections'
 	import type { LibrarySymbol } from '$lib/common/models/LibrarySymbol'
 	import type { Symbol } from '$lib/common/models/Symbol'
 	import { site_context } from '$lib/builder/stores/context'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { useContent } from '$lib/Content.svelte'
+	import { locale } from '$lib/builder/stores/app/misc'
 
 	let { symbol = $bindable(), checked = false, onclick }: { symbol: SiteSymbol | LibrarySymbol; checked?: boolean; onclick?: () => void } = $props()
 
 	const site = site_context.getOr(null)
+	const _data = $derived(useContent(symbol))
+	const data = $derived(_data && (_data[$locale] ?? {}))
 
 	let name_el
-
-	let renaming = false
-	async function toggle_name_input() {
-		renaming = !renaming
-		// workaround for inability to see cursor when div empty
-		if (symbol.name === '') {
-			symbol.name = 'Block'
-		}
-	}
 
 	let height = $state(0)
 
@@ -33,13 +25,12 @@
 	let component_error = $state()
 	async function compile_component_code(symbol: Symbol) {
 		if (!site) return
-		const data = {} // TODO
 		let res = await processCode({
 			component: {
 				head: site.head,
 				css: symbol.css,
 				html: symbol.html,
-				data: data
+				data
 			},
 			buildStatic: true,
 			hydrated: true
