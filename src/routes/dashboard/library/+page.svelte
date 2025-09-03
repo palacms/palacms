@@ -10,7 +10,8 @@
 	import { Button } from '$lib/components/ui/button'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import DropZone from '$lib/components/DropZone.svelte'
-	import { CirclePlus, Cuboid, Code, Upload, Download, SquarePen, Trash2, ChevronDown, Loader, EllipsisVertical, ArrowLeftRight } from 'lucide-svelte'
+	import Masonry from '$lib/components/Masonry.svelte'
+	import { CirclePlus, Cuboid, Code, Upload, Download, SquarePen, Trash2, ChevronDown, Loader, Loader2, EllipsisVertical, ArrowLeftRight } from 'lucide-svelte'
 	import SymbolButton from '$lib/components/SymbolButton.svelte'
 	import { page } from '$app/state'
 	import { goto } from '$app/navigation'
@@ -134,17 +135,18 @@
 	// Symbol rename
 	let symbol_being_renamed: LibrarySymbol | null = $state(null)
 	let is_symbol_renamer_open = $state(false)
+	let symbol_new_name = $state('')
 
 	function begin_symbol_rename(symbol: LibrarySymbol) {
 		symbol_being_renamed = symbol
-		new_name = symbol.name
+		symbol_new_name = symbol.name
 		is_symbol_renamer_open = true
 	}
 
 	async function handle_symbol_rename(e) {
 		e.preventDefault()
 		if (!symbol_being_renamed) return
-		LibrarySymbols.update(symbol_being_renamed.id, { name: new_name })
+		LibrarySymbols.update(symbol_being_renamed.id, { name: symbol_new_name })
 		await manager.commit()
 		is_symbol_renamer_open = false
 		symbol_being_renamed = null
@@ -274,48 +276,52 @@
 	</div>
 </header>
 
-<div class="flex flex-1 flex-col gap-4 px-4 pb-4">
-	{#if group_symbols.length}
-		<div class="masonry">
-			<ul>
-				{#each group_symbols as symbol (symbol.id)}
-					<li>
-						<SymbolButton {symbol} onclick={() => begin_symbol_edit(symbol)}>
-							<DropdownMenu.Root>
-								<DropdownMenu.Trigger>
-									<EllipsisVertical size={14} />
-								</DropdownMenu.Trigger>
-								<DropdownMenu.Content>
-									<DropdownMenu.Item onclick={() => begin_symbol_edit(symbol)}>
-										<Code class="h-4 w-4" />
-										<span>Edit</span>
-									</DropdownMenu.Item>
-									<DropdownMenu.Item onclick={() => export_symbol(symbol)}>
-										<Download class="h-4 w-4" />
-										<span>Export</span>
-									</DropdownMenu.Item>
-									<DropdownMenu.Item onclick={() => begin_symbol_move(symbol)}>
-										<ArrowLeftRight class="h-4 w-4" />
-										<span>Move</span>
-									</DropdownMenu.Item>
-									<DropdownMenu.Item onclick={() => begin_symbol_rename(symbol)}>
-										<SquarePen class="h-4 w-4" />
-										<span>Rename</span>
-									</DropdownMenu.Item>
-									<DropdownMenu.Item onclick={() => begin_symbol_delete(symbol)} class="text-red-500 hover:text-red-600 focus:text-red-600">
-										<Trash2 class="h-4 w-4" />
-										<span>Delete</span>
-									</DropdownMenu.Item>
-								</DropdownMenu.Content>
-							</DropdownMenu.Root>
-						</SymbolButton>
-					</li>
-				{/each}
-			</ul>
-		</div>
-	{:else}
-		<EmptyState icon={Cuboid} title="No Blocks to display" description="Blocks are components you can add to any site. When you create one it'll show up here." />
-	{/if}
+<div class="flex flex-1 flex-col gap-4 px-4 pb-4 overflow-hidden">
+	{#key active_symbol_group_id}
+		{#if group_symbols === undefined}
+			<!-- Loading state -->
+			<div class="flex flex-col items-center justify-center gap-4 py-8">
+				<Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
+				<p class="text-sm text-muted-foreground">Loading blocks...</p>
+			</div>
+		{:else if group_symbols.length}
+			<Masonry items={group_symbols}>
+				{#snippet children(symbol)}
+					<SymbolButton {symbol} onclick={() => begin_symbol_edit(symbol)}>
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger>
+								<EllipsisVertical size={14} />
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content>
+								<DropdownMenu.Item onclick={() => begin_symbol_edit(symbol)}>
+									<Code class="h-4 w-4" />
+									<span>Edit</span>
+								</DropdownMenu.Item>
+								<DropdownMenu.Item onclick={() => export_symbol(symbol)}>
+									<Download class="h-4 w-4" />
+									<span>Export</span>
+								</DropdownMenu.Item>
+								<DropdownMenu.Item onclick={() => begin_symbol_move(symbol)}>
+									<ArrowLeftRight class="h-4 w-4" />
+									<span>Move</span>
+								</DropdownMenu.Item>
+								<DropdownMenu.Item onclick={() => begin_symbol_rename(symbol)}>
+									<SquarePen class="h-4 w-4" />
+									<span>Rename</span>
+								</DropdownMenu.Item>
+								<DropdownMenu.Item onclick={() => begin_symbol_delete(symbol)} class="text-red-500 hover:text-red-600 focus:text-red-600">
+									<Trash2 class="h-4 w-4" />
+									<span>Delete</span>
+								</DropdownMenu.Item>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
+					</SymbolButton>
+				{/snippet}
+			</Masonry>
+		{:else}
+			<EmptyState icon={Cuboid} title="No Blocks to display" description="Blocks are components you can add to any site. When you create one it'll show up here." />
+		{/if}
+	{/key}
 </div>
 
 <!-- Symbol Dialogs -->
@@ -416,7 +422,7 @@
 		<h2 class="text-lg font-semibold leading-none tracking-tight">Rename Block</h2>
 		<p class="text-muted-foreground text-sm">Enter a new name for your Block</p>
 		<form onsubmit={handle_symbol_rename}>
-			<Input bind:value={new_name} placeholder="Enter new Block name" class="my-4" />
+			<Input bind:value={symbol_new_name} placeholder="Enter new Block name" class="my-4" />
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (is_symbol_renamer_open = false)}>Cancel</Button>
 				<Button type="submit">Rename</Button>
@@ -482,21 +488,3 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<style lang="postcss">
-	.masonry {
-		display: grid;
-		gap: 1rem;
-		/* grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); */
-		grid-template-columns: 1fr 1fr;
-
-		@media (min-width: 700px) {
-			grid-template-columns: 1fr 1fr 1fr;
-		}
-	}
-
-	ul {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-</style>

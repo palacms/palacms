@@ -454,34 +454,39 @@
 
 	async function copy_symbol_entries_to_section(symbol_id: string, section_id: string) {
 		try {
-			// First get the symbol's fields
-			const symbol_fields = await pb.collection('site_symbol_fields').getFullList({
-				filter: `symbol = "${symbol_id}" && parent = ""`
+			// Get all symbol entries (not just root-level ones)
+			const symbol_entries = await pb.collection('site_symbol_entries').getFullList({
+				filter: `field.symbol = "${symbol_id}"`,
+				expand: 'field',
+				sort: 'index'
 			})
 
-			// Get the field IDs
-			const field_ids = symbol_fields.map((field) => field.id)
-
-			if (field_ids.length === 0) {
+			if (symbol_entries.length === 0) {
 				return
 			}
 
-			// Then get entries for those fields
-			const field_filter = field_ids.map((id) => `field = "${id}"`).join(' || ')
-			const symbol_entries = await pb.collection('site_symbol_entries').getFullList({
-				filter: `(${field_filter}) && parent = ""`
+			const entry_map = new Map()
+			
+			// Sort entries so parent-less entries come first
+			const sorted_entries = [...symbol_entries].sort((a, b) => {
+				if (!a.parent && b.parent) return -1
+				if (a.parent && !b.parent) return 1
+				return (a.index || 0) - (b.index || 0)
 			})
 
-			// Create PageTypeSectionEntries for each root-level entry
-			for (const entry of symbol_entries) {
-				PageTypeSectionEntries.create({
+			// Create entries in order, handling parent relationships
+			for (const entry of sorted_entries) {
+				const parent_section_entry = entry.parent ? entry_map.get(entry.parent) : undefined
+				
+				const section_entry = PageTypeSectionEntries.create({
 					section: section_id,
 					field: entry.field,
 					locale: entry.locale,
 					value: entry.value,
-					index: entry.index
-					// No parent since we're only copying root entries
+					index: entry.index,
+					parent: parent_section_entry?.id || undefined
 				})
+				entry_map.set(entry.id, section_entry)
 			}
 		} catch (error) {
 			console.error('Failed to copy symbol entries:', error)

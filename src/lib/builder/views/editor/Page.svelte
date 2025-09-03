@@ -87,17 +87,31 @@
 			index: position
 		})
 
-		// Copy only root-level symbol entries to the new section instance
-		// Nested entries will be created on-demand by FieldsContent
-		const rootEntries = entries_to_add?.filter((e) => !e.parent) ?? []
-		for (const entry of rootEntries) {
-			PageSectionEntries.create({
-				section: new_section.id,
-				field: entry.field,
-				locale: entry.locale,
-				value: entry.value,
-				index: entry.index
+		// Copy all symbol entries to the new section instance, handling parent/child relationships
+		if (entries_to_add?.length > 0) {
+			const entry_map = new Map()
+			
+			// Sort entries so parent-less entries come first
+			const sorted_entries = [...entries_to_add].sort((a, b) => {
+				if (!a.parent && b.parent) return -1
+				if (a.parent && !b.parent) return 1
+				return (a.index || 0) - (b.index || 0)
 			})
+			
+			// Create entries in order, handling parent relationships
+			for (const entry of sorted_entries) {
+				const parent_section_entry = entry.parent ? entry_map.get(entry.parent) : undefined
+				
+				const section_entry = PageSectionEntries.create({
+					section: new_section.id,
+					field: entry.field,
+					locale: entry.locale,
+					value: entry.value,
+					index: entry.index,
+					parent: parent_section_entry?.id || undefined
+				})
+				entry_map.set(entry.id, section_entry)
+			}
 		}
 
 		for (const section of existing_sections) {

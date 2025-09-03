@@ -25,8 +25,10 @@ import { SiteUpload } from '$lib/common/models/SiteUpload'
 import { User } from '$lib/common/models/User'
 import { createCollectionManager } from './CollectionManager'
 import { createCollectionMapping } from './CollectionMapping.svelte'
+import { marketplace } from './PocketBase'
 
 export const manager = createCollectionManager()
+export const marketplace_manager = createCollectionManager()
 
 export const Users = createCollectionMapping('users', User, manager, {
 	links: {
@@ -43,6 +45,40 @@ export const LibrarySymbolGroups = createCollectionMapping('library_symbol_group
 	links: {
 		symbols() {
 			return LibrarySymbols.from(this.collection.instance).list({ filter: { group: this.id } })
+		}
+	}
+})
+
+export const MarketplaceSymbolGroups = createCollectionMapping('library_symbol_groups', LibrarySymbolGroup, marketplace_manager, {
+	instance: marketplace,
+	links: {
+		symbols() {
+			return MarketplaceSymbols.list({ filter: { group: this.id } })
+		}
+	}
+})
+
+export const MarketplaceSymbols = createCollectionMapping('library_symbols', LibrarySymbol, marketplace_manager, {
+	instance: marketplace,
+	links: {
+		fields() {
+			return LibrarySymbolFields.from(this.collection.instance).list({ filter: { symbol: this.id } })
+		},
+		entries() {
+			const fields = LibrarySymbolFields.from(this.collection.instance).list({ filter: { symbol: this.id } })
+			if (!fields) {
+				return fields
+			}
+
+			const entries = fields.map((field) => LibrarySymbolEntries.from(this.collection.instance).list({ filter: { field: field.id } }))
+			if (entries.some((entry) => entry === null)) {
+				return null
+			}
+			if (entries.some((entry) => !entry)) {
+				return undefined
+			}
+
+			return entries.filter((entry) => !!entry).flat()
 		}
 	}
 })

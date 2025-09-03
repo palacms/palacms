@@ -18,7 +18,7 @@
 </script>
 
 <div>
-	<UI.TextInput {...field} value={entry?.value ?? ''} oninput={(text) => onchange({ [field.key]: { 0: parseFloat(text) || 0 } })} type="number" />
+	<UI.TextInput {...field} value={entry?.value ?? ''} oninput={(text) => onchange({ [field.key]: { 0: { value: parseFloat(text) || 0 } } })} type="number" />
 </div>
 
 <style lang="postcss">
