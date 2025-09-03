@@ -17,7 +17,8 @@
 		entries,
 		onchange,
 		ondelete,
-		level
+		level,
+		parent
 	}: {
 		entity: Entity
 		field: Field
@@ -27,9 +28,10 @@
 		onchange: FieldValueHandler
 		ondelete?: (entry_id: string) => void
 		level: number
+		parent?: Entry
 	} = $props()
 
-	let repeater_entries = $derived(entries?.filter((r) => r.field === field.id).sort((a, b) => a.index - b.index))
+	let repeater_entries = $derived(entries?.filter((r) => r.field === field.id && (parent ? r.parent === parent.id : !r.parent)).sort((a, b) => a.index - b.index))
 	let subfields = $derived(fields?.filter((f) => f.parent === field.id).sort((a, b) => a.index - b.index))
 
 	let repeater_item_just_created = $state<number | null>(null) // to autofocus on creation

@@ -66,7 +66,7 @@
 		const icon_data = await loadIcon(icon)
 		if (icon_data) {
 			const { attributes } = buildIcon(icon_data)
-			const svg = `<svg xmlns="http://www.w3.org/2000/svg" data-key="${field.key}" data-icon="${icon}" aria-hidden="true" role="img" height="${attributes.height}" width="${attributes.width}" viewBox="${attributes.viewBox}" preserveAspectRatio="${attributes.preserveAspectRatio}">${icon_data.body}</svg>`
+			const svg = `<svg xmlns="http://www.w3.org/2000/svg" data-key="${field.key}" data-icon="${icon}" aria-hidden="true" role="img" height="${attributes.height}" width="${attributes.width}" viewBox="${attributes.viewBox}">${icon_data.body}</svg>`
 			onchange({ [field.key]: { 0: { value: svg } } })
 		}
 	}

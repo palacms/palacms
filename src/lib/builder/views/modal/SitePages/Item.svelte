@@ -3,9 +3,12 @@
 	import Icon from '@iconify/svelte'
 	import { onMount } from 'svelte'
 	import { get, set } from 'idb-keyval'
+	import { slide } from 'svelte/transition'
 	import { content_editable, validate_url } from '$lib/builder/utilities'
 	import PageForm from './PageForm.svelte'
 	import MenuPopup from '$lib/builder/ui/Dropdown.svelte'
+	import * as Dialog from '$lib/components/ui/dialog'
+	import { Button } from '$lib/components/ui/button'
 	import { page as pageState } from '$app/state'
 	import { manager, Pages, PageTypes, Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
@@ -13,6 +16,7 @@
 	import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import type { Page } from '$lib/common/models/Page'
+	import { build_cms_page_url } from '$lib/pages'
 
 	let editing_page = $state(false)
 
@@ -35,10 +39,7 @@
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
-	const full_url = $derived(() => {
-		const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
-		return `${base_path}/${page.slug}`
-	})
+	const full_url = $derived(build_cms_page_url(page, pageState.url))
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
 	const home_page = $derived(site.homepage())
@@ -46,6 +47,7 @@
 	let showing_children = $state(false)
 	let children = $derived(page.children() ?? [])
 	let has_children = $derived(children.length > 0 && page.slug !== '')
+	let has_toggled = $state(false)
 
 	get(`page-list-toggle--${page.id}`).then((toggled) => {
 		if (toggled !== undefined) showing_children = toggled
@@ -55,10 +57,27 @@
 	})
 
 	let creating_page = $state(false)
-	let new_page_url = $state('')
-	$effect(() => {
-		new_page_url = validate_url(new_page_url)
-	})
+	let delete_warning_dialog = $state(false)
+	let pages_to_delete = $state<any[]>([])
+	let pending_delete = $state<(() => Promise<void>) | null>(null)
+
+	// Function to get all descendants (children, grandchildren, etc.) of a page
+	function getAllDescendants(pageId: string): any[] {
+		const descendants: any[] = []
+		const queue = [pageId]
+
+		while (queue.length > 0) {
+			const currentId = queue.shift()!
+			const children = allPages.filter((p) => p.parent === currentId)
+
+			for (const child of children) {
+				descendants.push(child)
+				queue.push(child.id)
+			}
+		}
+
+		return descendants
+	}
 
 	let drag_handle_element = $state()
 	let element = $state()
@@ -90,29 +109,19 @@
 				const edge = extractClosestEdge(self.data)
 				if (edge === 'bottom') {
 					// Set hover position to show indicator below this item
-					// Special handling for the last item in the list
-					const siblings = allPages.filter(p => p.parent === page.parent).sort((a, b) => a.index - b.index)
-					const isLastItem = siblings[siblings.length - 1]?.id === page.id
-					
-					if (page.index === 0) {
-						hover_position = 'home-bottom'
-					} else if (isLastItem && page.parent === home_page?.id) {
-						// This is the last child page - show the end indicator
-						hover_position = `${page.id}-bottom`
-					} else {
-						hover_position = `${page.id}-bottom`
-					}
+					hover_position = `${page.id}-bottom`
 				} else if (edge === 'top') {
 					// For top edge, we want to show the indicator above this item
 					// which is the bottom of the previous item
-					if (page.index === 0) {
-						hover_position = null // Can't drop above home
-					} else if (page.index === 1) {
-						hover_position = 'home-bottom'
+					if (page.index === 0 && page.parent === '') {
+						hover_position = null // Can't drop above home page
+					} else if (page.index === 0 && page.parent) {
+						// First child in a nested level - show at top of children list
+						hover_position = `${page.parent}-children-top`
 					} else {
 						// Find the previous sibling
-						const siblings = allPages.filter(p => p.parent === page.parent).sort((a, b) => a.index - b.index)
-						const prevIndex = siblings.findIndex(p => p.id === page.id) - 1
+						const siblings = allPages.filter((p) => p.parent === page.parent).sort((a, b) => a.index - b.index)
+						const prevIndex = siblings.findIndex((p) => p.id === page.id) - 1
 						if (prevIndex >= 0) {
 							hover_position = `${siblings[prevIndex].id}-bottom`
 						}
@@ -134,13 +143,16 @@
 				}
 
 				// Don't allow placing above home page
-				if (closestEdgeOfTarget === 'top' && page_dragged_over.index === 0) {
+				if (closestEdgeOfTarget === 'top' && page_dragged_over.index === 0 && page_dragged_over.parent === '') {
 					hover_position = null
 					return
 				}
 
-				// Get all siblings (pages with same parent)
-				const siblings = allPages.filter((p) => p.parent === page_being_dragged.parent).sort((a, b) => a.index - b.index)
+				// Check if dragging between different parent levels
+				const same_parent = page_dragged_over.parent === page_being_dragged.parent
+
+				// Get all siblings (pages with same parent as the target)
+				const siblings = allPages.filter((p) => p.parent === page_dragged_over.parent).sort((a, b) => a.index - b.index)
 
 				const old_index = page_being_dragged.index
 				let target_index
@@ -151,45 +163,50 @@
 					target_index = page_dragged_over.index + 1
 				}
 
-				// Adjust target index if we're moving from before to after in the list
-				let final_index = target_index
-				if (old_index < target_index) {
-					final_index = target_index - 1
-				}
-
-				// Don't do anything if position hasn't changed
-				if (old_index === final_index) {
-					hover_position = null
-					return
-				}
-
-				// Reindex all affected siblings
-				const updates = []
-				for (let i = 0; i < siblings.length; i++) {
-					const sibling = siblings[i]
-					let new_index = sibling.index
-					
-					if (sibling.id === page_being_dragged.id) {
-						new_index = final_index
-					} else if (old_index < final_index) {
-						// Moving item down - shift others up
-						if (sibling.index > old_index && sibling.index <= final_index) {
-							new_index = sibling.index - 1
-						}
-					} else {
-						// Moving item up - shift others down
-						if (sibling.index >= final_index && sibling.index < old_index) {
-							new_index = sibling.index + 1
-						}
-					}
-					
-					if (new_index !== sibling.index) {
-						Pages.update(sibling.id, { index: new_index })
-					}
-				}
-
-				manager.commit()
 				hover_position = null
+
+				// Only allow reordering within same parent (root level only since drag handles are hidden for child pages)
+				if (same_parent) {
+					// Delay the actual updates to prevent jerky animations
+					requestAnimationFrame(() => {
+						// Adjust target index if we're moving from before to after in the list
+						let final_index = target_index
+						if (old_index < target_index) {
+							final_index = target_index - 1
+						}
+
+						// Don't do anything if position hasn't changed
+						if (old_index === final_index) {
+							return
+						}
+
+						// Reindex all affected siblings
+						for (let i = 0; i < siblings.length; i++) {
+							const sibling = siblings[i]
+							let new_index = sibling.index
+
+							if (sibling.id === page_being_dragged.id) {
+								new_index = final_index
+							} else if (old_index < final_index) {
+								// Moving item down - shift others up
+								if (sibling.index > old_index && sibling.index <= final_index) {
+									new_index = sibling.index - 1
+								}
+							} else {
+								// Moving item up - shift others down
+								if (sibling.index >= final_index && sibling.index < old_index) {
+									new_index = sibling.index + 1
+								}
+							}
+
+							if (new_index !== sibling.index) {
+								Pages.update(sibling.id, { index: new_index })
+							}
+						}
+
+						manager.commit()
+					})
+				}
 			}
 		})
 	})
@@ -234,18 +251,31 @@
 					<span class="icon" style:background={page_type?.color}>
 						<Icon icon={page_type?.icon} />
 					</span>
-					<a class:active href={full_url()} onclick={() => {}} class="name">{page.name}</a>
+					<a class:active href={full_url?.href} onclick={() => {}} class="name">{page.name}</a>
 					<span class="url">/{page.slug}</span>
 				</div>
 			{/if}
 			{#if has_children}
-				<button class="toggle" class:active={showing_children} onclick={() => (showing_children = !showing_children)} aria-label="Toggle child pages">
+				<button
+					class="toggle"
+					class:active={showing_children}
+					onclick={() => {
+						showing_children = !showing_children
+						has_toggled = true
+					}}
+					aria-label="Toggle child pages"
+				>
 					<Icon icon="mdi:chevron-down" />
 				</button>
 			{/if}
 		</div>
 		<div class="options">
-			<!-- TODO: enable reordering for child pages -->
+			{#if has_children}
+				<button class="add-child-btn" onclick={() => (creating_page = true)} aria-label="Add child page">
+					<Icon icon="akar-icons:plus" />
+					<span>Add Child ({children.length})</span>
+				</button>
+			{/if}
 			{#if !parent}
 				<button class="drag-handle" bind:this={drag_handle_element} style:visibility={page.slug === '' ? 'hidden' : 'visible'}>
 					<Icon icon="material-symbols:drag-handle" />
@@ -254,7 +284,7 @@
 			<MenuPopup
 				icon="carbon:overflow-menu-vertical"
 				options={[
-					...(!creating_page
+					...(!has_children && !creating_page
 						? [
 								{
 									label: `Create Child Page`,
@@ -278,18 +308,44 @@
 									label: 'Delete',
 									icon: 'ic:outline-delete',
 									on_click: async () => {
-										const parent_id = page.parent
-										Pages.delete(page.id)
+										const descendants = getAllDescendants(page.id)
 
-										// Reindex remaining sibling pages
-										const sibling_pages = allPages.filter((p) => p.parent === parent_id).sort((a, b) => a.index - b.index)
+										if (descendants.length > 0) {
+											// Show warning dialog for pages with children
+											pages_to_delete = [page, ...descendants]
+											pending_delete = async () => {
+												const parent_id = page.parent
 
-										sibling_pages.forEach((sibling_page, i) => {
-											const index = parent_id === home_page?.id ? i + 1 : i
-											Pages.update(sibling_page.id, { index })
-										})
+												// Delete the page and all descendants
+												Pages.delete(page.id)
+												descendants.forEach((desc) => Pages.delete(desc.id))
 
-										await manager.commit()
+												// Reindex remaining sibling pages
+												const sibling_pages = allPages.filter((p) => p.parent === parent_id && p.id !== page.id && !descendants.some((d) => d.id === p.id)).sort((a, b) => a.index - b.index)
+
+												sibling_pages.forEach((sibling_page, i) => {
+													const index = parent_id === home_page?.id ? i + 1 : i
+													Pages.update(sibling_page.id, { index })
+												})
+
+												await manager.commit()
+											}
+											delete_warning_dialog = true
+										} else {
+											// Direct delete for pages without children
+											const parent_id = page.parent
+											Pages.delete(page.id)
+
+											// Reindex remaining sibling pages
+											const sibling_pages = allPages.filter((p) => p.parent === parent_id && p.id !== page.id).sort((a, b) => a.index - b.index)
+
+											sibling_pages.forEach((sibling_page, i) => {
+												const index = parent_id === home_page?.id ? i + 1 : i
+												Pages.update(sibling_page.id, { index })
+											})
+
+											await manager.commit()
+										}
 									}
 								}
 							]
@@ -299,68 +355,103 @@
 		</div>
 	</div>
 
-	{#if showing_children && has_children}
-		<ul class="page-list child">
-			{#each children as subpage}
-				<Item parent={page} page={subpage} active={subpage.slug === page_slug} {page_slug} on:delete on:create />
-			{/each}
-		</ul>
-	{/if}
-
 	{#if creating_page}
-		<div style="border-left: 0.5rem solid #111;">
+		<div style="border-left: 0.5rem solid #111;" transition:slide={{ duration: 200 }}>
 			<PageForm
 				parent={page}
 				oncreate={async (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => {
 					creating_page = false
 					showing_children = true
-					const url_taken = allPages.some((page) => page?.slug === new_page.slug)
+					const url_taken = allPages.some((p) => p?.slug === new_page.slug && p.parent === page.id)
 					if (url_taken) {
 						alert(`That URL is already in use`)
 					} else {
-						await oncreate({ ...new_page, parent: page.id, site: site.id })
+						// Pass the correct parent and site IDs
+						const site_id = site?.id || page.site
+						await oncreate({ ...new_page, parent: page.id, site: site_id })
 					}
 				}}
 			/>
 		</div>
-	{:else if showing_children && has_children}
-		<button class="create-page" onclick={() => (creating_page = true)}>
-			<Icon icon="akar-icons:plus" />
-			<span>Create Child Page</span>
-		</button>
+	{/if}
+
+	{#if showing_children && has_children}
+		<ul class="page-list child" transition:slide={{ duration: has_toggled ? 100 : 0 }}>
+			{#each children as subpage}
+				<Item parent={page} page={subpage} active={subpage.slug === page_slug} {page_slug} {oncreate} bind:hover_position on:delete on:create />
+			{/each}
+		</ul>
 	{/if}
 </div>
 
+<!-- Delete Warning Dialog -->
+<Dialog.Root bind:open={delete_warning_dialog}>
+	<Dialog.Content class="sm:max-w-[500px] p-6 pt-12">
+		<div class="mb-6">
+			<div class="flex items-center gap-3 mb-4">
+				<div class="p-2 rounded-full bg-red-500/10">
+					<Icon icon="mdi:alert-circle" class="w-6 h-6 text-red-500" />
+				</div>
+				<h2 class="text-lg font-semibold text-red-500">Delete Page and Children</h2>
+			</div>
+			<p class="text-sm text-gray-400 leading-relaxed mb-4">
+				This page has {pages_to_delete.length - 1} child page(s) that will also be permanently deleted. This action cannot be undone.
+			</p>
+			<div class="bg-gray-900/50 rounded-lg p-3 max-h-40 overflow-y-auto">
+				<p class="text-xs text-gray-500 mb-2 font-medium">Pages to be deleted:</p>
+				<ul class="text-sm space-y-1">
+					{#each pages_to_delete as pageToDelete}
+						<li class="flex items-center gap-2 text-gray-300">
+							<Icon icon="mdi:file-document" class="w-4 h-4 text-gray-500 flex-shrink-0" />
+							{pageToDelete.name}
+							<span class="text-gray-500 text-xs">/{pageToDelete.slug}</span>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		</div>
+		<div class="flex gap-2 justify-end">
+			<Button
+				variant="outline"
+				onclick={() => {
+					delete_warning_dialog = false
+					pages_to_delete = []
+					pending_delete = null
+				}}
+			>
+				Cancel
+			</Button>
+			<Button
+				variant="destructive"
+				onclick={async () => {
+					if (pending_delete) {
+						await pending_delete()
+					}
+					delete_warning_dialog = false
+					pages_to_delete = []
+					pending_delete = null
+				}}
+			>
+				<Icon icon="mdi:delete" class="w-4 h-4 mr-1" />
+				Delete All
+			</Button>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>
+
 <style lang="postcss">
-
-	button.create-page {
-		padding: 0.5rem;
-		background: var(--primo-color-codeblack);
-		margin-left: 0.5rem;
-		width: calc(100% - 0.5rem);
-		font-size: 0.75rem;
-		border-bottom-left-radius: var(--primo-border-radius);
-		border-bottom-right-radius: var(--primo-border-radius);
-		display: flex;
-		justify-content: center;
-		gap: 0.25rem;
-		align-items: center;
-		transition: 0.1s;
-
-		&:hover {
-			box-shadow: var(--primo-ring-thin);
-		}
-	}
 	.drag-handle {
 		cursor: grab;
 	}
 	.Item {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		transition: transform 0.2s ease, opacity 0.2s ease;
+		/* gap: 4px; */
+		transition:
+			transform 0.2s ease,
+			opacity 0.2s ease;
 		/* padding-bottom: 0.5rem; */
-		
+
 		&.dragging {
 			opacity: 0.5;
 			transform: scale(0.98);
@@ -497,6 +588,27 @@
 		.options {
 			display: flex;
 			gap: 0.75rem;
+
+			.add-child-btn {
+				display: flex;
+				align-items: center;
+				gap: 0.25rem;
+				padding: 0.25rem 0.5rem;
+				background: var(--color-gray-9);
+				border-radius: 0.25rem;
+				font-size: 0.75rem;
+				color: var(--color-gray-3);
+				transition: 0.1s;
+
+				&:hover {
+					background: var(--color-gray-8);
+					color: var(--weave-primary-color);
+				}
+
+				span {
+					white-space: nowrap;
+				}
+			}
 		}
 	}
 

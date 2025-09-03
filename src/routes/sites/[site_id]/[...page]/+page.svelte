@@ -2,15 +2,16 @@
 	import { compilers_registered } from '$lib/stores'
 	import PalaPage from '$lib/builder/views/editor/Page.svelte'
 	import { page as pageState } from '$app/state'
-	import { Sites, Pages } from '$lib/pocketbase/collections'
+	import { Sites } from '$lib/pocketbase/collections'
+	import { resolve_page } from '$lib/pages'
 
 	const site_id = $derived(pageState.params.site_id)
-	const page_slug = $derived(pageState.params.page)
+	const path = $derived(pageState.params.page?.split('/'))
 
 	const site = $derived(site_id && Sites.one(site_id))
-	const current_page = $derived(site && page_slug && Pages.list({ filter: { site: site.id, slug: page_slug } })?.[0])
+	const page = $derived(site && path && resolve_page(site, path))
 </script>
 
-{#if $compilers_registered && current_page}
-	<PalaPage page={current_page} />
+{#if $compilers_registered && page}
+	<PalaPage {page} />
 {/if}

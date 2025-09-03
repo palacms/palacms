@@ -12,12 +12,13 @@
 	import DropIndicator from './Layout/DropIndicator.svelte'
 	import LockedOverlay from './Layout/LockedOverlay.svelte'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
-	import { locale } from '../../stores/app/misc.js'
+	import { locale, dragging_symbol } from '../../stores/app/misc.js'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import { manager, PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
 	import { self as pb } from '$lib/pocketbase/PocketBase'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { FiniteStateMachine } from 'runed'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
 
@@ -87,6 +88,19 @@
 
 	let hovered_section_id: string | null = $state(null)
 	let hovered_section = $derived(page_type_sections.find((s) => s.id === hovered_section_id))
+
+	// Zone-aware position calculations for toolbar
+	const hovered_section_zone_position = $derived.by(() => {
+		if (!hovered_section_id || !hovered_section) return { index: 0, is_last: false }
+		const section_zone = hovered_section.zone || 'body'
+		const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone).sort((a, b) => a.index - b.index)
+		const position = zone_sections.findIndex((s) => s.id === hovered_section_id)
+		const result = {
+			index: position,
+			is_last: position === zone_sections.length - 1
+		}
+		return result
+	})
 
 	let block_toolbar_element = $state()
 	let page_el = $state()
@@ -205,6 +219,11 @@
 			showing_drop_indicator = true
 			await tick()
 			page_el.addEventListener('scroll', position_drop_indicator)
+
+			// Reset display when showing
+			if (drop_indicator_element) {
+				drop_indicator_element.style.display = 'block'
+			}
 		}
 	}
 
@@ -243,131 +262,82 @@
 	function hide_drop_indicator() {
 		showing_drop_indicator = false
 		page_el.removeEventListener('scroll', position_drop_indicator)
+
+		// Force reset the drop indicator element position
+		if (drop_indicator_element) {
+			drop_indicator_element.style.display = 'none'
+			drop_indicator_element.style.left = '-9999px'
+			drop_indicator_element.style.top = '-9999px'
+		}
 	}
 
-	let dragging = {
+	// Simple drag state tracking
+	let dragging_over_section = $state(false)
+	let hovering_over_zone = $state(null)
+
+	let dragging = $state({
 		id: null,
 		position: null
-	}
-	function reset_drag() {
-		dragging = {
-			id: null,
-			position: null
+	})
+
+	// Clean up when global drag ends
+	$effect(() => {
+		if (!$dragging_symbol) {
+			// Drag ended, clean up everything
+			hide_drop_indicator()
+			dragging_over_section = false
+			hovering_over_zone = null
+			dragging = { id: null, position: null }
 		}
-		hide_drop_indicator()
-		drop_handled = false // Reset the drop flag when drag ends
-		active_drop_zone = null // Reset active drop zone
-		hovering_over_zone = null // Reset visual feedback
-	}
+	})
 
-	let dragging_over_section = false
-	let drop_handled = false
-	let active_drop_zone = null // Track which zone should handle the drop
-	let hovering_over_zone = $state(null) // Track which zone is being hovered for visual feedback
-
-	// detect drags over zones
-	function drag_zone(element, zone) {
+	// Empty zone drop handler
+	function empty_zone_drop(element, zone) {
 		dropTargetForElements({
 			element,
 			getData() {
 				return { zone }
 			},
-			onDrag({ source }) {
-				if (dragging_over_section) return // Don't interfere with section drops
-				hovering_over_zone = zone // Set visual feedback for the zone
+			onDragEnter({ source }) {
+				if (source.data?.block) {
+					hovering_over_zone = zone
+				}
 			},
-			onDragLeave() {
-				if (hovering_over_zone === zone) {
-					hovering_over_zone = null // Clear visual feedback when leaving
+			onDragLeave({ source }) {
+				if (source.data?.block) {
+					hovering_over_zone = null
+					hide_drop_indicator()
 				}
 			},
 			async onDrop({ source }) {
-				if (dragging_over_section || !page_type || !source.data.block) return
+				if (!source.data?.block || !page_type) return
 
 				const block_being_dragged = source.data.block
 				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === zone)
-				const zone_target_index = zone_sections.length // Add to end of zone
+				const target_index = zone_sections.length
 
-				const new_section = PageTypeSections.create({
-					page_type: page_type.id,
-					symbol: block_being_dragged.id,
-					index: zone_target_index,
-					zone: zone
-				})
+				try {
+					const new_section = PageTypeSections.create({
+						page_type: page_type.id,
+						symbol: block_being_dragged.id,
+						index: target_index,
+						zone: zone
+					})
 
-				// Copy root-level symbol entries to the new section
-				if (new_section) {
-					await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
-				}
-
-				await manager.commit()
-				hovering_over_zone = null // Clear visual feedback after drop
-			}
-		})
-	}
-
-	// detect drags over the page (fallback)
-	function drag_fallback(element) {
-		dropTargetForElements({
-			element,
-			getData({ input, element }) {
-				return attachClosestEdge(
-					{},
-					{
-						element,
-						input,
-						allowedEdges: ['top', 'bottom']
+					if (new_section) {
+						await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
 					}
-				)
-			},
-			async onDrag({ self, source }) {
-				console.log('FALLBACK DRAG EVENT:', { dragging_over_section, active_drop_zone, source: source.data })
-				if (dragging_over_section || active_drop_zone) return // Don't interfere with zone or section drops
 
-				active_drop_zone = 'fallback'
-
-				if (!showing_drop_indicator) {
-					await show_drop_indicator()
-				}
-				position_drop_indicator()
-				if (dragging.id !== 'PAGE' || dragging.position !== extractClosestEdge(self.data)) {
-					dragging = {
-						id: 'PAGE',
-						position: extractClosestEdge(self.data)
-					}
-				}
-			},
-			onDragLeave() {
-				reset_drag()
-			},
-			async onDrop({ self, source }) {
-				console.log('FALLBACK DROP:', { dragging_over_section, drop_handled, active_drop_zone, block: source.data.block?.name })
-				if (!page_type || dragging_over_section || drop_handled || active_drop_zone !== 'fallback') return // prevent double-adding block
-				drop_handled = true
-
-				const block_being_dragged = source.data.block
-				const closestEdgeOfTarget = extractClosestEdge(self.data)
-
-				// Default to body zone with zone-relative index
-				const body_target_index = closestEdgeOfTarget === 'top' ? 0 : body_sections.length
-
-				const new_section = PageTypeSections.create({
-					page_type: page_type.id,
-					symbol: block_being_dragged.id,
-					index: body_target_index,
-					zone: 'body'
-				})
-
-				// Copy root-level symbol entries to the new section
-				if (new_section) {
-					await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+					await manager.commit()
+				} catch (error) {
+					console.error('Database insertion error (empty zone):', error)
+					throw error
 				}
 
-				await manager.commit()
-				reset_drag()
-				active_drop_zone = null
-
-				// Don't reset drop_handled for fallback drops - let section drops take priority
+				// Clean up drag state
+				hide_drop_indicator()
+				dragging_over_section = false
+				hovering_over_zone = null
 			}
 		})
 	}
@@ -387,7 +357,32 @@
 					}
 				)
 			},
-			onDrag({ self, source }) {
+			canDrop({ source }) {
+				// Explicitly allow drops if a block is being dragged
+				const canDrop = !!source.data?.block
+				return canDrop
+			},
+			onDragEnter({ source }) {
+				if (source.data?.block) {
+					dragging_over_section = true
+					hovering_over_zone = section.zone || 'body'
+				}
+			},
+			onDragLeave({ source }) {
+				if (source.data?.block) {
+					dragging_over_section = false
+					hovering_over_zone = null
+					// Hide drop indicator when leaving section
+					setTimeout(() => {
+						if (!dragging_over_section) {
+							hide_drop_indicator()
+						}
+					}, 50)
+				}
+			},
+			async onDrag({ self, source }) {
+				if (!source.data?.block) return
+
 				hovered_block_el = self.element
 				if (dragging.id !== self.data.section.id || dragging.position !== extractClosestEdge(self.data)) {
 					dragging = {
@@ -395,39 +390,56 @@
 						position: extractClosestEdge(self.data)
 					}
 				}
-			},
-			onDragEnter() {
-				dragging_over_section = true
-			},
-			onDragLeave() {
-				dragging_over_section = false
+
+				// Show drop indicator
+				if (!showing_drop_indicator) {
+					await show_drop_indicator()
+				}
+				position_drop_indicator()
 			},
 			async onDrop({ self, source }) {
-				if (!page_type || !source.data.block) return
+				if (!source.data?.block || !page_type) return
 
 				const block_being_dragged = source.data.block
 				const section_dragged_over = self.data.section
 				const closestEdgeOfTarget = extractClosestEdge(self.data)
 				const section_zone = section_dragged_over.zone || 'body'
 
-				// Find zone-relative index within the same zone
-				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone)
-				const section_dragged_over_zone_index = zone_sections.findIndex((s) => s.id === section_dragged_over.id)
-				const target_index = closestEdgeOfTarget === 'top' ? section_dragged_over_zone_index : section_dragged_over_zone_index + 1
+				// Get sections in this zone, sorted by index
+				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone).sort((a, b) => a.index - b.index)
 
-				const new_section = PageTypeSections.create({
-					page_type: page_type.id,
-					symbol: block_being_dragged.id,
-					index: target_index,
-					zone: section_zone
-				})
+				// Find the position of the dragged-over section within this zone
+				const section_position_in_zone = zone_sections.findIndex((s) => s.id === section_dragged_over.id)
+				const target_position = closestEdgeOfTarget === 'top' ? section_position_in_zone : section_position_in_zone + 1
 
-				// Copy root-level symbol entries to the new section
-				if (new_section) {
-					await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+				// Update indices of existing sections in this zone that come after the insertion position
+				const sections_to_update = zone_sections.slice(target_position)
+				for (const section of sections_to_update) {
+					PageTypeSections.update(section.id, { index: section.index + 1 })
 				}
 
-				await manager.commit()
+				try {
+					const new_section = PageTypeSections.create({
+						page_type: page_type.id,
+						symbol: block_being_dragged.id,
+						index: target_position,
+						zone: section_zone
+					})
+
+					if (new_section) {
+						await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
+					}
+
+					await manager.commit()
+				} catch (error) {
+					console.error('Database insertion error:', error)
+					throw error
+				}
+
+				// Clean up drag state
+				hide_drop_indicator()
+				dragging_over_section = false
+				hovering_over_zone = null
 			}
 		})
 	}
@@ -440,7 +452,6 @@
 	let editing_section = $state(false)
 	let editing_section_target = $state<ObjectOf<typeof PageTypeSections>>()
 
-	// Helper function to copy symbol entries to page type section (root-level only)
 	async function copy_symbol_entries_to_section(symbol_id: string, section_id: string) {
 		try {
 			// First get the symbol's fields
@@ -449,14 +460,14 @@
 			})
 
 			// Get the field IDs
-			const field_ids = symbol_fields.map(field => field.id)
+			const field_ids = symbol_fields.map((field) => field.id)
 
 			if (field_ids.length === 0) {
 				return
 			}
 
 			// Then get entries for those fields
-			const field_filter = field_ids.map(id => `field = "${id}"`).join(' || ')
+			const field_filter = field_ids.map((id) => `field = "${id}"`).join(' || ')
 			const symbol_entries = await pb.collection('site_symbol_entries').getFullList({
 				filter: `(${field_filter}) && parent = ""`
 			})
@@ -523,6 +534,9 @@
 <!-- Drop Indicator -->
 {#if showing_drop_indicator}
 	<DropIndicator bind:node={drop_indicator_element} />
+{:else}
+	<!-- Debug: indicator should be hidden -->
+	<!-- {console.log('Drop indicator should be hidden')} -->
 {/if}
 
 <!-- Block Buttons -->
@@ -534,17 +548,37 @@
 			hovering_toolbar = true
 		}}
 		onmouseleave={() => {
+			hovering_toolbar = false
 			showing_block_toolbar = false
 		}}
 	>
 		<BlockToolbar
 			bind:node={block_toolbar_element}
 			id={hovered_section_id}
-			i={page_type_sections.findIndex((s) => s.id === hovered_section_id)}
-			is_last={page_type_sections.findIndex((s) => s.id === hovered_section_id) === page_type_sections.length - 1}
+			i={hovered_section_zone_position.index}
+			is_last={hovered_section_zone_position.is_last}
 			on:delete={async () => {
 				if (!hovered_section_id) return
-				PageTypeSections.delete(hovered_section_id)
+				const section_to_delete = page_type_sections.find((s) => s.id === hovered_section_id)
+				if (!section_to_delete) return
+
+				const section_id = hovered_section_id
+				showing_block_toolbar = false
+				hovered_section_id = null
+
+				// Delete the section
+				PageTypeSections.delete(section_id)
+
+				// Reindex sections in the same zone that come after the deleted section
+				const section_zone = section_to_delete.zone || 'body'
+				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone && s.id !== section_id).sort((a, b) => a.index - b.index)
+
+				// Update indices of sections that come after the deleted section
+				const sections_after_deleted = zone_sections.filter((s) => s.index > section_to_delete.index)
+				for (const section of sections_after_deleted) {
+					PageTypeSections.update(section.id, { index: section.index - 1 })
+				}
+
 				await manager.commit()
 			}}
 			on:edit-code={() => edit_component('code')}
@@ -558,14 +592,29 @@
 				if (!section) return
 
 				const section_zone = section.zone || 'body'
-				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone)
-				const current_index = zone_sections.findIndex((s) => s.id === section.id)
+				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone).sort((a, b) => a.index - b.index)
+				const current_position = zone_sections.findIndex((s) => s.id === section.id)
 
-				if (current_index > 0) {
-					// Swap with the section above
-					const section_above = zone_sections[current_index - 1]
-					PageTypeSections.update(section.id, { index: current_index - 1 })
-					PageTypeSections.update(section_above.id, { index: current_index })
+				if (current_position > 0) {
+					// Three-step swap to avoid unique constraint violation
+					const section_above = zone_sections[current_position - 1]
+					const section_index = section.index
+					const above_index = section_above.index
+
+					// Find a temporary index that won't conflict (use max + 1000)
+					const max_index = Math.max(...zone_sections.map((s) => s.index))
+					const temp_index = max_index + 1000
+
+					// Step 1: Move current section to temp position and commit
+					PageTypeSections.update(section.id, { index: temp_index })
+					await manager.commit()
+
+					// Step 2: Move above section to current position and commit
+					PageTypeSections.update(section_above.id, { index: section_index })
+					await manager.commit()
+
+					// Step 3: Move current section to above position and commit
+					PageTypeSections.update(section.id, { index: above_index })
 					await manager.commit()
 				}
 
@@ -582,14 +631,29 @@
 				if (!section) return
 
 				const section_zone = section.zone || 'body'
-				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone)
-				const current_index = zone_sections.findIndex((s) => s.id === section.id)
+				const zone_sections = page_type_sections.filter((s) => (s.zone || 'body') === section_zone).sort((a, b) => a.index - b.index)
+				const current_position = zone_sections.findIndex((s) => s.id === section.id)
 
-				if (current_index < zone_sections.length - 1) {
-					// Swap with the section below
-					const section_below = zone_sections[current_index + 1]
-					PageTypeSections.update(section.id, { index: current_index + 1 })
-					PageTypeSections.update(section_below.id, { index: current_index })
+				if (current_position < zone_sections.length - 1) {
+					// Three-step swap to avoid unique constraint violation
+					const section_below = zone_sections[current_position + 1]
+					const section_index = section.index
+					const below_index = section_below.index
+
+					// Find a temporary index that won't conflict (use max + 1000)
+					const max_index = Math.max(...zone_sections.map((s) => s.index))
+					const temp_index = max_index + 1000
+
+					// Step 1: Move current section to temp position and commit
+					PageTypeSections.update(section.id, { index: temp_index })
+					await manager.commit()
+
+					// Step 2: Move below section to current position and commit
+					PageTypeSections.update(section_below.id, { index: section_index })
+					await manager.commit()
+
+					// Step 3: Move current section to below position and commit
+					PageTypeSections.update(section.id, { index: below_index })
 					await manager.commit()
 				}
 
@@ -602,7 +666,7 @@
 {/if}
 
 <!-- Page Type Layout -->
-<main id="#Page" data-test bind:this={page_el} class:fadein={page_mounted} lang={$locale}>
+<main id="#Page" data-test bind:this={page_el} class:fadein={page_mounted} class:dragging={$dragging_symbol} lang={$locale}>
 	<!-- Head Zone -->
 	<div class="zone-label">Head</div>
 	<section class="code-zone head-zone">
@@ -611,7 +675,7 @@
 
 	<!-- Header Zone -->
 	<div class="zone-label">Header</div>
-	<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header" use:drag_zone={'header'}>
+	<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header">
 		{#each header_sections as section (section.id)}
 			{@const locked = undefined}
 			{@const in_current_tab = false}
@@ -636,9 +700,7 @@
 					}
 				}}
 				onmouseleave={() => {
-					// Only hide if we're not immediately entering another section
 					setTimeout(() => {
-						// Check if we've hovered over a different section in the meantime
 						if (hovered_section_id === section.id) {
 							hide_block_toolbar()
 						}
@@ -673,7 +735,7 @@
 			</div>
 		{/each}
 		{#if header_sections.length === 0}
-			<div class="empty-zone">
+			<div class="empty-zone" use:empty_zone_drop={'header'}>
 				<span>Drag blocks here for the header</span>
 			</div>
 		{/if}
@@ -688,7 +750,7 @@
 			<span class="zone-mode">(Dynamic)</span>
 		{/if}
 	</div>
-	<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body" use:drag_zone={'body'}>
+	<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body">
 		{#each body_sections as section (section.id)}
 			{@const locked = undefined}
 			{@const in_current_tab = false}
@@ -713,9 +775,7 @@
 					}
 				}}
 				onmouseleave={() => {
-					// Only hide if we're not immediately entering another section
 					setTimeout(() => {
-						// Check if we've hovered over a different section in the meantime
 						if (hovered_section_id === section.id) {
 							hide_block_toolbar()
 						}
@@ -750,7 +810,7 @@
 			</div>
 		{/each}
 		{#if body_sections.length === 0}
-			<div class="empty-zone main-body">
+			<div class="empty-zone main-body" use:empty_zone_drop={'body'}>
 				{#if is_static_page_type}
 					<span>Drag blocks here for static body content</span>
 				{:else}
@@ -762,7 +822,7 @@
 
 	<!-- Footer Zone -->
 	<div class="zone-label">Footer</div>
-	<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer" use:drag_zone={'footer'}>
+	<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer">
 		{#each footer_sections as section (section.id)}
 			{@const locked = undefined}
 			{@const in_current_tab = false}
@@ -787,9 +847,7 @@
 					}
 				}}
 				onmouseleave={() => {
-					// Only hide if we're not immediately entering another section
 					setTimeout(() => {
-						// Check if we've hovered over a different section in the meantime
 						if (hovered_section_id === section.id) {
 							hide_block_toolbar()
 						}
@@ -824,7 +882,7 @@
 			</div>
 		{/each}
 		{#if footer_sections.length === 0}
-			<div class="empty-zone">
+			<div class="empty-zone" use:empty_zone_drop={'footer'}>
 				<span>Drag blocks here for the footer</span>
 			</div>
 		{/if}
@@ -868,6 +926,9 @@
 	main.fadein {
 		opacity: 1;
 	}
+	main.dragging :global(iframe) {
+		pointer-events: none !important;
+	}
 
 	.page-zone {
 		padding: 0.5rem;
@@ -879,9 +940,9 @@
 	}
 
 	.page-zone.dragging-over {
-		border-color: rgba(59, 130, 246, 0.6);
-		background-color: rgba(59, 130, 246, 0.05);
-		box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+		border-color: rgba(59, 130, 246, 0.6) !important;
+		background-color: rgba(59, 130, 246, 0.05) !important;
+		box-shadow: 0 0 10px rgba(59, 130, 246, 0.2) !important;
 	}
 
 	.page-zone.header-zone {
@@ -889,7 +950,7 @@
 	}
 
 	.page-zone.header-zone.dragging-over {
-		border-color: rgba(59, 130, 246, 0.8);
+		border-color: rgba(59, 130, 246, 0.8) !important;
 	}
 
 	.page-zone.body-zone {
@@ -898,7 +959,7 @@
 	}
 
 	.page-zone.body-zone.dragging-over {
-		border-color: rgba(59, 130, 246, 0.8);
+		border-color: rgba(59, 130, 246, 0.8) !important;
 	}
 
 	.page-zone.footer-zone {
@@ -906,7 +967,7 @@
 	}
 
 	.page-zone.footer-zone.dragging-over {
-		border-color: rgba(59, 130, 246, 0.8);
+		border-color: rgba(59, 130, 246, 0.8) !important;
 	}
 
 	.zone-label {
@@ -914,7 +975,7 @@
 		font-weight: 500;
 		color: white;
 		margin-left: 0.5rem;
-		margin-top: 0.25rem;
+		margin-top: 0.75rem;
 		user-select: none;
 	}
 

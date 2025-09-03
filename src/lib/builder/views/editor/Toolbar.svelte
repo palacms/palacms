@@ -24,13 +24,14 @@
 	import { type Snippet } from 'svelte'
 	import { site_context } from '$lib/builder/stores/context'
 	import { current_user } from '$lib/pocketbase/user'
+	import { resolve_page } from '$lib/pages'
 
 	let { children }: { children: Snippet } = $props()
 
 	const site = site_context.get()
-	const page_slug = $derived(pageState.params.page || '')
+	const page_path = $derived(pageState.params.page?.split('/'))
 	const page_type_id = $derived(pageState.params.page_type)
-	const page = $derived(site && page_slug ? Pages.list({ filter: { site: site.id, slug: page_slug } })?.[0] : undefined)
+	const page = $derived(site && page_path && resolve_page(site, page_path))
 	const page_type = $derived(page_type_id && PageTypes.one(page_type_id))
 	const page_page_type = $derived(page && PageTypes.one(page.page_type))
 
@@ -82,7 +83,7 @@
 			const next_page = root_pages[current_page_index + 1]
 			if (next_page) {
 				const base_path = `/admin/sites/${site?.id}`
-				// Check if this is the homepage (first page in root_pages array)  
+				// Check if this is the homepage (first page in root_pages array)
 				const target_url = next_page === home_page ? base_path : `${base_path}/${next_page.slug}`
 				console.log('Navigate down:', {
 					current_page_index,
@@ -254,9 +255,6 @@
 						</span>
 					{/if}
 				{/if}
-			{:else if page_slug}
-				<span class="separator">/</span>
-				<span class="page">{page_slug}</span>
 			{/if}
 		</div>
 		<div class="right">

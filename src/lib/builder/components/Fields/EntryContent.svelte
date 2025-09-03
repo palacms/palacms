@@ -90,7 +90,7 @@
 		</div>
 	{/if}
 	<Card {title} {icon} {minimal}>
-		<Field_Component {entity} {field} {fields} {entries} {entry} {level} {onchange} {ondelete} />
+		<Field_Component {entity} {field} {fields} {entries} {entry} {level} {onchange} {ondelete} parent={parent} />
 	</Card>
 {:else if $current_user?.siteRole === 'developer' && !is_visible}
 	<div class="hidden-field">

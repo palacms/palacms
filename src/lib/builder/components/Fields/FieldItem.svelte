@@ -186,7 +186,7 @@
 		})
 	}
 
-	let child_fields = $derived(fields?.filter((f) => f.parent === field.id) || [])
+	const child_fields = $derived(fields?.filter((f) => f.parent === field.id) || [])
 
 	let is_new_field = $state(field.key === '')
 

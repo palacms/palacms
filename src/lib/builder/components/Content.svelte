@@ -27,7 +27,7 @@
 	.Content {
 		width: 100%;
 		display: grid;
-		gap: 1rem;
+		gap: 0.5rem;
 		padding-bottom: 0.5rem;
 		/* padding-block: 0.5rem; */
 		color: var(--color-gray-2);
