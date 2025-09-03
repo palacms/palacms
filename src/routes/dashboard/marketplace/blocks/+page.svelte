@@ -1,5 +1,4 @@
-<script>
-	import { fade } from 'svelte/transition'
+<script lang="ts">
 	import * as Popover from '$lib/components/ui/popover'
 	import * as Sidebar from '$lib/components/ui/sidebar'
 	import { processCode } from '$lib/builder/utils.js'
@@ -13,34 +12,109 @@
 	import * as RadioGroup from '$lib/components/ui/radio-group'
 	import { Label } from '$lib/components/ui/label'
 	import { page } from '$app/state'
-	import { LibrarySymbolGroups, MarketplaceSymbolGroups } from '$lib/pocketbase/collections'
+	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, MarketplaceSymbolGroups, MarketplaceSymbols } from '$lib/pocketbase/collections'
+	import { marketplace } from '$lib/pocketbase/PocketBase'
 
 	const group_id = $derived(page.url.searchParams.get('group') ?? undefined)
 	const marketplace_symbol_group = $derived(group_id ? MarketplaceSymbolGroups.one(group_id) : undefined)
 	const marketplace_symbols = $derived(marketplace_symbol_group?.symbols() ?? undefined)
 	const library_symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
 
-	async function compile_component_head(html) {
-		const compiled = await processCode({
-			component: {
-				html,
-				css: '',
-				js: ''
-			}
-		})
-		if (!compiled.error) {
-			return compiled.head
-		} else return ''
-	}
-
 	let selected_group_id = $state(LibrarySymbolGroups.list()?.[0]?.id ?? '')
-
-	let is_popover_open = $state(false)
+	let selected_symbol_id = $state<string>()
+	let selected_symbol = $derived(selected_symbol_id ? MarketplaceSymbols.one(selected_symbol_id) : null)
 	let added_to_library = $state(false)
 	async function add_to_library() {
-		// await actions.add_marketplace_symbol_to_library({ symbol, preview, group_id })
-		// TODO: Implement
-		throw new Error('Not implemented')
+		if (!selected_symbol) {
+			throw new Error('Selected symbol not loaded')
+		}
+
+		// Copy marketplace symbols to library symbols
+		try {
+			// Create site symbol from library symbol
+			const site_symbol = LibrarySymbols.create({
+				name: selected_symbol.name,
+				html: selected_symbol.html,
+				css: selected_symbol.css,
+				js: selected_symbol.js,
+				group: selected_group_id
+			})
+
+			// Get marketplace fields using pb directly to avoid effect context issues
+			const marketplace_fields = await marketplace.collection('library_symbol_fields').getFullList({
+				filter: `symbol = "${selected_symbol.id}"`,
+				sort: 'index'
+			})
+
+			if (marketplace_fields?.length > 0) {
+				const field_map = new Map()
+
+				// Create fields in order, handling parent relationships
+				const sorted_fields = [...marketplace_fields].sort((a, b) => {
+					// Fields without parents come first
+					if (!a.parent && b.parent) return -1
+					if (a.parent && !b.parent) return 1
+					return (a.index || 0) - (b.index || 0)
+				})
+
+				for (const marketplace_field of sorted_fields) {
+					const parent_library_field = marketplace_field.parent ? field_map.get(marketplace_field.parent) : undefined
+
+					const library_field = LibrarySymbolFields.create({
+						key: marketplace_field.key,
+						label: marketplace_field.label,
+						type: marketplace_field.type,
+						config: marketplace_field.config,
+						index: marketplace_field.index,
+						symbol: site_symbol.id,
+						parent: parent_library_field?.id || undefined
+					})
+					field_map.set(marketplace_field.id, library_field)
+				}
+
+				// Get library entries using pb directly
+				const field_ids = marketplace_fields.map((f) => f.id)
+				const marketplace_entries =
+					field_ids.length > 0
+						? await marketplace.collection('library_symbol_entries').getFullList({
+								filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
+								sort: 'index'
+							})
+						: []
+
+				if (marketplace_entries?.length > 0) {
+					const entry_map = new Map()
+
+					// Create entries in order, handling parent relationships
+					const sorted_entries = [...marketplace_entries].sort((a, b) => {
+						// Entries without parents come first
+						if (!a.parent && b.parent) return -1
+						if (a.parent && !b.parent) return 1
+						return (a.index || 0) - (b.index || 0)
+					})
+
+					for (const marketplace_entry of sorted_entries) {
+						const library_field = field_map.get(marketplace_entry.field)
+						const parent_library_entry = marketplace_entry.parent ? entry_map.get(marketplace_entry.parent) : undefined
+
+						if (library_field) {
+							const site_entry = LibrarySymbolEntries.create({
+								field: library_field.id,
+								value: marketplace_entry.value,
+								index: marketplace_entry.index,
+								locale: marketplace_entry.locale,
+								parent: parent_library_entry?.id || undefined
+							})
+							entry_map.set(marketplace_entry.id, site_entry)
+						}
+					}
+				}
+			}
+		} catch (error) {
+			console.error('Error copying marketplace symbol:', error)
+		}
+
+		await manager.commit()
 		toast.success('Block added to Library')
 		added_to_library = true
 	}
@@ -60,8 +134,21 @@
 			<Masonry items={marketplace_symbols} loading={marketplace_symbols === undefined} skeletonCount={12}>
 				{#snippet children(symbol)}
 					<SymbolButton {symbol}>
-						<Popover.Root bind:open={is_popover_open}>
-							<Popover.Trigger class={buttonVariants({ variant: 'ghost', class: 'h-4 p-0' })}>
+						<Popover.Root
+							open={selected_symbol_id === symbol.id}
+							onOpenChange={(open) => {
+								if (!open) {
+									selected_symbol_id = undefined
+								}
+							}}
+						>
+							<Popover.Trigger
+								class={buttonVariants({ variant: 'ghost', class: 'h-4 p-0' })}
+								onclick={(event) => {
+									event.preventDefault()
+									selected_symbol_id = symbol.id
+								}}
+							>
 								{#if added_to_library}
 									<CircleCheck />
 								{:else}
@@ -84,9 +171,9 @@
 									</RadioGroup.Root>
 									<div class="flex justify-end">
 										<Button
-											onclick={() => {
-												add_to_library()
-												is_popover_open = false
+											onclick={async () => {
+												await add_to_library()
+												selected_symbol_id = undefined
 											}}
 										>
 											Add to Library
