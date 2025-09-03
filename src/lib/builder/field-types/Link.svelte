@@ -2,7 +2,6 @@
 	import * as _ from 'lodash-es'
 	import Icon from '@iconify/svelte'
 	import UI from '../ui'
-	import { locale } from '../stores/app'
 	import type { Entity } from '$lib/Content.svelte'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 	import { site_context } from '$lib/builder/stores/context'
@@ -12,8 +11,7 @@
 
 	const default_value = {
 		label: '',
-		url: '',
-		active: false
+		url: ''
 	}
 
 	const default_entry = { value: default_value }
@@ -22,17 +20,7 @@
 	const entry = $derived(passedEntry || default_entry)
 	const selectable_pages = $derived(site?.pages() ?? [])
 
-	let selected = $state('url')
-	let selected_page = $state(null)
-	function get_page_url(page) {
-		const prefix = $locale === 'en' ? '/' : `/${$locale}/`
-		if (page.slug === '') {
-			return prefix
-		} else {
-			let parent_urls = []
-			return parent_urls.length ? prefix + parent_urls.join('/') + '/' + page.slug : prefix + page.slug
-		}
-	}
+	let selected = $derived<'page' | 'url'>(entry.value.page ? 'page' : 'url')
 </script>
 
 <div class="Link">
@@ -59,20 +47,19 @@
 			</div>
 			{#if selected === 'page'}
 				<UI.Select
-					value={selected_page?.id}
+					value={entry.value.page}
 					options={selectable_pages.map((p) => ({ ...p, label: p.name, value: p.id }))}
 					on:input={({ detail: pageId }) => {
 						const page = selectable_pages.find((p) => p.id === pageId)
 						if (page) {
-							selected_page = page
-							onchange({ [field.key]: { 0: { value: { ...entry.value, page: page.id, url: get_page_url(page) } } } })
+							onchange({ [field.key]: { 0: { value: { ...entry.value, page: page.id, url: undefined } } } })
 						}
 					}}
 				/>
 			{:else}
 				<UI.TextInput
 					oninput={(text) => {
-						onchange({ [field.key]: { 0: { value: { ...entry.value, url: text } } } })
+						onchange({ [field.key]: { 0: { value: { ...entry.value, url: text, page: undefined } } } })
 					}}
 					value={entry.value.url}
 					type="url"

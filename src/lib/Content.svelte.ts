@@ -5,6 +5,7 @@ import type { Field } from './common/models/Field'
 import { get_empty_value } from '$lib/builder/utils'
 import { self } from './pocketbase/PocketBase'
 import type { ObjectOf } from './pocketbase/CollectionMapping.svelte'
+import { build_live_page_url } from './pages'
 
 /**
  * Entry models by name of the owning collection.
@@ -147,13 +148,16 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const data = useContent(page)
 				if (!data) return
 
+				const url = build_live_page_url(page)?.pathname
+				if (url === undefined) return
+
 				content[entry.locale]![field.key] = {
 					...data[entry.locale],
 					_meta: {
 						created_at: page.created, // TODO: Fix typing
 						name: page.name,
 						slug: page.slug,
-						url: `/${page.slug}` // TODO: Fix URL (hierarchy)
+						url
 					}
 				}
 			}
@@ -170,17 +174,37 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					for (const locale in { en: {}, ...data[index] }) {
 						if (!content[locale]) content[locale] = {}
 						if (!content[locale][field.key]) content[locale][field.key] = []
+
+						const url = build_live_page_url(pages[index])?.pathname
+						if (url === undefined) return
+
 						content[locale][field.key].push({
 							...data[index]?.[locale],
 							_meta: {
 								created_at: pages[index].created, // TODO: Fix typing
 								name: pages[index].name,
 								slug: pages[index].slug,
-								url: `/${pages[index].slug}` // TODO: Fix URL (hierarchy)
+								url
 							}
 						})
 					}
 				}
+			}
+
+			// Handle link fields specifially - translate page ID into URL
+			else if (field.type === 'link' && field.key) {
+				const [entry] = fieldEntries
+				if (!entry) continue
+				if (!content[entry.locale]) content[entry.locale] = {}
+
+				const page = entry.value.page ? Pages.one(entry.value.page) : null
+				if (page === undefined) return
+
+				const url = page ? build_live_page_url(page)?.pathname : entry.value.url
+				if (url === undefined) return
+
+				const label = entry.value.label
+				content[entry.locale]![field.key] = { url, label }
 			}
 
 			// If field has a key but no entries, fill with empty value

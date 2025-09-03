@@ -42,16 +42,48 @@ export const resolve_page = (site: ObjectOf<typeof Sites>, path: string[]) => {
  * This function should be called reactively (eg. inside $deferred).
  */
 export const build_cms_page_url = (page: ObjectOf<typeof Pages>, current_url: URL) => {
-	let path: string[] = []
-	let current_page: ObjectOf<typeof Pages> | undefined | null = page
-	while (current_page?.parent) {
-		path.push(current_page.slug)
-		current_page = Pages.one(current_page.parent)
-		console.log(current_page?.parent)
+	const path = build_page_path(page)
+	if (!path) {
+		return
 	}
 
 	const base_path = current_url.pathname.includes('/sites/') ? `/admin/sites/${page.site}` : '/admin/site'
 	path.push(base_path)
 
 	return new URL(path.reverse().join('/'), current_url)
+}
+
+/**
+ * Build page URL (eg. for a link)
+ *
+ * This function should be called reactively (eg. inside $deferred).
+ */
+export const build_live_page_url = (page: ObjectOf<typeof Pages>) => {
+	const site = Sites.one(page.site)
+	if (!site) {
+		return
+	}
+
+	const path = build_page_path(page)
+	if (!path) {
+		return
+	}
+
+	const base_path = ''
+	path.push(base_path)
+
+	return new URL(path.reverse().join('/'), site.host ? `${location.protocol}//${site.host}` : location.origin)
+}
+
+const build_page_path = (page: ObjectOf<typeof Pages>) => {
+	let path: string[] = []
+	let current_page: ObjectOf<typeof Pages> | undefined | null = page
+	while (current_page?.parent) {
+		path.push(current_page.slug)
+		current_page = Pages.one(current_page.parent)
+		if (!current_page) {
+			return
+		}
+	}
+	return path
 }
