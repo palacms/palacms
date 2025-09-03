@@ -61,9 +61,6 @@ export const MarketplaceSymbolGroups = createCollectionMapping('library_symbol_g
 export const MarketplaceSymbols = createCollectionMapping('library_symbols', LibrarySymbol, marketplace_manager, {
 	instance: marketplace,
 	links: {
-		group() {
-			return MarketplaceSymbolGroups.one(this.group)
-		},
 		fields() {
 			return LibrarySymbolFields.from(this.collection.instance).list({ filter: { symbol: this.id } })
 		},
