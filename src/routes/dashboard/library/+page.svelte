@@ -135,17 +135,18 @@
 	// Symbol rename
 	let symbol_being_renamed: LibrarySymbol | null = $state(null)
 	let is_symbol_renamer_open = $state(false)
+	let symbol_new_name = $state('')
 
 	function begin_symbol_rename(symbol: LibrarySymbol) {
 		symbol_being_renamed = symbol
-		new_name = symbol.name
+		symbol_new_name = symbol.name
 		is_symbol_renamer_open = true
 	}
 
 	async function handle_symbol_rename(e) {
 		e.preventDefault()
 		if (!symbol_being_renamed) return
-		LibrarySymbols.update(symbol_being_renamed.id, { name: new_name })
+		LibrarySymbols.update(symbol_being_renamed.id, { name: symbol_new_name })
 		await manager.commit()
 		is_symbol_renamer_open = false
 		symbol_being_renamed = null
@@ -421,7 +422,7 @@
 		<h2 class="text-lg font-semibold leading-none tracking-tight">Rename Block</h2>
 		<p class="text-muted-foreground text-sm">Enter a new name for your Block</p>
 		<form onsubmit={handle_symbol_rename}>
-			<Input bind:value={new_name} placeholder="Enter new Block name" class="my-4" />
+			<Input bind:value={symbol_new_name} placeholder="Enter new Block name" class="my-4" />
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (is_symbol_renamer_open = false)}>Cancel</Button>
 				<Button type="submit">Rename</Button>
