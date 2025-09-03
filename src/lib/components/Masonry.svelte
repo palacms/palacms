@@ -4,13 +4,29 @@
 
 	interface Props<T> {
 		items: T[] | undefined
-		columns?: 2 | 3 | 4
 		loading?: boolean
 		skeletonCount?: number
 		children: Snippet<[T]>
 	}
 
-	let { items, columns = 3, loading = false, skeletonCount = 8, children }: Props<T> = $props()
+	let { items, loading = false, skeletonCount = 8, children }: Props<T> = $props()
+
+	// Dynamically determine number of columns based on screen width
+	let window_width = $state(typeof window !== 'undefined' ? window.innerWidth : 1200)
+	
+	$effect(() => {
+		const handle_resize = () => {
+			window_width = window.innerWidth
+		}
+		window.addEventListener('resize', handle_resize)
+		return () => window.removeEventListener('resize', handle_resize)
+	})
+
+	const columns = $derived(
+		window_width < 600 ? 1 :
+		window_width < 700 ? 2 :
+		window_width < 1200 ? 3 : 4
+	)
 
 	// Generate random ratios for skeleton cards
 	const skeleton_ratios = $derived(
@@ -55,7 +71,11 @@
 	.masonry {
 		display: grid;
 		gap: 1rem;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: 1fr;
+
+		@media (min-width: 600px) {
+			grid-template-columns: 1fr 1fr;
+		}
 
 		@media (min-width: 700px) {
 			grid-template-columns: 1fr 1fr 1fr;
