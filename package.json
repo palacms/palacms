@@ -45,7 +45,7 @@
 		"autoprefixer": "^10.4.21",
 		"autosize": "^6.0.1",
 		"axios": "^1.11.0",
-		"bits-ui": "^2.9.4",
+		"bits-ui": "^2.9.6",
 		"browser-image-compression": "^2.0.2",
 		"clsx": "^2.1.1",
 		"codemirror": "^6.0.2",
