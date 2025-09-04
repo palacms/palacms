@@ -35,7 +35,7 @@
 		// await actions.add_marketplace_symbol_to_library({ symbol, preview, group_id })
 		// TODO: Implement
 		throw new Error('Not implemented')
-		toast.success('Block added to Library')
+		toast.success('Added Block to Library')
 		added_to_library = true
 	}
 </script>

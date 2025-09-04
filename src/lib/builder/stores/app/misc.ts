@@ -18,3 +18,6 @@ export const active_users = writable([])
 export const page_loaded = writable(false)
 
 export const dragging_symbol = writable(false)
+
+// Last selected Library group (session-only; no persistence)
+export const lastLibraryGroupId = writable<string | null>(null)

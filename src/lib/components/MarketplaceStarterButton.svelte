@@ -58,7 +58,7 @@
 		throw new Error('Not implemented')
 		loading = false
 		added_to_library.push(site.id)
-		toast.success('Starter added to Library')
+		toast.success('Added Starter to Library')
 	}
 </script>
 

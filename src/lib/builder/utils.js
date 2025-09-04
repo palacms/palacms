@@ -4,6 +4,9 @@ import { customAlphabet } from 'nanoid/non-secure'
 import { processors } from './component.js'
 
 const componentsCache = new Map()
+const errorCache = new Map()
+const CACHE_SIZE_LIMIT = 100
+
 export async function processCode({ component, head = { code: '', data: {} }, buildStatic = true, format = 'esm', locale = 'en', hydrated = true }) {
 	let css = ''
 	if (component.css) {
@@ -17,8 +20,20 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		hydrated
 	})
 
+	// Check cache first
 	if (componentsCache.has(cacheKey)) {
+		console.log('Returning cache', componentsCache.get(cacheKey))
 		return componentsCache.get(cacheKey)
+	}
+
+	// For performance, check if this looks like a simple syntax error pattern
+	const errorCacheKey = component.html + component.js
+	if (errorCache.has(errorCacheKey)) {
+		const cachedError = errorCache.get(errorCacheKey)
+		// Only use cached error if it's recent (within 5 seconds)
+		if (Date.now() - cachedError.timestamp < 5000) {
+			return cachedError.result
+		}
 	}
 
 	const res = await processors.html({
@@ -34,7 +49,24 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		hydrated
 	})
 
+	// Cache management - limit cache size
+	if (componentsCache.size >= CACHE_SIZE_LIMIT) {
+		const firstKey = componentsCache.keys().next().value
+		componentsCache.delete(firstKey)
+	}
 	componentsCache.set(cacheKey, res)
+
+	// Cache errors separately with timestamp for quick rejection of known bad code
+	if (res.error) {
+		if (errorCache.size >= 20) {
+			const firstKey = errorCache.keys().next().value
+			errorCache.delete(firstKey)
+		}
+		errorCache.set(errorCacheKey, {
+			result: res,
+			timestamp: Date.now()
+		})
+	}
 
 	return res
 }

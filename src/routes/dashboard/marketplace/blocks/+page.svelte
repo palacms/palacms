@@ -14,35 +14,39 @@
 	import { page } from '$app/state'
 	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, MarketplaceSymbolGroups, MarketplaceSymbols } from '$lib/pocketbase/collections'
 	import { marketplace } from '$lib/pocketbase/PocketBase'
+    import { lastLibraryGroupId } from '$lib/builder/stores/app/misc'
+	import { get } from 'svelte/store'
 
 	const group_id = $derived(page.url.searchParams.get('group') ?? undefined)
 	const marketplace_symbol_group = $derived(group_id ? MarketplaceSymbolGroups.one(group_id) : undefined)
 	const marketplace_symbols = $derived(marketplace_symbol_group?.symbols() ?? undefined)
 	const library_symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
 
-	let selected_group_id = $state(LibrarySymbolGroups.list()?.[0]?.id ?? '')
+	// Prefer last-used group (persisted), fallback to first available
+	let selected_group_id = $state((get(lastLibraryGroupId) || LibrarySymbolGroups.list()?.[0]?.id) ?? '')
 	let selected_symbol_id = $state<string>()
 	let selected_symbol = $derived(selected_symbol_id ? MarketplaceSymbols.one(selected_symbol_id) : null)
 	let added_to_library = $state(false)
-	async function add_to_library() {
-		if (!selected_symbol) {
+    async function add_to_library(sym?: ReturnType<typeof MarketplaceSymbols.one> | string) {
+		const symbolToAdd = typeof sym === 'string' ? MarketplaceSymbols.one(sym) : sym || selected_symbol
+		if (!symbolToAdd) {
 			throw new Error('Selected symbol not loaded')
 		}
 
 		// Copy marketplace symbols to library symbols
 		try {
-			// Create site symbol from library symbol
+			// Create library symbol from marketplace symbol
 			const site_symbol = LibrarySymbols.create({
-				name: selected_symbol.name,
-				html: selected_symbol.html,
-				css: selected_symbol.css,
-				js: selected_symbol.js,
+				name: symbolToAdd.name,
+				html: symbolToAdd.html,
+				css: symbolToAdd.css,
+				js: symbolToAdd.js,
 				group: selected_group_id
 			})
 
 			// Get marketplace fields using pb directly to avoid effect context issues
 			const marketplace_fields = await marketplace.collection('library_symbol_fields').getFullList({
-				filter: `symbol = "${selected_symbol.id}"`,
+				filter: `symbol = "${symbolToAdd.id}"`,
 				sort: 'index'
 			})
 
@@ -110,14 +114,23 @@
 					}
 				}
 			}
+        await manager.commit()
 		} catch (error) {
 			console.error('Error copying marketplace symbol:', error)
+			throw error
 		}
+    }
 
-		await manager.commit()
-		toast.success('Block added to Library')
-		added_to_library = true
-	}
+	// Keep last selected group persisted
+	$effect(() => {
+		if (selected_group_id) {
+			lastLibraryGroupId.set(selected_group_id)
+		} else {
+			// if groups load later and none selected, choose first available
+			const first = LibrarySymbolGroups.list()?.[0]?.id
+			if (first) selected_group_id = first
+		}
+	})
 </script>
 
 <header class="flex h-14 shrink-0 items-center gap-2">
@@ -133,7 +146,12 @@
 		{#if marketplace_symbols?.length || marketplace_symbols === undefined}
 			<Masonry items={marketplace_symbols} loading={marketplace_symbols === undefined} skeletonCount={12}>
 				{#snippet children(symbol)}
-					<SymbolButton {symbol}>
+					<SymbolButton
+						{symbol}
+						onclick={() => {
+							selected_symbol_id = symbol.id
+						}}
+					>
 						<Popover.Root
 							open={selected_symbol_id === symbol.id}
 							onOpenChange={(open) => {
@@ -170,12 +188,21 @@
 										{/each}
 									</RadioGroup.Root>
 									<div class="flex justify-end">
-										<Button
-											onclick={async () => {
-												await add_to_library()
-												selected_symbol_id = undefined
-											}}
-										>
+                            <Button
+                                onclick={() => {
+                                    const grp = LibrarySymbolGroups.one(selected_group_id)
+                                    const displayName = (symbol?.name || '').trim() || 'Block'
+                                    toast.success(`Added ${displayName} to ${grp?.name ?? 'Library'}`)
+                                    selected_symbol_id = undefined
+                                    added_to_library = true
+                                    // Fire-and-forget background add
+                                    add_to_library(symbol).catch((e) => {
+                                        console.error(e)
+                                        toast.error('Failed to add block. Please try again.')
+                                        added_to_library = false
+                                    })
+                                }}
+                            >
 											Add to Library
 										</Button>
 									</div>
