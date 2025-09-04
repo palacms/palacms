@@ -20,4 +20,7 @@ export const page_loaded = writable(false)
 export const dragging_symbol = writable(false)
 
 // Last selected Library group (session-only; no persistence)
-export const lastLibraryGroupId = writable<string | null>(null)
+export const last_library_group_id = writable<string | null>(null)
+
+// Persist Field|Entry tab selection per-entity (session-only)
+export const field_tabs_by_entity = writable<Record<string, Record<string, 'field' | 'entry'>>>({}) // TODO: persist
