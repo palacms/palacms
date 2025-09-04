@@ -17,10 +17,8 @@
 	import { dynamic_field_types } from '$lib/builder/field-types'
 	import { site_context, hide_dynamic_field_types_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import type { Field } from '$lib/common/models/Field'
-	import { Sites } from '$lib/pocketbase/collections'
 	import pluralize from 'pluralize'
 	import { get_empty_value } from '../../utils.js'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let {
 		field,
@@ -67,6 +65,21 @@
 	function validate_field_key(key) {
 		// replace dash and space with underscore
 		return key.replace(/-/g, '_').replace(/ /g, '_').toLowerCase()
+	}
+
+	function make_unique_label(base_label) {
+		if (!base_label) return base_label
+		const base = String(base_label).trim()
+		const siblings = fields
+			.filter((f) => f.id !== field.id && (((!f.parent && !field.parent) || f.parent === field.parent)))
+			.map((f) => (f.label || '').trim().toLowerCase())
+		let candidate = base
+		let i = 2
+		while (siblings.includes(candidate.trim().toLowerCase())) {
+			candidate = `${base} ${i}`
+			i++
+		}
+		return candidate
 	}
 
 	// Auto-fill key when setting label
@@ -237,7 +250,20 @@
 						defaultConfig = null
 					}
 
-					onchange({ id: field.id, data: { type: field_type_id, config: defaultConfig } })
+					// Optionally auto-fill label (and key) if label is empty
+					let data: any = { type: field_type_id, config: defaultConfig }
+					const hasLabel = !!(field.label && field.label.trim().length > 0)
+					if (!hasLabel) {
+						const ft = visible_field_types.find((ft) => ft.id === field_type_id)
+						let suggestedLabel = ft?.label || (field_type_id.charAt(0).toUpperCase() + field_type_id.slice(1).replace(/-/g, ' '))
+						suggestedLabel = make_unique_label(suggestedLabel)
+						data.label = suggestedLabel
+						if (!key_edited && (!field.key || field.key.trim() === '')) {
+							data.key = validate_field_key(suggestedLabel)
+						}
+					}
+
+					onchange({ id: field.id, data })
 				}}
 				placement="bottom-start"
 			/>
@@ -384,13 +410,33 @@
 					on:keydown
 					oninput={(text) => {
 						// Auto-generate key unless user has manually edited it
-						// Auto-suggest type only for new fields with empty initial label
+						let nextType = field.type
+						let nextConfig = field.config ?? null
+
+						// Only auto-suggest for truly new fields (no key yet)
+						// and when the user hasn't explicitly changed type yet.
+						// Also avoid overriding a non-default type.
+						if (is_new_field && !field_type_changed && (!field.type || field.type === 'text')) {
+							const suggested = update_field_type(text)
+							if (suggested && suggested !== field.type) {
+								nextType = suggested
+								// Provide default config for specific types
+								if (suggested === 'page' || suggested === 'page-list') {
+									const firstPageType = page_types[0]?.id || ''
+									nextConfig = { page_type: firstPageType }
+								} else {
+									nextConfig = null
+								}
+							}
+						}
+
 						onchange({
 							id: field.id,
 							data: {
 								label: text,
 								key: key_edited ? field.key : validate_field_key(text),
-								type: field.type
+								type: nextType,
+								config: nextConfig
 							}
 						})
 
