@@ -6,12 +6,12 @@
 	import EntryContent from './Fields/EntryContent.svelte'
 	import { current_user } from '$lib/pocketbase/user'
 
-	const { entity, fields, entries, oninput }: { entity: Entity; entries: Entry[]; fields: Field[]; oninput: FieldValueHandler } = $props()
+	const { entity, fields, entries, oninput, ondelete }: { entity: Entity; entries: Entry[]; fields: Field[]; oninput: FieldValueHandler; ondelete?: (entry_id: string) => void } = $props()
 </script>
 
 <div class="Content">
 	{#each fields.filter((f) => !f.parent) as field (field.id)}
-		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} />
+		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} {ondelete} />
 	{:else}
 		<p class="empty-description">
 			{#if $current_user?.siteRole === 'developer'}

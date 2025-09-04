@@ -231,6 +231,9 @@
 					onchange={({ id, data }) => {
 						FieldCollection.update(id, data)
 					}}
+					ondelete_entry={(entry_id) => {
+						EntryCollection.delete(entry_id)
+					}}
 					ondelete={(field_id) => {
 						FieldCollection.delete(field_id)
 					}}
@@ -239,9 +242,7 @@
 		</Pane>
 		<PaneResizer class="PaneResizer" />
 		<Pane defaultSize={50}>
-			{#if component_data}
-				<ComponentPreview bind:orientation={$orientation} view="small" {loading} {code} data={component_data} head={$site_html} />
-			{/if}
+			<ComponentPreview bind:orientation={$orientation} view="small" {loading} {code} data={component_data} head={$site_html} />
 		</Pane>
 	</PaneGroup>
 </main>
