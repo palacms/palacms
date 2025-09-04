@@ -37,7 +37,7 @@
 					icon={option.icon || 'ri:checkbox-blank-circle-fill'}
 					on:input={({ detail: icon }) => {
 						option.icon = icon
-						dispatch('input', { detail: { config: { options } } })
+						dispatch('input', { config: { options } })
 					}}
 				/>
 			</div>
@@ -48,7 +48,7 @@
 				oninput={(text) => {
 					option.value = clicked_value_inputs.has(i) ? option.value : validateFieldKey(text)
 					option.label = text
-					dispatch('input', { detail: { config: { options } } })
+					dispatch('input', { config: { options } })
 				}}
 			/>
 			<UI.TextInput
@@ -57,7 +57,7 @@
 				onfocus={() => clicked_value_inputs.add(i)}
 				oninput={(text) => {
 					option.value = text
-					dispatch('input', { detail: { config: { options } } })
+					dispatch('input', { config: { options } })
 				}}
 			/>
 			<div class="item-options" id="repeater-{field.key}-{i}">
