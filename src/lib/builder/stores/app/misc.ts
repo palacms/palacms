@@ -11,6 +11,12 @@ export const onMobile = !import.meta.env.SSR ? writable(/Android|webOS|iPhone|iP
 export const locale = writable('en')
 
 export const highlightedElement = writable(null)
+// Line number the mock inspector overlay should follow (editor-driven)
+export const inspectorOverlayLine = writable<number | null>(null)
+// Toggle for mock inspector overlay in preview
+export const inspectorEnabled = writable(true)
+// TODO: Potential future: track CSS target to highlight matching selector.
+// For now, we only highlight the HTML line in the editor and show a visual overlay in the preview.
 
 export const locked_blocks = writable<string[]>([])
 export const active_users = writable([])

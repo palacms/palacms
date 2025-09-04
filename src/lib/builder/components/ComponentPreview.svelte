@@ -13,9 +13,10 @@
 	import { onMount, tick, untrack } from 'svelte'
 	import { slide, fade } from 'svelte/transition'
 	import { dynamic_iframe_srcdoc } from './misc.js'
-	import { highlightedElement } from '../stores/app/misc'
+	import { highlightedElement, inspectorOverlayLine, inspectorEnabled } from '../stores/app/misc'
 	import { Inspect } from 'svelte-inspect-value'
 	import Icon from '@iconify/svelte'
+	import Toggle from 'svelte-toggle'
 	import { content_editable } from '../utilities'
 	import { processCode } from '../utils.js'
 	import { debounce } from 'lodash-es'
@@ -103,17 +104,17 @@
 		}, 200)
 
 		async function compile() {
-        const { js, error } = await processCode({
-          component: {
-            // head: code.head,
-            html: code.html || '',
-            css: code.css || '',
-            js: code.js || '',
-            data
-          },
-          buildStatic: false,
-          dev_mode: true
-        })
+			const { js, error } = await processCode({
+				component: {
+					// head: code.head,
+					html: code.html || '',
+					css: code.css || '',
+					js: code.js || '',
+					data
+				},
+				buildStatic: false,
+				dev_mode: true
+			})
 
 			if (error) {
 				compilation_error = error
@@ -150,6 +151,21 @@
 			} else if (event === 'SET_ELEMENT_PATH' && payload.loc) {
 				$highlightedElement = payload.loc
 			}
+		}
+	})
+
+	// Sync inspector enabled state to iframe
+	$effect(() => {
+		if (!channel) return
+		channel.postMessage({ event: 'INSPECTOR_TOGGLE', payload: { enabled: $inspectorEnabled } })
+	})
+
+	// Send active HTML line back to iframe to draw overlay
+	$effect(() => {
+		if (!channel || !$inspectorEnabled) return
+		const line = $inspectorOverlayLine
+		if (typeof line === 'number' && line > 0) {
+			channel.postMessage({ event: 'HOVER_LOC', payload: { line } })
 		}
 	})
 
@@ -385,6 +401,11 @@
 					<span>dynamic width</span>
 				{/if}
 			</button>
+			<!-- Inspector toggle: icon + svelte-toggle without label -->
+			<div class="inspector-switch">
+				<Icon icon="mdi:select-search" />
+				<Toggle label="Inspector" class="ml-1" small={true} hideLabel={true} bind:toggled={$inspectorEnabled} />
+			</div>
 			<button onclick={toggleOrientation} class="preview-orientation">
 				{#if orientation === 'vertical'}
 					<Icon icon="charm:layout-rows" />
@@ -487,6 +508,15 @@
 			padding: 0.25rem 0.5rem;
 		}
 
+		.inspector-switch {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.25rem;
+			padding-inline: 0.5rem;
+			background: var(--color-gray-9);
+			border: 1px solid var(--color-gray-8);
+		}
+
 		.auto-refresh {
 			font-size: 1.5rem;
 			padding: 0.25rem 0.5rem;
@@ -514,4 +544,6 @@
 			}
 		}
 	}
+
+	/* svelte-toggle integrates without extra styles */
 </style>

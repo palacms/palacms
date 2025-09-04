@@ -13,6 +13,70 @@ export const dynamic_iframe_srcdoc = (head = '') => {
         let c;
 
         const channel = new BroadcastChannel('component_preview');
+        // Mock inspector overlay (multiple boxes)
+        let overlayEnabled = true;
+        let overlayContainer;
+        let overlays = [];
+        function getOverlayContainer() {
+          if (!overlayContainer) {
+            overlayContainer = document.createElement('div');
+            overlayContainer.id = '__pala_inspector_overlay_container';
+            Object.assign(overlayContainer.style, {
+              position: 'absolute',
+              top: '0px', left: '0px',
+              width: '0px', height: '0px',
+              pointerEvents: 'none',
+              zIndex: 2147483647,
+            });
+            document.body.appendChild(overlayContainer);
+          }
+          return overlayContainer;
+        }
+        function getOverlayAt(i) {
+          const container = getOverlayContainer();
+          if (!overlays[i]) {
+            const box = document.createElement('div');
+            Object.assign(box.style, {
+              position: 'absolute',
+              border: '2px solid #60a5fa',
+              background: 'rgba(96,165,250,0.12)',
+              pointerEvents: 'none',
+              transition: 'all 0.06s ease-out'
+            });
+            container.appendChild(box);
+            overlays[i] = box;
+          }
+          return overlays[i];
+        }
+        function hideExtraOverlays(startIndex) {
+          for (let i = startIndex; i < overlays.length; i++) {
+            const box = overlays[i];
+            if (box) {
+              box.style.width = '0px';
+              box.style.height = '0px';
+            }
+          }
+        }
+        let __pala_last_line = null;
+        function highlightLineInPreview(line) {
+          try {
+            if (!line) return;
+            __pala_last_line = line;
+            const nodes = document.querySelectorAll('[data-primo-loc="' + line + '"]');
+            if (!nodes || nodes.length === 0) { hideExtraOverlays(0); return; }
+            let i = 0;
+            for (const el of nodes) {
+              const rect = el.getBoundingClientRect();
+              const ov = getOverlayAt(i++);
+              ov.style.top = (window.scrollY + rect.top) + 'px';
+              ov.style.left = (window.scrollX + rect.left) + 'px';
+              ov.style.width = rect.width + 'px';
+              ov.style.height = rect.height + 'px';
+            }
+            hideExtraOverlays(i);
+          } catch (_) {}
+        }
+
         channel.onmessage = ({data}) => {
           const { event, payload = {} } = data
           if (payload.componentApp) {
@@ -21,7 +85,18 @@ export const dynamic_iframe_srcdoc = (head = '') => {
           if (payload.data) {
             update(payload.data)
           }
+          if (event === 'INSPECTOR_TOGGLE' && typeof payload.enabled === 'boolean') {
+            overlayEnabled = payload.enabled;
+            if (!overlayEnabled) hideExtraOverlays(0);
+          }
+          if (event === 'HOVER_LOC' && payload?.line) {
+            if (overlayEnabled) highlightLineInPreview(payload.line)
+          }
         }
+
+        // Keep overlay aligned on scroll/resize
+        window.addEventListener('scroll', () => { if (__pala_last_line) highlightLineInPreview(__pala_last_line) }, { passive: true });
+        window.addEventListener('resize', () => { if (__pala_last_line) highlightLineInPreview(__pala_last_line) });
 
         function update(props) {
           const withLogs = \`
@@ -78,6 +153,9 @@ export const dynamic_iframe_srcdoc = (head = '') => {
             }
             const sendLoc = createLocThrottler(80);
 
+            // Note: CSS mapping (element => CSS selector => rule line) is not enabled yet.
+            // A future iteration may post a target (id/classes) and resolve to CSS editor lines.
+
             channel.postMessage({ event: 'BEGIN' });
             if (primoLog) console.log = (...args) => {
               try {
@@ -101,6 +179,11 @@ export const dynamic_iframe_srcdoc = (head = '') => {
             function extractLocFrom(el) {
               try {
                 if (!el) return null;
+                const attr = el.getAttribute && el.getAttribute('data-primo-loc');
+                if (attr) {
+                  const n = Number(attr);
+                  if (!Number.isNaN(n)) return { line: n };
+                }
                 const meta = el.__svelte_meta || el.__svelte;
                 if (meta && meta.loc) {
                   // Svelte dev sometimes exposes { line, column }
@@ -117,6 +200,7 @@ export const dynamic_iframe_srcdoc = (head = '') => {
               for (let i=0; i<12 && el; i++) {
                 const loc = extractLocFrom(el);
                 if (loc) { sendLoc(loc); break; }
+                // CSS target posting intentionally disabled for now (see note above).
                 el = el.parentElement;
               }
             }
@@ -141,6 +225,11 @@ export const dynamic_iframe_srcdoc = (head = '') => {
                 }
               });
             }
+          }).catch((e) => {
+            try {
+              console.error(e?.toString?.() || 'Import error');
+              channel.postMessage({ event: 'SET_ERROR', payload: { error: e?.toString?.() || 'Import error' } });
+            } catch (_) {}
           })
         }
 		  </script>

@@ -5,7 +5,7 @@
 <script>
 	import { createEventDispatcher } from 'svelte'
 	import { createDebouncer } from '../../utils'
-	import { highlightedElement } from '../../stores/app/misc'
+	import { highlightedElement, inspectorOverlayLine } from '../../stores/app/misc'
 	import { basicSetup } from 'codemirror'
 	import { EditorView, keymap } from '@codemirror/view'
 	import { standardKeymap, indentWithTab } from '@codemirror/commands'
@@ -201,6 +201,19 @@
 					}
 				}
 				selection = view.state.selection.main.from
+				if (mode === 'html') {
+					try {
+						const pos = view.state.selection.main.head
+						const line = view.state.doc.lineAt(pos).number
+						// Avoid feedback loop: only update when line actually changes
+						if (!window.__pala_last_html_line || window.__pala_last_html_line !== line) {
+							window.__pala_last_html_line = line
+							highlightedElement.set({ line })
+							// Also drive the inspector overlay line explicitly
+							inspectorOverlayLine.set(line)
+						}
+					} catch (_) {}
+				}
 			}),
 			basicSetup,
 			...(mode === 'html' ? [svelte_completions_compartment.of(autocompletion({ override: [svelteCompletions(completions)] }))] : []),
@@ -228,6 +241,10 @@
 	$effect(() => {
 		mode === 'html' && Editor && highlight_active_line(Editor, $highlightedElement)
 	})
+
+  // Note: CSS highlighting from preview hover is not enabled yet.
+  // We plan to map hovered element class/id to CSS selectors and
+  // resolve to the correct rule and line in the CSS editor.
 
 	async function format_code(code, { mode, position }) {
 		let formatted

@@ -42,8 +42,13 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 		`
 	}
 
-	const Component = (component) => {
-		let { html, css, js, data } = component
+    const Component = (component) => {
+        let { html, css, js, data } = component
+
+        // In dev mode, instrument HTML with data-primo-loc attributes for hover mapping
+        if (dev_mode && typeof html === 'string' && html.length) {
+            html = instrument_html_with_loc(html)
+        }
 
 		// Move <svelte:window> outside the encompassing <div> to prevent 'can't nest' error
 		if (html.includes('<svelte:window')) {
@@ -64,7 +69,7 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
           ${css ? `<style>${css}</style>` : ``}`
 	}
 
-	function generate_lookup(component, head) {
+    function generate_lookup(component, head) {
 		if (Array.isArray(component)) {
 			// build page (sections as components)
 			component.forEach((section, i) => {
@@ -77,9 +82,9 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 			const app_code = Component(component)
 			component_lookup.set(`./App.svelte`, app_code)
 		}
-	}
+    }
 
-	generate_lookup(component, head)
+    generate_lookup(component, head)
 
 	if (buildStatic) {
 		const bundle = await compile({
@@ -243,7 +248,55 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 		})
 	}
 
-	return final
+    return final
+}
+
+// Insert data-primo-loc="<line>" into element start tags to track approximate source line numbers
+function instrument_html_with_loc(source) {
+    try {
+        // Precompute newline indices for quick line lookup
+        const newlines = []
+        for (let i = 0; i < source.length; i++) if (source.charCodeAt(i) === 10) newlines.push(i)
+        const indexToLine = (idx) => {
+            // Binary search for number of newlines before idx
+            let lo = 0, hi = newlines.length
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1
+                if (newlines[mid] < idx) lo = mid + 1; else hi = mid
+            }
+            return lo + 1 // 1-based line numbers
+        }
+
+        // Avoid instrumenting inside comments and <script>/<style> blocks
+        const commentRe = /<!--([\s\S]*?)-->/g
+        const scriptRe = /<script\b[\s\S]*?<\/script\s*>/gi
+        const styleRe = /<style\b[\s\S]*?<\/style\s*>/gi
+        let protectedRanges = []
+        const collect = (re) => { let m; while ((m = re.exec(source))) protectedRanges.push([m.index, re.lastIndex]) }
+        collect(commentRe); collect(scriptRe); collect(styleRe)
+        protectedRanges.sort((a,b)=>a[0]-b[0])
+
+        const inProtected = (i) => {
+            // binary search
+            let lo=0, hi=protectedRanges.length
+            while (lo<hi){ const mid=(lo+hi)>>1; const [s,e]=protectedRanges[mid]; if (i<s) hi=mid; else if (i>=e) lo=mid+1; else return true }
+            return false
+        }
+
+        // Replace opening tags with injected attribute
+        return source.replace(/<([a-zA-Z][\w:-]*)([^<>]*)>/g, (match, tag, attrs, offset) => {
+            if (inProtected(offset)) return match
+            // Skip Svelte special elements and component tags (capitalize) and do not duplicate
+            if (tag.startsWith('svelte:')) return match
+            if (!/^[a-z]/.test(tag)) return match
+            if (/\bdata-primo-loc=/.test(attrs)) return match
+            const line = indexToLine(offset)
+            return `<${tag} data-primo-loc="${line}"${attrs}>`
+        })
+    } catch (e) {
+        console.warn('instrument_html_with_loc failed', e)
+        return source
+    }
 }
 
 /**
