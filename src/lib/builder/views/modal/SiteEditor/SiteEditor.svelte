@@ -90,7 +90,7 @@
 {#if site}
 	<main class="SiteEditor">
 		{#if $current_user?.siteRole === 'developer'}
-			<PaneGroup direction="horizontal" style="display: flex;">
+			<PaneGroup direction="horizontal" style="display: flex;" autoSaveId="SiteEditor-horizontal">
 				<Pane defaultSize={50}>
 					<Fields
 						entity={site}
@@ -135,7 +135,7 @@
 					</div>
 				</PaneResizer>
 				<Pane defaultSize={50}>
-					<PaneGroup direction="vertical">
+					<PaneGroup direction="vertical" autoSaveId="SiteEditor-vertical">
 						<Pane>
 							<div class="container" style="margin-bottom: 1rem">
 								<span class="primo--field-label">Head</span>
