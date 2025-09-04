@@ -7,7 +7,7 @@ const componentsCache = new Map()
 const errorCache = new Map()
 const CACHE_SIZE_LIMIT = 100
 
-export async function processCode({ component, head = { code: '', data: {} }, buildStatic = true, format = 'esm', locale = 'en', hydrated = true }) {
+export async function processCode({ component, head = { code: '', data: {} }, buildStatic = true, format = 'esm', locale = 'en', hydrated = true, dev_mode = false }) {
 	let css = ''
 	if (component.css) {
 		css = await processCSS(component.css || '')
@@ -18,12 +18,13 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		html: component?.html || '',
 		js: component?.js || '',
 		css, // processed css influences output
-		format,
-		buildStatic,
-		hydrated,
-		locale,
-		head: head?.code || ''
-	})
+    format,
+    buildStatic,
+    hydrated,
+    dev_mode,
+    locale,
+    head: head?.code || ''
+  })
 
 	// Check cache first
 	if (componentsCache.has(cacheKey)) {
@@ -31,7 +32,7 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 	}
 
 	// For performance, check if this looks like a simple syntax error pattern
-	const errorCacheKey = JSON.stringify({ html: component?.html || '', js: component?.js || '', format, hydrated })
+  const errorCacheKey = JSON.stringify({ html: component?.html || '', js: component?.js || '', format, hydrated, dev_mode })
 	if (errorCache.has(errorCacheKey)) {
 		const cachedError = errorCache.get(errorCacheKey)
 		// Only use cached error if it's recent (within 5 seconds)
@@ -40,18 +41,19 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		}
 	}
 
-	const res = await processors.html({
-		component: {
-			...component,
-			css
-		},
-		head,
-		buildStatic,
-		css: 'injected',
-		format,
-		locale,
-		hydrated
-	})
+  const res = await processors.html({
+    component: {
+      ...component,
+      css
+    },
+    head,
+    buildStatic,
+    css: 'injected',
+    format,
+    locale,
+    hydrated,
+    dev_mode
+  })
 
 	// Only cache successful results in the main cache
 	if (!res.error) {

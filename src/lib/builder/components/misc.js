@@ -34,9 +34,93 @@ export const dynamic_iframe_srcdoc = (head = '') => {
                 payload: { logs }
               });
             }
+
+            // Throttled sender to avoid flooding the channel with repeated logs/errors
+            function createThrottledSender(interval = 120) {
+              let timer = null;
+              let lastQueued = undefined;
+              let lastSent = undefined;
+              const same = (a, b) => {
+                try { return JSON.stringify(a) === JSON.stringify(b); } catch (_) { return a === b; }
+              };
+              return (value) => {
+                lastQueued = value;
+                if (timer) return;
+                timer = setTimeout(() => {
+                  timer = null;
+                  if (!same(lastQueued, lastSent)) {
+                    channel.postMessage({
+                      event: 'SET_CONSOLE_LOGS',
+                      payload: { logs: lastQueued }
+                    });
+                    lastSent = lastQueued;
+                  }
+                }, interval);
+              };
+            }
+
+            const sendLogs = createThrottledSender(120);
+
+            // Throttled hover-to-code mapper
+            function createLocThrottler(interval = 60) {
+              let timer = null;
+              let last = null;
+              return (loc) => {
+                last = loc;
+                if (timer) return;
+                timer = setTimeout(() => {
+                  timer = null;
+                  if (last && typeof last.line === 'number') {
+                    channel.postMessage({ event: 'SET_ELEMENT_PATH', payload: { loc: last } });
+                  }
+                }, interval);
+              };
+            }
+            const sendLoc = createLocThrottler(80);
+
             channel.postMessage({ event: 'BEGIN' });
-            if (primoLog) console.log = (...args) => { try {postMessage(...args)}catch(e){postMessage('Could not print ' + typeof(args) + '. See in console.')}; primoLog(...args); };
-            if (primoLog) console.error = (...args) => { try {postMessage(...args)}catch(e){postMessage('Could not print ' + typeof(args) + '. See in console.')}; primoError(...args); };
+            if (primoLog) console.log = (...args) => {
+              try {
+                sendLogs(args.length <= 1 ? args[0] : args);
+              } catch (e) {
+                // fall back to a simple string to avoid cyclic structures
+                try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: 'Could not serialize console.log args' } }); } catch (_) {}
+              }
+              primoLog(...args);
+            };
+            if (primoError) console.error = (...args) => {
+              try {
+                sendLogs(args.length <= 1 ? args[0] : args);
+              } catch (e) {
+                try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: 'Could not serialize console.error args' } }); } catch (_) {}
+              }
+              primoError(...args);
+            };
+
+            // Try to read Svelte dev loc from hovered elements
+            function extractLocFrom(el) {
+              try {
+                if (!el) return null;
+                const meta = el.__svelte_meta || el.__svelte;
+                if (meta && meta.loc) {
+                  // Svelte dev sometimes exposes { line, column }
+                  if (typeof meta.loc.line === 'number') return { line: meta.loc.line };
+                }
+                if (meta && meta.start && typeof meta.start.line === 'number') {
+                  return { line: meta.start.line };
+                }
+              } catch(_) {}
+              return null;
+            }
+            function onHover(e) {
+              let el = e.target;
+              for (let i=0; i<12 && el; i++) {
+                const loc = extractLocFrom(el);
+                if (loc) { sendLoc(loc); break; }
+                el = el.parentElement;
+              }
+            }
+            window.addEventListener('mousemove', onHover, { passive: true });
             \` + source;
           const blob = new Blob([withLogs], { type: 'text/javascript' });
           const url = URL.createObjectURL(blob);

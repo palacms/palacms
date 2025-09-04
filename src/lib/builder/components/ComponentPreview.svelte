@@ -103,16 +103,17 @@
 		}, 200)
 
 		async function compile() {
-			const { js, error } = await processCode({
-				component: {
-					// head: code.head,
-					html: code.html || '',
-					css: code.css || '',
-					js: code.js || '',
-					data
-				},
-				buildStatic: false
-			})
+        const { js, error } = await processCode({
+          component: {
+            // head: code.head,
+            html: code.html || '',
+            css: code.css || '',
+            js: code.js || '',
+            data
+          },
+          buildStatic: false,
+          dev_mode: true
+        })
 
 			if (error) {
 				compilation_error = error
