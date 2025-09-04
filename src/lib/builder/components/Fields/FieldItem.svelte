@@ -1,5 +1,6 @@
 <script lang="ts">
 	import FieldItem from './FieldItem.svelte'
+	import { tick } from 'svelte'
 	import { cloneDeep } from 'lodash-es'
 	import autosize from 'autosize'
 	import { mod_key_held } from '../../stores/app/misc'
@@ -189,6 +190,17 @@
 	const child_fields = $derived(fields?.filter((f) => f.parent === field.id) || [])
 
 	let is_new_field = $state(field.key === '')
+	let should_autofocus = $state(field.key === '')
+	let label_input = $state()
+
+	// Focus the label input for new fields
+	$effect(() => {
+		if (should_autofocus && label_input) {
+			tick().then(() => {
+				label_input.focus()
+			})
+		}
+	})
 
 	let hide_footer = $derived(!['select', 'image', ...dynamic_field_types].includes(field.type) && !field.config?.condition)
 </script>
@@ -291,7 +303,7 @@
 				<UI.TextInput
 					label="Information"
 					value={field.config?.info || ''}
-					autogrow={true}
+					grow={true}
 					placeholder="Something important about the following fields..."
 					oninput={(text) => {
 						onchange({
@@ -365,10 +377,10 @@
 			<!-- svelte-ignore a11y_label_has_associated_control -->
 			<div class="column-container">
 				<UI.TextInput
+					bind:element={label_input}
 					label="Label"
 					value={field.label}
 					placeholder="Heading"
-					autofocus={is_new_field}
 					on:keydown
 					oninput={(text) => {
 						// Auto-generate key unless user has manually edited it
@@ -385,6 +397,7 @@
 						// Mark as no longer new once user types something substantial
 						if (text.length > 0) {
 							is_new_field = false
+							should_autofocus = false
 						}
 					}}
 				/>
