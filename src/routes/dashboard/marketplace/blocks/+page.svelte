@@ -14,8 +14,9 @@
 	import { page } from '$app/state'
 	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, MarketplaceSymbolGroups, MarketplaceSymbols } from '$lib/pocketbase/collections'
 	import { marketplace } from '$lib/pocketbase/PocketBase'
-    import { lastLibraryGroupId } from '$lib/builder/stores/app/misc'
-	import { get } from 'svelte/store'
+    import { last_library_group_id } from '$lib/builder/stores/app/misc'
+    import { get } from 'svelte/store'
+    import { watch } from 'runed'
 
 	const group_id = $derived(page.url.searchParams.get('group') ?? undefined)
 	const marketplace_symbol_group = $derived(group_id ? MarketplaceSymbolGroups.one(group_id) : undefined)
@@ -23,7 +24,7 @@
 	const library_symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
 
 	// Prefer last-used group (persisted), fallback to first available
-	let selected_group_id = $state((get(lastLibraryGroupId) || LibrarySymbolGroups.list()?.[0]?.id) ?? '')
+    let selected_group_id = $state((get(last_library_group_id) || LibrarySymbolGroups.list()?.[0]?.id) ?? '')
 	let selected_symbol_id = $state<string>()
 	let selected_symbol = $derived(selected_symbol_id ? MarketplaceSymbols.one(selected_symbol_id) : null)
 	let added_to_library = $state(false)
@@ -121,16 +122,23 @@
 		}
     }
 
-	// Keep last selected group persisted
-	$effect(() => {
-		if (selected_group_id) {
-			lastLibraryGroupId.set(selected_group_id)
-		} else {
-			// if groups load later and none selected, choose first available
-			const first = LibrarySymbolGroups.list()?.[0]?.id
-			if (first) selected_group_id = first
-		}
-	})
+    // Keep last selected group in session store (watch explicit source)
+    watch(
+        () => selected_group_id,
+        (val) => {
+            if (val) last_library_group_id.set(val)
+        }
+    )
+
+    // If groups list updates and none selected, pick first available
+    watch(
+        () => (LibrarySymbolGroups.list() ?? []).map((g) => g.id),
+        (ids) => {
+            if (!selected_group_id && ids.length > 0) {
+                selected_group_id = ids[0]
+            }
+        }
+    )
 </script>
 
 <header class="flex h-14 shrink-0 items-center gap-2">
