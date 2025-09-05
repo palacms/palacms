@@ -285,11 +285,9 @@
 						SiteSymbolFields.update(id, data)
 					}}
 					ondelete={(field_id) => {
-						// PocketBase cascade deletion will automatically clean up all associated entries
 						SiteSymbolFields.delete(field_id)
 					}}
 					ondelete_entry={(entry_id) => {
-						// Delete the entry - PocketBase cascade deletion will handle sub-entries
 						if ('page_type' in component) {
 							PageTypeSectionEntries.delete(entry_id)
 						} else {
