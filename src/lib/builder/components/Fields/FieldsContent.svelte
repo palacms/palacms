@@ -43,9 +43,10 @@
 <script lang="ts">
 	import Icon from '@iconify/svelte'
 	import * as _ from 'lodash-es'
+	import { watch } from 'runed'
 	import FieldItem from './FieldItem.svelte'
 	import { fieldTypes } from '../../stores/app/index.js'
-	import { mod_key_held } from '../../stores/app/misc.js'
+	import { mod_key_held, field_tabs_by_entity } from '../../stores/app/misc.js'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entity } from '$lib/Content.svelte'
 	import type { Entry } from '$lib/common/models/Entry'
@@ -73,27 +74,40 @@
 	} = $props()
 
 	// TABS - Simple persistent approach
-	let selected_tabs = $state<Record<string, 'field' | 'entry'>>({})
+	let selected_tabs = $state<Record<string, 'field' | 'entry'>>($field_tabs_by_entity?.[entity?.id] || {})
 
-	// Initialize tabs for new fields when they appear
-	$effect(() => {
-		const rootFields = fields.filter((f) => !f.parent || f.parent === '')
-
-		rootFields.forEach((f) => {
-			if (!(f.id in selected_tabs)) {
-				// All new fields default to 'field' tab to avoid unexpected switches
-				selected_tabs[f.id] = 'field'
+	// Initialize tabs for new fields when they appear, using an explicit watch
+	watch(
+		() => (fields || []).filter((f) => !f.parent || f.parent === '').map((f) => f.id),
+		(parent_field_ids) => {
+			let changed = false
+			for (const id of parent_field_ids) {
+				if (!(id in selected_tabs)) {
+					selected_tabs[id] = 'field'
+					changed = true
+				}
 			}
-		})
-	})
+			if (changed) persist_tabs()
+		}
+	)
 
 	function select_tab(field_id, tab) {
 		selected_tabs[field_id] = tab
+		persist_tabs()
 	}
 	function set_all_tabs(tab) {
 		Object.keys(selected_tabs).forEach((field_id) => {
 			selected_tabs[field_id] = tab
 		})
+		persist_tabs()
+	}
+	function persist_tabs() {
+		const entity_id = (entity as any)?.id
+		if (!entity_id) return
+		const current = $field_tabs_by_entity?.[entity_id] || {}
+		if (!_.isEqual(current, selected_tabs)) {
+			$field_tabs_by_entity = { ...$field_tabs_by_entity, [entity_id]: { ...selected_tabs } }
+		}
 	}
 	// Field reordering function
 	function move_field(field: Field, direction: 'up' | 'down') {
@@ -130,16 +144,6 @@
 	function duplicate_field(field: Field) {
 		create_field(field)
 	}
-
-	// TODO: Implement
-	// get(`active-tabs--${id}`).then((saved) => {
-	// 	if (saved) {
-	// 		Object.keys(saved).forEach((field_id) => {
-	// 			const saved_tab = saved[field_id]
-	// 			selected_tabs[field_id] = ['field', 'entry'].includes(saved_tab) ? saved_tab : 'entry'
-	// 		})
-	// 	}
-	// })
 </script>
 
 <div class="Fields">

@@ -90,7 +90,7 @@
 {#if site}
 	<main class="SiteEditor">
 		{#if $current_user?.siteRole === 'developer'}
-			<PaneGroup direction="horizontal" style="display: flex;">
+			<PaneGroup direction="horizontal" style="display: flex;" autoSaveId="SiteEditor-horizontal">
 				<Pane defaultSize={50}>
 					<Fields
 						entity={site}
@@ -127,6 +127,10 @@
 							// PocketBase cascade deletion will automatically clean up all associated entries
 							SiteFields.delete(field_id)
 						}}
+						ondelete_entry={(entry_id) => {
+							// Delete the entry - PocketBase cascade deletion will handle sub-entries
+							SiteEntries.delete(entry_id)
+						}}
 					/>
 				</Pane>
 				<PaneResizer class="PaneResizer-primary">
@@ -135,7 +139,7 @@
 					</div>
 				</PaneResizer>
 				<Pane defaultSize={50}>
-					<PaneGroup direction="vertical">
+					<PaneGroup direction="vertical" autoSaveId="SiteEditor-vertical">
 						<Pane>
 							<div class="container" style="margin-bottom: 1rem">
 								<span class="primo--field-label">Head</span>

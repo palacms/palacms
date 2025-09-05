@@ -6,10 +6,11 @@
 		items: T[] | undefined
 		loading?: boolean
 		skeletonCount?: number
+		getKey?: (item: T) => string | number
 		children: Snippet<[T]>
 	}
 
-	let { items, loading = false, skeletonCount = 8, children }: Props<T> = $props()
+	let { items, loading = false, skeletonCount = 8, getKey = (item: any) => item?.id ?? item?.key ?? item, children }: Props<T> = $props()
 
 	// Dynamically determine number of columns based on screen width
 	let window_width = $state(typeof window !== 'undefined' ? window.innerWidth : 1200)
@@ -57,7 +58,7 @@
 	{:else}
 		{#each columnized_items as column}
 			<ul>
-				{#each column as item}
+				{#each column as item (getKey(item))}
 					<li>
 						{@render children(item)}
 					</li>

@@ -135,6 +135,11 @@
 					clearTimeout(commit_task)
 					commit_task = setTimeout(() => manager.commit(), 500)
 				}}
+				ondelete={(entry_id) => {
+					PageEntries.delete(entry_id)
+					clearTimeout(commit_task)
+					commit_task = setTimeout(() => manager.commit(), 500)
+				}}
 			/>
 		</div>
 	{/if}

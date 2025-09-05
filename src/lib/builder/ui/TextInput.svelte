@@ -46,13 +46,14 @@
 		oninput = () => {},
 		onblur = () => {},
 		onkeydown = () => {},
-		onfocus = () => {}
+		onfocus = () => {},
+		element = $bindable()
 	} = $props()
 
-	let element = $state()
+	let textarea_element = $state()
 	onMount(() => {
-		if (element) {
-			autosize(element)
+		if (textarea_element) {
+			autosize(textarea_element)
 		}
 	})
 </script>
@@ -79,7 +80,7 @@
 			{#if grow}
 				<textarea
 					rows="1"
-					bind:this={element}
+					bind:this={textarea_element}
 					{value}
 					{type}
 					{placeholder}
@@ -95,6 +96,7 @@
 				></textarea>
 			{:else}
 				<input
+					bind:this={element}
 					{value}
 					{type}
 					{placeholder}

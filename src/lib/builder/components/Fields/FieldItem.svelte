@@ -1,5 +1,6 @@
 <script lang="ts">
 	import FieldItem from './FieldItem.svelte'
+	import { tick } from 'svelte'
 	import { cloneDeep } from 'lodash-es'
 	import autosize from 'autosize'
 	import { mod_key_held } from '../../stores/app/misc'
@@ -16,10 +17,8 @@
 	import { dynamic_field_types } from '$lib/builder/field-types'
 	import { site_context, hide_dynamic_field_types_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import type { Field } from '$lib/common/models/Field'
-	import { Sites } from '$lib/pocketbase/collections'
 	import pluralize from 'pluralize'
 	import { get_empty_value } from '../../utils.js'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let {
 		field,
@@ -68,6 +67,19 @@
 		return key.replace(/-/g, '_').replace(/ /g, '_').toLowerCase()
 	}
 
+	function make_unique_label(base_label) {
+		if (!base_label) return base_label
+		const base = String(base_label).trim()
+		const siblings = fields.filter((f) => f.id !== field.id && ((!f.parent && !field.parent) || f.parent === field.parent)).map((f) => (f.label || '').trim().toLowerCase())
+		let candidate = base
+		let i = 2
+		while (siblings.includes(candidate.trim().toLowerCase())) {
+			candidate = `${base} ${i}`
+			i++
+		}
+		return candidate
+	}
+
 	// Auto-fill key when setting label
 	let key_edited = $state(false)
 
@@ -109,10 +121,27 @@
 		if (!label) return 'text'
 
 		const labelLower = label.toLowerCase()
-		const keyLower = field.key?.toLowerCase() || ''
+		// Only consider the key if the user explicitly edited it; otherwise it
+		// can bias detection (e.g. label 'images' with auto-key 'image').
+		const keyLower = key_edited ? field.key?.toLowerCase() || '' : ''
 		const combined = `${labelLower} ${keyLower}`
 
-		// Plurals/Arrays first (most specific)
+		// 1) Highly specific entity patterns first
+		// Page patterns (detect lists before generic repeater)
+		if (/\b(page|pages)\b/.test(combined)) {
+			// If label implies choosing a type of page, prefer a select
+			if (/\btype\b/.test(combined)) return 'select'
+			const isList = /\b(list|multiple|many)\b/.test(combined) || pluralize.isPlural(label)
+			return isList ? 'page-list' : 'page'
+		}
+
+		// Site field patterns
+		if (/\b(site|global|config|setting)\b/.test(combined)) return 'site-field'
+
+		// Page field patterns
+		if (/\b(page-field|page-content)\b/.test(combined)) return 'page-field'
+
+		// 2) Plural/array heuristic early (after page/site/page-field)
 		if (label && pluralize.isPlural(label)) {
 			return 'repeater'
 		}
@@ -141,17 +170,6 @@
 
 		// Group patterns (sections, groups)
 		if (/\b(group|section|block|area)\b/.test(combined)) return 'group'
-
-		// Page patterns
-		if (/\b(page|pages)\b/.test(combined)) {
-			return /\b(list|multiple)\b/.test(combined) ? 'page-list' : 'page'
-		}
-
-		// Site field patterns
-		if (/\b(site|global|config|setting)\b/.test(combined)) return 'site-field'
-
-		// Page field patterns
-		if (/\b(page-field|page-content)\b/.test(combined)) return 'page-field'
 
 		// Markdown patterns
 		if (/\b(markdown|md|rich|formatted|wysiwyg|content|body|description|bio|about|summary|details)\b/.test(combined)) {
@@ -189,6 +207,17 @@
 	const child_fields = $derived(fields?.filter((f) => f.parent === field.id) || [])
 
 	let is_new_field = $state(field.key === '')
+	let should_autofocus = $state(field.key === '')
+	let label_input = $state()
+
+	// Focus the label input for new fields
+	$effect(() => {
+		if (should_autofocus && label_input) {
+			tick().then(() => {
+				label_input.focus()
+			})
+		}
+	})
 
 	let hide_footer = $derived(!['select', 'image', ...dynamic_field_types].includes(field.type) && !field.config?.condition)
 </script>
@@ -209,6 +238,7 @@
 				})()}
 				on:input={({ detail: field_type_id }) => {
 					field_type_changed = true
+					is_new_field = false
 					selected_field_type_id = field_type_id
 
 					// Set default config based on field type
@@ -225,22 +255,37 @@
 						defaultConfig = null
 					}
 
-					onchange({ id: field.id, data: { type: field_type_id, config: defaultConfig } })
+					// Optionally auto-fill label (and key) if label is empty
+					let data: any = { type: field_type_id, config: defaultConfig }
+					const hasLabel = !!(field.label && field.label.trim().length > 0)
+					if (!hasLabel) {
+						const ft = visible_field_types.find((ft) => ft.id === field_type_id)
+						let suggestedLabel = ft?.label || field_type_id.charAt(0).toUpperCase() + field_type_id.slice(1).replace(/-/g, ' ')
+						suggestedLabel = make_unique_label(suggestedLabel)
+						data.label = suggestedLabel
+						if (!key_edited && (!field.key || field.key.trim() === '')) {
+							data.key = validate_field_key(suggestedLabel)
+						}
+					}
+
+					onchange({ id: field.id, data })
 				}}
 				placement="bottom-start"
 			/>
 			{#if collapsed}
 				<div class="field-options">
 					{#if $mod_key_held}
-						<button onclick={add_condition}>
-							<Icon icon="mdi:show" />
-						</button>
-						<button onclick={() => onduplicate(field.id)}>
-							<Icon icon="bxs:duplicate" />
-						</button>
-						<button class="delete" onclick={() => ondelete(field.id)}>
-							<Icon icon="ic:outline-delete" />
-						</button>
+						<div class="overlay-actions">
+							<button onclick={add_condition}>
+								<Icon icon="mdi:show" />
+							</button>
+							<button onclick={() => onduplicate(field.id)}>
+								<Icon icon="bxs:duplicate" />
+							</button>
+							<button class="delete" onclick={() => ondelete(field.id)}>
+								<Icon icon="ic:outline-delete" />
+							</button>
+						</div>
 					{:else}
 						<UI.Dropdown
 							size="lg"
@@ -291,7 +336,7 @@
 				<UI.TextInput
 					label="Information"
 					value={field.config?.info || ''}
-					autogrow={true}
+					grow={true}
 					placeholder="Something important about the following fields..."
 					oninput={(text) => {
 						onchange({
@@ -308,15 +353,17 @@
 				{#if !collapsed}
 					<div class="field-options">
 						{#if $mod_key_held}
-							<button onclick={add_condition}>
-								<Icon icon="mdi:show" />
-							</button>
-							<button onclick={() => onduplicate(field.id)}>
-								<Icon icon="bxs:duplicate" />
-							</button>
-							<button class="delete" onclick={() => ondelete(field.id)}>
-								<Icon icon="ic:outline-delete" />
-							</button>
+							<div class="overlay-actions">
+								<button onclick={add_condition}>
+									<Icon icon="mdi:show" />
+								</button>
+								<button onclick={() => onduplicate(field.id)}>
+									<Icon icon="bxs:duplicate" />
+								</button>
+								<button class="delete" onclick={() => ondelete(field.id)}>
+									<Icon icon="ic:outline-delete" />
+								</button>
+							</div>
 						{:else}
 							<UI.Dropdown
 								size="lg"
@@ -365,26 +412,54 @@
 			<!-- svelte-ignore a11y_label_has_associated_control -->
 			<div class="column-container">
 				<UI.TextInput
+					bind:element={label_input}
 					label="Label"
 					value={field.label}
 					placeholder="Heading"
-					autofocus={is_new_field}
 					on:keydown
 					oninput={(text) => {
 						// Auto-generate key unless user has manually edited it
-						// Auto-suggest type only for new fields with empty initial label
+						let nextType = field.type
+						let nextConfig = field.config ?? null
+
+						// Only auto-suggest for truly new fields (no key yet)
+						// and when the user hasn't explicitly changed type yet.
+						// Allow re-evaluating as the user keeps typing.
+						if (is_new_field && !field_type_changed) {
+							const suggested = update_field_type(text)
+							if (suggested && suggested !== field.type) {
+								nextType = suggested
+								// Provide default config for specific types
+								if (suggested === 'page' || suggested === 'page-list') {
+									const firstPageType = page_types[0]?.id || ''
+									if (firstPageType) {
+										nextConfig = { page_type: firstPageType }
+									} else {
+										// If no page types available, cancel switching to invalid type
+										nextType = 'text'
+										nextConfig = null
+									}
+								} else {
+									nextConfig = null
+								}
+								// Immediately reflect the auto-selected type in the UI select
+								selected_field_type_id = nextType
+							}
+						}
+
 						onchange({
 							id: field.id,
 							data: {
 								label: text,
 								key: key_edited ? field.key : validate_field_key(text),
-								type: field.type
+								type: nextType,
+								config: nextConfig
 							}
 						})
 
-						// Mark as no longer new once user types something substantial
+						// Stop focusing after first keystroke but keep new-field behavior
 						if (text.length > 0) {
-							is_new_field = false
+							should_autofocus = false
 						}
 					}}
 				/>
@@ -398,6 +473,7 @@
 					on:keydown
 					oninput={(text) => {
 						key_edited = true
+						is_new_field = false
 						onchange({
 							id: field.id,
 							data: {
@@ -409,15 +485,17 @@
 				{#if !collapsed}
 					<div class="field-options">
 						{#if $mod_key_held}
-							<button onclick={add_condition}>
-								<Icon icon="mdi:show" />
-							</button>
-							<button onclick={() => onduplicate(field.id)}>
-								<Icon icon="bxs:duplicate" />
-							</button>
-							<button class="delete" onclick={() => ondelete(field.id)}>
-								<Icon icon="ic:outline-delete" />
-							</button>
+							<div class="overlay-actions">
+								<button onclick={add_condition}>
+									<Icon icon="mdi:show" />
+								</button>
+								<button onclick={() => onduplicate(field.id)}>
+									<Icon icon="bxs:duplicate" />
+								</button>
+								<button class="delete" onclick={() => ondelete(field.id)}>
+									<Icon icon="ic:outline-delete" />
+								</button>
+							</div>
 						{:else}
 							<UI.Dropdown
 								size="lg"
@@ -615,6 +693,10 @@
 				background: var(--primo-color-danger);
 			}
 		}
+	}
+	.overlay-actions {
+		padding-top: 3px;
+		padding-bottom: 6px;
 	}
 	.subfield-button {
 		width: 100%;

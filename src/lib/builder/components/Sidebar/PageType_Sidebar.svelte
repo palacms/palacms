@@ -230,16 +230,16 @@
 							js: library_symbol.js,
 							site: site.id
 						})
-						
+
 						// Get library fields using pb directly to avoid effect context issues
 						const library_fields = await pb.collection('library_symbol_fields').getFullList({
 							filter: `symbol = "${library_symbol.id}"`,
 							sort: 'index'
 						})
-						
+
 						if (library_fields?.length > 0) {
 							const field_map = new Map()
-							
+
 							// Create fields in order, handling parent relationships
 							const sorted_fields = [...library_fields].sort((a, b) => {
 								// Fields without parents come first
@@ -247,10 +247,10 @@
 								if (a.parent && !b.parent) return 1
 								return (a.index || 0) - (b.index || 0)
 							})
-							
+
 							for (const library_field of sorted_fields) {
 								const parent_site_field = library_field.parent ? field_map.get(library_field.parent) : undefined
-								
+
 								const site_field = SiteSymbolFields.create({
 									key: library_field.key,
 									label: library_field.label,
@@ -262,17 +262,20 @@
 								})
 								field_map.set(library_field.id, site_field)
 							}
-							
+
 							// Get library entries using pb directly
-							const field_ids = library_fields.map(f => f.id)
-							const library_entries = field_ids.length > 0 ? await pb.collection('library_symbol_entries').getFullList({
-								filter: field_ids.map(id => `field = "${id}"`).join(' || '),
-								sort: 'index'
-							}) : []
-							
+							const field_ids = library_fields.map((f) => f.id)
+							const library_entries =
+								field_ids.length > 0
+									? await pb.collection('library_symbol_entries').getFullList({
+											filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
+											sort: 'index'
+										})
+									: []
+
 							if (library_entries?.length > 0) {
 								const entry_map = new Map()
-								
+
 								// Create entries in order, handling parent relationships
 								const sorted_entries = [...library_entries].sort((a, b) => {
 									// Entries without parents come first
@@ -280,11 +283,11 @@
 									if (a.parent && !b.parent) return 1
 									return (a.index || 0) - (b.index || 0)
 								})
-								
+
 								for (const library_entry of sorted_entries) {
 									const site_field = field_map.get(library_entry.field)
 									const parent_site_entry = library_entry.parent ? entry_map.get(library_entry.parent) : undefined
-									
+
 									if (site_field) {
 										const site_entry = SiteSymbolEntries.create({
 											field: site_field.id,
@@ -302,7 +305,7 @@
 						console.error('Error copying library symbol:', error)
 					}
 				}
-				
+
 				await manager.commit()
 				adding_block = false
 			}}
@@ -487,6 +490,12 @@
 						ondelete={(field_id) => {
 							// PocketBase cascade deletion will automatically clean up all associated entries
 							PageTypeFields.delete(field_id)
+							clearTimeout(commit_task)
+							commit_task = setTimeout(() => manager.commit(), 500)
+						}}
+						ondelete_entry={(entry_id) => {
+							// Delete the entry - PocketBase cascade deletion will handle sub-entries
+							PageTypeEntries.delete(entry_id)
 							clearTimeout(commit_task)
 							commit_task = setTimeout(() => manager.commit(), 500)
 						}}

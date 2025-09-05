@@ -148,16 +148,16 @@
 		} else return ''
 	}
 
-	// Generate <head> tag code
+	// Generate <head> tag code – only when site data meaningfully changes
+	let last_site_data = $state<any>()
 	$effect(() => {
-		if (!site_data) {
-			return
-		}
+		if (!site_data) return
 
-		compile_component_head({
-			html: site.head,
-			data: site_data
-		}).then((generated_code) => {
+		// Skip recompilation if data is effectively unchanged
+		if (_.isEqual(last_site_data, site_data)) return
+
+		last_site_data = _.cloneDeep(site_data)
+		compile_component_head({ html: site.head, data: site_data }).then((generated_code) => {
 			$site_html = generated_code
 		})
 	})

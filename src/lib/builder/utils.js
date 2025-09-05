@@ -4,21 +4,13 @@ import { customAlphabet } from 'nanoid/non-secure'
 import { processors } from './component.js'
 
 const componentsCache = new Map()
+const errorCache = new Map()
+const CACHE_SIZE_LIMIT = 100
+
 export async function processCode({ component, head = { code: '', data: {} }, buildStatic = true, format = 'esm', locale = 'en', hydrated = true }) {
 	let css = ''
 	if (component.css) {
 		css = await processCSS(component.css || '')
-	}
-
-	const cacheKey = JSON.stringify({
-		component,
-		format,
-		buildStatic,
-		hydrated
-	})
-
-	if (componentsCache.has(cacheKey)) {
-		return componentsCache.get(cacheKey)
 	}
 
 	const res = await processors.html({
@@ -33,8 +25,6 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		locale,
 		hydrated
 	})
-
-	componentsCache.set(cacheKey, res)
 
 	return res
 }

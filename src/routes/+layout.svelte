@@ -131,6 +131,14 @@
 		margin: 0;
 	}
 
+	/* Prevent accidental text selection across UI; allow in inputs/editors */
+	:global(html, body, body *:not(input):not(textarea):not(select):not([contenteditable='true'] *)) {
+		-webkit-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		user-select: none;
+	}
+
 	:global(.primo-input) {
 		appearance: none;
 		border: 0;

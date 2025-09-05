@@ -150,7 +150,16 @@
 				<Icon icon="material-symbols:close" />
 			</button>
 			{#each icons as item}
-				<button class="icon" class:active={item === icon} onclick={() => dispatch('input', item)} type="button">
+				<button
+					class="icon"
+					class:active={item === icon}
+					onclick={() => {
+						dispatch('input', item)
+						// Hide options after selecting an icon in large variant
+						searched = false
+					}}
+					type="button"
+				>
 					<Icon icon={item} width="50px" />
 				</button>
 			{:else}

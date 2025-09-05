@@ -28,15 +28,51 @@ export const dynamic_iframe_srcdoc = (head = '') => {
             const channel = new BroadcastChannel('component_preview');
             const primoLog = console ? console.log.bind(console) : null;
             const primoError = console ? console.error.bind(console) : null;
-            function postMessage(logs) {
-              channel.postMessage({
-                event: 'SET_CONSOLE_LOGS',
-                payload: { logs }
-              });
+
+            // Throttled sender to avoid flooding the channel with repeated logs/errors
+            function createThrottledSender(interval = 120) {
+              let timer = null;
+              let lastQueued = undefined;
+              let lastSent = undefined;
+              const same = (a, b) => {
+                try { return JSON.stringify(a) === JSON.stringify(b); } catch (_) { return a === b; }
+              };
+              return (value) => {
+                lastQueued = value;
+                if (timer) return;
+                timer = setTimeout(() => {
+                  timer = null;
+                  if (!same(lastQueued, lastSent)) {
+                    channel.postMessage({
+                      event: 'SET_CONSOLE_LOGS',
+                      payload: { logs: lastQueued }
+                    });
+                    lastSent = lastQueued;
+                  }
+                }, interval);
+              };
             }
+
+            const sendLogs = createThrottledSender(120);
+
             channel.postMessage({ event: 'BEGIN' });
-            if (primoLog) console.log = (...args) => { try {postMessage(...args)}catch(e){postMessage('Could not print ' + typeof(args) + '. See in console.')}; primoLog(...args); };
-            if (primoLog) console.error = (...args) => { try {postMessage(...args)}catch(e){postMessage('Could not print ' + typeof(args) + '. See in console.')}; primoError(...args); };
+            if (primoLog) console.log = (...args) => {
+              try {
+                sendLogs(args.length <= 1 ? args[0] : args);
+              } catch (e) {
+                // fall back to a simple string to avoid cyclic structures
+                try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: 'Could not serialize console.log args' } }); } catch (_) {}
+              }
+              primoLog(...args);
+            };
+            if (primoError) console.error = (...args) => {
+              try {
+                sendLogs(args.length <= 1 ? args[0] : args);
+              } catch (e) {
+                try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: 'Could not serialize console.error args' } }); } catch (_) {}
+              }
+              primoError(...args);
+            };
             \` + source;
           const blob = new Blob([withLogs], { type: 'text/javascript' });
           const url = URL.createObjectURL(blob);

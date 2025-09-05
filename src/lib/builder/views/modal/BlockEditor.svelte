@@ -234,14 +234,15 @@
 					ondelete={(field_id) => {
 						FieldCollection.delete(field_id)
 					}}
+					ondelete_entry={(entry_id) => {
+						EntryCollection.delete(entry_id)
+					}}
 				/>
 			{/if}
 		</Pane>
 		<PaneResizer class="PaneResizer" />
 		<Pane defaultSize={50}>
-			{#if component_data}
-				<ComponentPreview bind:orientation={$orientation} view="small" {loading} {code} data={component_data} head={$site_html} />
-			{/if}
+			<ComponentPreview bind:orientation={$orientation} view="small" {loading} {code} data={component_data} head={$site_html} />
 		</Pane>
 	</PaneGroup>
 </main>
