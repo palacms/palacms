@@ -695,7 +695,8 @@
 		}
 	}
 	.overlay-actions {
-		padding-bottom: 9px;
+		padding-top: 3px;
+		padding-bottom: 6px;
 	}
 	.subfield-button {
 		width: 100%;
