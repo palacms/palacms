@@ -35,7 +35,7 @@
 		"@tiptap/extension-typography": "^3.4.1",
 		"@tiptap/extension-youtube": "^3.3.1",
 		"@tiptap/pm": "^3.3.0",
-		"@tiptap/starter-kit": "^3.4.0",
+		"@tiptap/starter-kit": "^3.4.1",
 		"@tiptap/static-renderer": "^3.3.1",
 		"@types/lodash-es": "^4.17.12",
 		"@types/pluralize": "^0.0.33",
