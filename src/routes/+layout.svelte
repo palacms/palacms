@@ -131,6 +131,22 @@
 		margin: 0;
 	}
 
+	/* Prevent accidental text selection across UI; allow in inputs/editors */
+	:global(html, body, body *:not(input):not(textarea):not(select):not([contenteditable="true"])) {
+		-webkit-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		user-select: none;
+	}
+
+	/* Re-enable text selection for editable areas */
+	:global(input, textarea, select, [contenteditable="true"], .cm-content, .cm-line, .ProseMirror, .primo-input) {
+		-webkit-user-select: text;
+		-moz-user-select: text;
+		-ms-user-select: text;
+		user-select: text;
+	}
+
 	:global(.primo-input) {
 		appearance: none;
 		border: 0;
