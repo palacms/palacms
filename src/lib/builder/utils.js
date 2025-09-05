@@ -14,31 +14,16 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 	}
 
 	// Build a stable cache key from relevant inputs
-	const cacheKey = JSON.stringify({
-		html: component?.html || '',
-		js: component?.js || '',
-		css, // processed css influences output
-		format,
-		buildStatic,
-		hydrated,
-		locale,
-		head: head?.code || ''
-	})
-
-	// Check cache first
-	if (componentsCache.has(cacheKey)) {
-		return componentsCache.get(cacheKey)
-	}
-
-	// For performance, check if this looks like a simple syntax error pattern
-	const errorCacheKey = JSON.stringify({ html: component?.html || '', js: component?.js || '', format, hydrated })
-	if (errorCache.has(errorCacheKey)) {
-		const cachedError = errorCache.get(errorCacheKey)
-		// Only use cached error if it's recent (within 5 seconds)
-		if (Date.now() - cachedError.timestamp < 5000) {
-			return cachedError.result
-		}
-	}
+	// const cacheKey = JSON.stringify({
+	// 	html: component?.html || '',
+	// 	js: component?.js || '',
+	// 	css, // processed css influences output
+	// 	format,
+	// 	buildStatic,
+	// 	hydrated,
+	// 	locale,
+	// 	head: head?.code || ''
+	// })
 
 	const res = await processors.html({
 		component: {
@@ -52,28 +37,6 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		locale,
 		hydrated
 	})
-
-	// Only cache successful results in the main cache
-	if (!res.error) {
-		// Cache management - limit cache size
-		if (componentsCache.size >= CACHE_SIZE_LIMIT) {
-			const firstKey = componentsCache.keys().next().value
-			componentsCache.delete(firstKey)
-		}
-		componentsCache.set(cacheKey, res)
-	}
-
-	// Cache errors separately with timestamp for quick rejection of known bad code
-	if (res.error) {
-		if (errorCache.size >= 20) {
-			const firstKey = errorCache.keys().next().value
-			errorCache.delete(firstKey)
-		}
-		errorCache.set(errorCacheKey, {
-			result: res,
-			timestamp: Date.now()
-		})
-	}
 
 	return res
 }
