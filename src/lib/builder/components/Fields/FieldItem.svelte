@@ -70,9 +70,7 @@
 	function make_unique_label(base_label) {
 		if (!base_label) return base_label
 		const base = String(base_label).trim()
-		const siblings = fields
-			.filter((f) => f.id !== field.id && (((!f.parent && !field.parent) || f.parent === field.parent)))
-			.map((f) => (f.label || '').trim().toLowerCase())
+		const siblings = fields.filter((f) => f.id !== field.id && ((!f.parent && !field.parent) || f.parent === field.parent)).map((f) => (f.label || '').trim().toLowerCase())
 		let candidate = base
 		let i = 2
 		while (siblings.includes(candidate.trim().toLowerCase())) {
@@ -123,10 +121,28 @@
 		if (!label) return 'text'
 
 		const labelLower = label.toLowerCase()
-		const keyLower = field.key?.toLowerCase() || ''
+		// Only consider the key if the user explicitly edited it; otherwise it
+		// can bias detection (e.g. label 'images' with auto-key 'image').
+		const keyLower = key_edited ? field.key?.toLowerCase() || '' : ''
 		const combined = `${labelLower} ${keyLower}`
 
-		// Plurals/Arrays first (most specific)
+
+		// 1) Highly specific entity patterns first
+		// Page patterns (detect lists before generic repeater)
+		if (/\b(page|pages)\b/.test(combined)) {
+			// If label implies choosing a type of page, prefer a select
+			if (/\btype\b/.test(combined)) return 'select'
+			const isList = /\b(list|multiple|many)\b/.test(combined) || pluralize.isPlural(label)
+			return isList ? 'page-list' : 'page'
+		}
+
+		// Site field patterns
+		if (/\b(site|global|config|setting)\b/.test(combined)) return 'site-field'
+
+		// Page field patterns
+		if (/\b(page-field|page-content)\b/.test(combined)) return 'page-field'
+
+		// 2) Plural/array heuristic early (after page/site/page-field)
 		if (label && pluralize.isPlural(label)) {
 			return 'repeater'
 		}
@@ -155,17 +171,6 @@
 
 		// Group patterns (sections, groups)
 		if (/\b(group|section|block|area)\b/.test(combined)) return 'group'
-
-		// Page patterns
-		if (/\b(page|pages)\b/.test(combined)) {
-			return /\b(list|multiple)\b/.test(combined) ? 'page-list' : 'page'
-		}
-
-		// Site field patterns
-		if (/\b(site|global|config|setting)\b/.test(combined)) return 'site-field'
-
-		// Page field patterns
-		if (/\b(page-field|page-content)\b/.test(combined)) return 'page-field'
 
 		// Markdown patterns
 		if (/\b(markdown|md|rich|formatted|wysiwyg|content|body|description|bio|about|summary|details)\b/.test(combined)) {
@@ -232,9 +237,10 @@
 				dividers={(() => {
 					return hide_dynamic_field_types_context.getOr(false) ? [1, 8] : hide_page_field_field_type_context.getOr(false) ? [1, 8, 9, 11] : [1, 8, 10, 12]
 				})()}
-				on:input={({ detail: field_type_id }) => {
-					field_type_changed = true
-					selected_field_type_id = field_type_id
+					on:input={({ detail: field_type_id }) => {
+						field_type_changed = true
+						is_new_field = false
+						selected_field_type_id = field_type_id
 
 					// Set default config based on field type
 					let defaultConfig: unknown = {}
@@ -255,7 +261,7 @@
 					const hasLabel = !!(field.label && field.label.trim().length > 0)
 					if (!hasLabel) {
 						const ft = visible_field_types.find((ft) => ft.id === field_type_id)
-						let suggestedLabel = ft?.label || (field_type_id.charAt(0).toUpperCase() + field_type_id.slice(1).replace(/-/g, ' '))
+						let suggestedLabel = ft?.label || field_type_id.charAt(0).toUpperCase() + field_type_id.slice(1).replace(/-/g, ' ')
 						suggestedLabel = make_unique_label(suggestedLabel)
 						data.label = suggestedLabel
 						if (!key_edited && (!field.key || field.key.trim() === '')) {
@@ -408,25 +414,33 @@
 					value={field.label}
 					placeholder="Heading"
 					on:keydown
-					oninput={(text) => {
-						// Auto-generate key unless user has manually edited it
-						let nextType = field.type
-						let nextConfig = field.config ?? null
+						oninput={(text) => {
+							// Auto-generate key unless user has manually edited it
+							let nextType = field.type
+							let nextConfig = field.config ?? null
 
 						// Only auto-suggest for truly new fields (no key yet)
 						// and when the user hasn't explicitly changed type yet.
-						// Also avoid overriding a non-default type.
-						if (is_new_field && !field_type_changed && (!field.type || field.type === 'text')) {
+						// Allow re-evaluating as the user keeps typing.
+						if (is_new_field && !field_type_changed) {
 							const suggested = update_field_type(text)
 							if (suggested && suggested !== field.type) {
 								nextType = suggested
 								// Provide default config for specific types
 								if (suggested === 'page' || suggested === 'page-list') {
 									const firstPageType = page_types[0]?.id || ''
-									nextConfig = { page_type: firstPageType }
+									if (firstPageType) {
+										nextConfig = { page_type: firstPageType }
+									} else {
+										// If no page types available, cancel switching to invalid type
+										nextType = 'text'
+										nextConfig = null
+									}
 								} else {
 									nextConfig = null
 								}
+								// Immediately reflect the auto-selected type in the UI select
+								selected_field_type_id = nextType
 							}
 						}
 
@@ -440,13 +454,12 @@
 							}
 						})
 
-						// Mark as no longer new once user types something substantial
-						if (text.length > 0) {
-							is_new_field = false
-							should_autofocus = false
-						}
-					}}
-				/>
+							// Stop focusing after first keystroke but keep new-field behavior
+							if (text.length > 0) {
+								should_autofocus = false
+							}
+						}}
+					/>
 			</div>
 			<!-- svelte-ignore a11y_label_has_associated_control -->
 			<div class="column-container">
@@ -457,6 +470,7 @@
 					on:keydown
 					oninput={(text) => {
 						key_edited = true
+						is_new_field = false
 						onchange({
 							id: field.id,
 							data: {
