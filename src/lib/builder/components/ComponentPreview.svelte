@@ -91,15 +91,22 @@
 	}
 
 	let componentApp = $state(null)
+	let quiet_compile = $state(false)
+	let last_error_html = $state(null)
 	async function compile_component_code() {
 		if (!code || !code.html) return
 		// disable_save = true
-		loading = true
+		if (!quiet_compile) {
+			loading = true
+		}
 
 		await compile()
 		// disable_save = compilationError
 		setTimeout(() => {
-			loading = false
+			if (!quiet_compile) {
+				loading = false
+			}
+			quiet_compile = false
 		}, 200)
 
 		async function compile() {
@@ -115,11 +122,16 @@
 			})
 
 			if (error) {
-				compilation_error = error
+				// Only update the error if it actually changed to avoid flicker/animations
+				if (error !== last_error_html) {
+					compilation_error = error
+					last_error_html = error
+				}
 				$has_error = true
 			} else {
 				componentApp = js
 				compilation_error = null
+				last_error_html = null
 				$has_error = false
 			}
 		}
@@ -127,6 +139,11 @@
 
 	// Debounce compilation to prevent frequent recompilation during typing
 	const debouncedCompile = debounce(compile_component_code, 100)
+	// Debounced recompile specifically for data changes while in error state
+	const debouncedDataRecompile = debounce(() => {
+		quiet_compile = true
+		compile_component_code()
+	}, 250)
 
 	// Set the refresh_preview store to the debounced compile function
 	$effect(() => {
@@ -216,9 +233,11 @@
 	}
 
 	function setIframeData(data) {
-		// if compilation error, try reloading app with updated data (i.e. error caused by missing field)
-		if (compilation_error) {
-			compile_component_code()
+		// When there's a compile error, field edits can spam recompiles and cause flicker.
+		// Debounce a quiet recompile attempt, and avoid touching the iframe until success.
+		if (compilation_error && $auto_refresh) {
+			debouncedDataRecompile()
+			return
 		}
 		// reload the app if it crashed from an error
 		const div = iframe?.contentDocument?.querySelector('div.component')
