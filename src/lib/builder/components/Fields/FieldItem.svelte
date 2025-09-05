@@ -126,7 +126,6 @@
 		const keyLower = key_edited ? field.key?.toLowerCase() || '' : ''
 		const combined = `${labelLower} ${keyLower}`
 
-
 		// 1) Highly specific entity patterns first
 		// Page patterns (detect lists before generic repeater)
 		if (/\b(page|pages)\b/.test(combined)) {
@@ -237,10 +236,10 @@
 				dividers={(() => {
 					return hide_dynamic_field_types_context.getOr(false) ? [1, 8] : hide_page_field_field_type_context.getOr(false) ? [1, 8, 9, 11] : [1, 8, 10, 12]
 				})()}
-					on:input={({ detail: field_type_id }) => {
-						field_type_changed = true
-						is_new_field = false
-						selected_field_type_id = field_type_id
+				on:input={({ detail: field_type_id }) => {
+					field_type_changed = true
+					is_new_field = false
+					selected_field_type_id = field_type_id
 
 					// Set default config based on field type
 					let defaultConfig: unknown = {}
@@ -276,15 +275,17 @@
 			{#if collapsed}
 				<div class="field-options">
 					{#if $mod_key_held}
-						<button onclick={add_condition}>
-							<Icon icon="mdi:show" />
-						</button>
-						<button onclick={() => onduplicate(field.id)}>
-							<Icon icon="bxs:duplicate" />
-						</button>
-						<button class="delete" onclick={() => ondelete(field.id)}>
-							<Icon icon="ic:outline-delete" />
-						</button>
+						<div class="overlay-actions">
+							<button onclick={add_condition}>
+								<Icon icon="mdi:show" />
+							</button>
+							<button onclick={() => onduplicate(field.id)}>
+								<Icon icon="bxs:duplicate" />
+							</button>
+							<button class="delete" onclick={() => ondelete(field.id)}>
+								<Icon icon="ic:outline-delete" />
+							</button>
+						</div>
 					{:else}
 						<UI.Dropdown
 							size="lg"
@@ -352,15 +353,17 @@
 				{#if !collapsed}
 					<div class="field-options">
 						{#if $mod_key_held}
-							<button onclick={add_condition}>
-								<Icon icon="mdi:show" />
-							</button>
-							<button onclick={() => onduplicate(field.id)}>
-								<Icon icon="bxs:duplicate" />
-							</button>
-							<button class="delete" onclick={() => ondelete(field.id)}>
-								<Icon icon="ic:outline-delete" />
-							</button>
+							<div class="overlay-actions">
+								<button onclick={add_condition}>
+									<Icon icon="mdi:show" />
+								</button>
+								<button onclick={() => onduplicate(field.id)}>
+									<Icon icon="bxs:duplicate" />
+								</button>
+								<button class="delete" onclick={() => ondelete(field.id)}>
+									<Icon icon="ic:outline-delete" />
+								</button>
+							</div>
 						{:else}
 							<UI.Dropdown
 								size="lg"
@@ -414,10 +417,10 @@
 					value={field.label}
 					placeholder="Heading"
 					on:keydown
-						oninput={(text) => {
-							// Auto-generate key unless user has manually edited it
-							let nextType = field.type
-							let nextConfig = field.config ?? null
+					oninput={(text) => {
+						// Auto-generate key unless user has manually edited it
+						let nextType = field.type
+						let nextConfig = field.config ?? null
 
 						// Only auto-suggest for truly new fields (no key yet)
 						// and when the user hasn't explicitly changed type yet.
@@ -454,12 +457,12 @@
 							}
 						})
 
-							// Stop focusing after first keystroke but keep new-field behavior
-							if (text.length > 0) {
-								should_autofocus = false
-							}
-						}}
-					/>
+						// Stop focusing after first keystroke but keep new-field behavior
+						if (text.length > 0) {
+							should_autofocus = false
+						}
+					}}
+				/>
 			</div>
 			<!-- svelte-ignore a11y_label_has_associated_control -->
 			<div class="column-container">
@@ -482,15 +485,17 @@
 				{#if !collapsed}
 					<div class="field-options">
 						{#if $mod_key_held}
-							<button onclick={add_condition}>
-								<Icon icon="mdi:show" />
-							</button>
-							<button onclick={() => onduplicate(field.id)}>
-								<Icon icon="bxs:duplicate" />
-							</button>
-							<button class="delete" onclick={() => ondelete(field.id)}>
-								<Icon icon="ic:outline-delete" />
-							</button>
+							<div class="overlay-actions">
+								<button onclick={add_condition}>
+									<Icon icon="mdi:show" />
+								</button>
+								<button onclick={() => onduplicate(field.id)}>
+									<Icon icon="bxs:duplicate" />
+								</button>
+								<button class="delete" onclick={() => ondelete(field.id)}>
+									<Icon icon="ic:outline-delete" />
+								</button>
+							</div>
 						{:else}
 							<UI.Dropdown
 								size="lg"
@@ -688,6 +693,9 @@
 				background: var(--primo-color-danger);
 			}
 		}
+	}
+	.overlay-actions {
+		padding-bottom: 9px;
 	}
 	.subfield-button {
 		width: 100%;

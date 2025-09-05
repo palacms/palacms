@@ -17,10 +17,10 @@
 	</div>
 </header>
 <div class="flex flex-1 flex-col gap-4 px-4 pb-4">
-	{#if $starters?.length}
+	{#if starters?.length}
 		<div class="sites-container">
 			<ul class="sites">
-				{#each $starters as site (site.id)}
+				{#each starters as site (site.id)}
 					<li>
 						<MarketplaceStarterButton site={site.data} preview={site.preview} />
 					</li>
