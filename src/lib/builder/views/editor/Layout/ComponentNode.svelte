@@ -768,15 +768,23 @@
 		}
 	}
 
-	// Watch for changes and send to iframe when ready
-	watch(
-		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
-		({ js, data, ready }) => {
-			if (ready && data && js) {
-				send_component_to_iframe(js, data)
-			}
-		}
-	)
+// Watch for changes and send to iframe when ready
+// Only send when this component's data meaningfully changed to avoid
+// triggering re-renders of unrelated symbols.
+let last_sent_data = $state<any>()
+watch(
+    () => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
+    ({ js, data, ready }) => {
+        if (!(ready && data && js)) return
+
+        // Skip if data is deeply equal to the last sent value
+        if (_.isEqual(last_sent_data, data)) return
+
+        // Store a snapshot to avoid mutation side-effects
+        last_sent_data = _.cloneDeep(data)
+        send_component_to_iframe(js, data)
+    }
+)
 
 	async function send_component_to_iframe(js, data) {
 		try {
