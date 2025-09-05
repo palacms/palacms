@@ -127,6 +127,10 @@
 							// PocketBase cascade deletion will automatically clean up all associated entries
 							SiteFields.delete(field_id)
 						}}
+						ondelete_entry={(entry_id) => {
+							// Delete the entry - PocketBase cascade deletion will handle sub-entries
+							SiteEntries.delete(entry_id)
+						}}
 					/>
 				</Pane>
 				<PaneResizer class="PaneResizer-primary">
