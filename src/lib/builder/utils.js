@@ -13,18 +13,6 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		css = await processCSS(component.css || '')
 	}
 
-	// Build a stable cache key from relevant inputs
-	// const cacheKey = JSON.stringify({
-	// 	html: component?.html || '',
-	// 	js: component?.js || '',
-	// 	css, // processed css influences output
-	// 	format,
-	// 	buildStatic,
-	// 	hydrated,
-	// 	locale,
-	// 	head: head?.code || ''
-	// })
-
 	const res = await processors.html({
 		component: {
 			...component,
