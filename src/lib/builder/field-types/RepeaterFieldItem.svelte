@@ -44,7 +44,7 @@
 		hovering: boolean
 		hover_position: 'top' | 'bottom'
 		onchange: FieldValueHandler
-		ondelete?: (entry_id: string) => void
+		ondelete: (entry_id: string) => void
 	} = $props()
 
 	function get_image(subfields) {

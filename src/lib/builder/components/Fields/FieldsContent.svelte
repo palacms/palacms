@@ -70,7 +70,7 @@
 		oninput: FieldValueHandler
 		onchange: (details: { id: string; data: Partial<Field> }) => void
 		ondelete: (field_id: string) => void
-		ondelete_entry?: (entry_id: string) => void
+		ondelete_entry: (entry_id: string) => void
 	} = $props()
 
 	// TABS - Simple persistent approach
@@ -144,6 +144,53 @@
 	function duplicate_field(field: Field) {
 		create_field(field)
 	}
+
+	function delete_field_related_records(field_id: string) {
+		// Delete sub-fields
+		for (const field of fields) {
+			if (field.parent === field_id) {
+				delete_field_related_records(field.id)
+				ondelete(field.id)
+			}
+		}
+
+		// Delete all entries attached to the field.
+		for (const entry of entries) {
+			if (entry.field === field_id) {
+				delete_entry_related_records(entry.id)
+				ondelete_entry(entry.id)
+			}
+		}
+	}
+
+	function delete_entry_related_records(entry_id: string) {
+		// Delete all sub-entries.
+		for (const entry of entries) {
+			if (entry.parent === entry_id) {
+				delete_entry_related_records(entry.id)
+				ondelete_entry(entry.id)
+			}
+		}
+	}
+
+	function handle_change(details: { id: string; data: Partial<Field> }) {
+		if ('type' in details.data) {
+			// Changing field type.
+			delete_field_related_records(details.id)
+		}
+
+		onchange(details)
+	}
+
+	function handle_delete_field(field_id: string) {
+		delete_field_related_records(field_id)
+		ondelete(field_id)
+	}
+
+	function handle_delete_entry(entry_id: string) {
+		delete_entry_related_records(entry_id)
+		ondelete_entry(entry_id)
+	}
 </script>
 
 <div class="Fields">
@@ -197,8 +244,8 @@
 							{field}
 							{fields}
 							{create_field}
-							{onchange}
-							{ondelete}
+							onchange={handle_change}
+							ondelete={handle_delete_field}
 							onduplicate={() => {
 								duplicate_field(field)
 							}}
@@ -211,7 +258,7 @@
 						/>
 					</div>
 				{:else if active_tab === 'entry'}
-					<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} ondelete={ondelete_entry} />
+					<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} ondelete={handle_delete_entry} />
 				{/if}
 			</div>
 		</div>

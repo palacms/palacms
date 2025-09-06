@@ -488,13 +488,12 @@
 							}
 						}}
 						ondelete={(field_id) => {
-							// PocketBase cascade deletion will automatically clean up all associated entries
 							PageTypeFields.delete(field_id)
 							clearTimeout(commit_task)
 							commit_task = setTimeout(() => manager.commit(), 500)
 						}}
 						ondelete_entry={(entry_id) => {
-							// Delete the entry - PocketBase cascade deletion will handle sub-entries
+							console.log({ entry_id })
 							PageTypeEntries.delete(entry_id)
 							clearTimeout(commit_task)
 							commit_task = setTimeout(() => manager.commit(), 500)

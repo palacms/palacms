@@ -45,7 +45,7 @@
 		loading = $bindable(false),
 		hideControls = false,
 		preview = null,
-		data = {},
+		data = undefined,
 		head = null,
 		append = ''
 	} = $props()
@@ -94,7 +94,7 @@
 	let quiet_compile = $state(false)
 	let last_error_html = $state(null)
 	async function compile_component_code() {
-		if (!code || !code.html) return
+		if (!code || !code.html || !data) return
 		// disable_save = true
 		if (!quiet_compile) {
 			loading = true
@@ -319,7 +319,7 @@
 		}
 	})
 	$effect(() => {
-		data
+		if (!data) return
 		untrack(() => setIframeData(data))
 	})
 	$effect(() => {

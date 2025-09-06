@@ -174,7 +174,15 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<Dialog.Root bind:open={publishing}>
+<Dialog.Root
+	bind:open={publishing}
+	onOpenChange={(open) => {
+		if (!open) {
+			// Reset the state
+			publish_stage = 'INITIAL'
+		}
+	}}
+>
 	<Dialog.Content class="z-[999] max-w-[500px] flex flex-col p-0">
 		<Deploy
 			bind:stage={publish_stage}

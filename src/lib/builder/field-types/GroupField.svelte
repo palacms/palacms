@@ -16,6 +16,7 @@
 		fields,
 		entries,
 		onchange,
+		ondelete,
 		level
 	}: {
 		entity: Entity
@@ -24,6 +25,7 @@
 		fields: Field[]
 		entries: Entry[]
 		onchange: FieldValueHandler
+		ondelete: (entry_id: string) => void
 		level: number
 	} = $props()
 
@@ -57,6 +59,7 @@
 						level={level + 1}
 						minimal={true}
 						onchange={(values) => onchange({ [field.key]: { 0: { value: null, subValues: values } } })}
+						{ondelete}
 					/>
 				{/each}
 			{/if}

@@ -1,12 +1,13 @@
 <script lang="ts">
 	import * as Dialog from '$lib/components/ui/dialog'
 	import * as Sidebar from '$lib/components/ui/sidebar'
-	import Symbol from '../../components/Site_Symbol.svelte'
-	import type { LibrarySymbol as SymbolModel } from '$lib/common/models/LibrarySymbol'
-	import { LibrarySymbolGroups } from '$lib/pocketbase/collections'
+	import { LibrarySymbolGroups, LibrarySymbols } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import SymbolButton from '$lib/components/SymbolButton.svelte'
+	import { fade } from 'svelte/transition'
+	import Icon from '@iconify/svelte'
 
-	let { site, onsave } = $props()
+	let { onsave } = $props()
 
 	let selected_symbol_group = $state<ObjectOf<typeof LibrarySymbolGroups> | null>(null)
 
@@ -28,10 +29,10 @@
 			: []
 	)
 
-	let selected: SymbolModel[] = $state([])
+	let selected: ObjectOf<typeof LibrarySymbols>[] = $state([])
 	let checked: string[] = $state([])
 
-	function include_symbol(symbol: SymbolModel) {
+	function include_symbol(symbol: ObjectOf<typeof LibrarySymbols>) {
 		if (selected.some((s) => s.id === symbol.id) || checked.includes(symbol.id)) {
 			selected = selected.filter((item) => item.id !== symbol.id)
 			checked = checked.filter((item) => item !== symbol.id)
@@ -72,28 +73,32 @@
 		<div class="BlockPicker">
 			<ul>
 				{#each columns[0] as symbol (symbol.id)}
-					<li>
-						<Symbol checked={checked.includes(symbol.id)} onclick={() => include_symbol(symbol)} {symbol} />
-					</li>
+					<li>{@render button(symbol)}</li>
 				{/each}
 			</ul>
 			<ul>
 				{#each columns[1] as symbol (symbol.id)}
-					<li>
-						<Symbol checked={checked.includes(symbol.id)} onclick={() => include_symbol(symbol)} {symbol} />
-					</li>
+					<li>{@render button(symbol)}</li>
 				{/each}
 			</ul>
 			<ul>
 				{#each columns[2] as symbol (symbol.id)}
-					<li>
-						<Symbol checked={checked.includes(symbol.id)} onclick={() => include_symbol(symbol)} {symbol} />
-					</li>
+					<li>{@render button(symbol)}</li>
 				{/each}
 			</ul>
 		</div>
 	</Sidebar.Inset>
 </Sidebar.Provider>
+
+{#snippet button(symbol: ObjectOf<typeof LibrarySymbols>)}
+	<SymbolButton onclick={() => include_symbol(symbol)} {symbol}>
+		<div class="check" in:fade={{ duration: 100 }}>
+			{#if checked.includes(symbol.id)}
+				<Icon icon="material-symbols:check" />
+			{/if}
+		</div>
+	</SymbolButton>
+{/snippet}
 
 <style lang="postcss">
 	.BlockPicker {
@@ -104,5 +109,9 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr 1fr;
 		gap: 0.5rem;
+	}
+
+	.check {
+		height: 1em;
 	}
 </style>

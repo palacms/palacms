@@ -90,7 +90,6 @@
 						PageTypeFields.delete(field_id)
 					}}
 					ondelete_entry={(entry_id) => {
-						// Delete the entry - PocketBase cascade deletion will handle sub-entries
 						PageTypeEntries.delete(entry_id)
 					}}
 				/>
