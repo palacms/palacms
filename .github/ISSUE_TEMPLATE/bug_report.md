@@ -1,9 +1,10 @@
 ---
 name: Bug report
-about: Tell us about something broken in primo
+about: Tell us about something broken in PalaCMS
 title: ''
 labels: ''
 assignees: ''
+
 ---
 
 Please add as much information as possible to help us reproduce the issue.
