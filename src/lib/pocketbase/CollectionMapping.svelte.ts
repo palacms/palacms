@@ -176,25 +176,35 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 		},
 		update: (id, values) => {
 			let change = changes.get(id)
-			if (change && change.operation !== 'delete' && !change.committed) {
-				// Create a new operation object to ensure reactivity
-				const updatedChange =
-					// Separate (duplicate) cases for each operation type to satify TypeScript
-					change.operation == 'create'
-						? {
-								collection,
-								operation: change.operation,
-								committed: false,
-								data: { ...change.data, ...values }
-							}
-						: {
-								collection,
-								operation: change.operation,
-								committed: false,
-								data: { ...change.data, ...values }
-							}
-				changes.set(id, updatedChange)
+			if (change && change.operation === 'create' && !change.committed) {
+				changes.set(
+					id,
+					// Create a new operation object to ensure reactivity
+					{
+						collection,
+						operation: 'create',
+						committed: false,
+						data: { ...change.data, ...values }
+					}
+				)
+			} else if (change && change.operation === 'update' && !change.committed) {
+				// Reset position of the change to place it the last
+				changes.delete(id)
+
+				changes.set(
+					id,
+					// Create a new operation object to ensure reactivity
+					{
+						collection,
+						operation: 'update',
+						committed: false,
+						data: { ...change.data, ...values }
+					}
+				)
 			} else {
+				// Reset position of the change to place it the last
+				changes.delete(id)
+
 				change = { collection, operation: 'update', committed: false, data: values }
 				changes.set(id, change)
 			}
@@ -208,6 +218,9 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 			if (change?.operation === 'create' && !change.committed) {
 				changes.delete(id)
 			} else {
+				// Reset position of the change to place it the last
+				changes.delete(id)
+
 				changes.set(id, { collection, operation: 'delete', committed: false })
 			}
 		},

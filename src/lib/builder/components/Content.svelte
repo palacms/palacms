@@ -6,12 +6,39 @@
 	import EntryContent from './Fields/EntryContent.svelte'
 	import { current_user } from '$lib/pocketbase/user'
 
-	const { entity, fields, entries, oninput, ondelete }: { entity: Entity; entries: Entry[]; fields: Field[]; oninput: FieldValueHandler; ondelete?: (entry_id: string) => void } = $props()
+	const {
+		entity,
+		fields,
+		entries,
+		oninput,
+		ondelete
+	}: {
+		entity: Entity
+		entries: Entry[]
+		fields: Field[]
+		oninput: FieldValueHandler
+		ondelete: (entry_id: string) => void
+	} = $props()
+
+	function delete_entry_related_records(entry_id: string) {
+		// Delete all sub-entries.
+		for (const entry of entries) {
+			if (entry.parent === entry_id) {
+				delete_entry_related_records(entry.id)
+				ondelete(entry.id)
+			}
+		}
+	}
+
+	function handle_delete_entry(entry_id: string) {
+		delete_entry_related_records(entry_id)
+		ondelete(entry_id)
+	}
 </script>
 
 <div class="Content">
 	{#each fields.filter((f) => !f.parent) as field (field.id)}
-		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} {ondelete} />
+		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} ondelete={handle_delete_entry} />
 	{:else}
 		<p class="empty-description">
 			{#if $current_user?.siteRole === 'developer'}
