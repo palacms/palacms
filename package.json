@@ -49,7 +49,7 @@
 		"browser-image-compression": "^2.0.2",
 		"clsx": "^2.1.1",
 		"codemirror": "^6.0.2",
-		"eslint": "^9.34.0",
+		"eslint": "^9.35.0",
 		"eslint-config-prettier": "^10.1.8",
 		"estree-walker": "^3.0.3",
 		"idb-keyval": "^6.2.2",
