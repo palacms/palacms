@@ -60,6 +60,9 @@ palacms/
 3. **Start the development server**
 
    ```bash
+   # Initial build is required before starting dev server.
+   npm run build
+
    npm run dev
    ```
 
