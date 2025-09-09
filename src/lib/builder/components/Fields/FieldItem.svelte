@@ -422,12 +422,15 @@
 						let nextType = field.type
 						let nextConfig = field.config ?? null
 
-						// Only auto-suggest for truly new fields (no key yet)
-						// and when the user hasn't explicitly changed type yet.
-						// Allow re-evaluating as the user keeps typing.
-						if (is_new_field && !field_type_changed) {
-							const suggested = update_field_type(text)
-							if (suggested && suggested !== field.type) {
+					// Only auto-suggest for truly new fields (no key yet)
+					// and when the user hasn't explicitly changed type yet.
+					// Allow re-evaluating as the user keeps typing.
+					if (is_new_field && !field_type_changed) {
+						const suggested = update_field_type(text)
+						const is_suggested_visible = visible_field_types.some((ft) => ft.id === suggested)
+
+						// Ignore suggestions that are not visible in this context (e.g. site-field in Site editor)
+						if (suggested && suggested !== field.type && is_suggested_visible) {
 								nextType = suggested
 								// Provide default config for specific types
 								if (suggested === 'page' || suggested === 'page-list') {
