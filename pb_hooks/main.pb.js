@@ -159,7 +159,7 @@ routerAdd('GET', '/{path...}', (e) => {
 		fsys = $app.newFilesystem()
 		reader = fsys.getReader(fileKey)
 		content = toString(reader)
-		return e.blob(200, 'text/html', content)
+		return e.blob(200, 'text/html; charset=utf-8', content)
 	} finally {
 		reader?.close()
 		fsys?.close()
@@ -187,7 +187,7 @@ routerAdd('GET', '/_preview/{site}', (e) => {
 		fsys = $app.newFilesystem()
 		reader = fsys.getReader(fileKey)
 		content = toString(reader)
-		return e.blob(200, 'text/html', content)
+		return e.blob(200, 'text/html; charset=utf-8', content)
 	} catch {
 		return e.string(404, 'Preview not found')
 	} finally {
