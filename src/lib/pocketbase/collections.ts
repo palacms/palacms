@@ -276,7 +276,7 @@ export const Pages = createCollectionMapping('pages', Page, manager, {
 			return this.collection.list({ filter: { parent: this.id } })?.sort((a, b) => (a.index || 0) - (b.index || 0))
 		},
 		sections() {
-			return PageSections.from(this.collection.instance).list({ filter: { page: this.id } })
+			return PageSections.from(this.collection.instance).list({ filter: { page: this.id } })?.sort((a, b) => a.index - b.index)
 		},
 		entries() {
 			return PageEntries.from(this.collection.instance).list({ filter: { page: this.id } })
