@@ -23,4 +23,25 @@ export const dragging_symbol = writable(false)
 export const last_library_group_id = writable<string | null>(null)
 
 // Persist Field|Entry tab selection per-entity (session-only)
-export const field_tabs_by_entity = writable<Record<string, Record<string, 'field' | 'entry'>>>({}) // TODO: persist
+const FIELD_TABS_SESSION_KEY = 'field-tabs-by-entity:v1'
+function load_field_tabs() {
+  if (import.meta.env.SSR) return {}
+  try {
+    const raw = sessionStorage.getItem(FIELD_TABS_SESSION_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+export const field_tabs_by_entity = writable<Record<string, Record<string, 'field' | 'entry'>>>(load_field_tabs())
+
+if (!import.meta.env.SSR) {
+  field_tabs_by_entity.subscribe((val) => {
+    try {
+      sessionStorage.setItem(FIELD_TABS_SESSION_KEY, JSON.stringify(val))
+    } catch {
+      // ignore quota or serialization errors
+    }
+  })
+}
