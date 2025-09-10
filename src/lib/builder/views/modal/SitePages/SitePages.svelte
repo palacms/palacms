@@ -17,6 +17,7 @@
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
 	const page_slug = $derived(pageState.params.page)
+	const is_page_type_route = $derived(!!pageState.params.page_type)
 	const all_pages = $derived(site?.pages() ?? [])
 	const home_page = $derived(site?.homepage())
 	const child_pages = $derived(home_page?.children() ?? [])
@@ -108,7 +109,7 @@
 {#if home_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)] page-list">
 		<li class="page-item-wrapper">
-			<Item page={home_page} active={!page_slug} {page_slug} oncreate={create_page_with_sections} bind:hover_position />
+			<Item page={home_page} active={!page_slug && !is_page_type_route} {page_slug} oncreate={create_page_with_sections} bind:hover_position />
 			<div class="drop-indicator-inline" class:active={hover_position === 'home-bottom'}><div></div></div>
 		</li>
 		{#each child_pages.sort((a, b) => a.index - b.index) as child_page, i (child_page.id)}
