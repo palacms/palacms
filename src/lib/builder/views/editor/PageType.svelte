@@ -466,7 +466,7 @@
 			}
 
 			const entry_map = new Map()
-			
+
 			// Sort entries so parent-less entries come first
 			const sorted_entries = [...symbol_entries].sort((a, b) => {
 				if (!a.parent && b.parent) return -1
@@ -477,7 +477,7 @@
 			// Create entries in order, handling parent relationships
 			for (const entry of sorted_entries) {
 				const parent_section_entry = entry.parent ? entry_map.get(entry.parent) : undefined
-				
+
 				const section_entry = PageTypeSectionEntries.create({
 					section: section_id,
 					field: entry.field,
@@ -511,7 +511,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] h-full max-w-none max-h-[100vh] flex flex-col p-4">
 		<SectionEditor
 			component={editing_section_target}
 			tab={editing_section_tab}
