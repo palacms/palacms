@@ -18,7 +18,6 @@
 	import { site_context, hide_dynamic_field_types_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import type { Field } from '$lib/common/models/Field'
 	import pluralize from 'pluralize'
-	import { get_empty_value } from '../../utils.js'
 
 	let {
 		field,
@@ -105,7 +104,12 @@
 
 	let minimal = $derived(field.type === 'info')
 	let has_subfields = $derived(field.type === 'group' || field.type === 'repeater')
+
 	let has_condition = $derived(!!field.config?.condition)
+	let show_condition_editor = $state(!!field.config?.condition)
+	$effect(() => {
+		show_condition_editor = !!field.config?.condition
+	})
 
 	// enable condition if field has previous siblings without their own condition
 	let condition_enabled = $derived(comparable_fields.length > 0)
@@ -184,24 +188,17 @@
 	}
 
 	function add_condition() {
-		const default_field = comparable_fields[0]
-		if (!default_field) {
-			return
-		}
-
-		onchange({
-			id: field.id,
-			data: {
-				config: {
-					...field.config,
-					condition: {
-						field: default_field.id,
-						comparison: '=',
-						value: get_empty_value(default_field)
-					}
-				}
+		const default_field_id = comparable_fields[0]?.id ?? null
+		const next = {
+			...(field.config || {}),
+			condition: {
+				field: default_field_id,
+				comparison: '=',
+				value: ''
 			}
-		})
+		}
+		show_condition_editor = true
+		onchange({ id: field.id, data: { config: next } })
 	}
 
 	const child_fields = $derived(fields?.filter((f) => f.parent === field.id) || [])
@@ -219,7 +216,7 @@
 		}
 	})
 
-	let hide_footer = $derived(!['select', 'image', ...dynamic_field_types].includes(field.type) && !field.config?.condition)
+	let hide_footer = $derived(!['select', 'image', ...dynamic_field_types].includes(field.type) && !field.config?.condition && !show_condition_editor)
 </script>
 
 <div class="top-container" class:top_level class:collapsed>
@@ -255,6 +252,8 @@
 						defaultConfig = null
 					}
 
+					// config updates handled via onchange
+
 					// Optionally auto-fill label (and key) if label is empty
 					let data: any = { type: field_type_id, config: defaultConfig }
 					const hasLabel = !!(field.label && field.label.trim().length > 0)
@@ -276,7 +275,7 @@
 				<div class="field-options">
 					{#if $mod_key_held}
 						<div class="overlay-actions">
-							<button onclick={add_condition}>
+							<button onclick={add_condition} disabled={!condition_enabled}>
 								<Icon icon="mdi:show" />
 							</button>
 							<button onclick={() => onduplicate(field.id)}>
@@ -307,9 +306,7 @@
 												label: 'Set condition',
 												icon: 'mdi:hide',
 												disabled: !condition_enabled,
-												on_click: () => {
-													add_condition()
-												}
+												on_click: add_condition
 											}
 										]),
 								{
@@ -354,7 +351,7 @@
 					<div class="field-options">
 						{#if $mod_key_held}
 							<div class="overlay-actions">
-								<button onclick={add_condition}>
+								<button onclick={add_condition} disabled={!condition_enabled}>
 									<Icon icon="mdi:show" />
 								</button>
 								<button onclick={() => onduplicate(field.id)}>
@@ -385,9 +382,7 @@
 													label: 'Add Condition',
 													icon: 'mdi:show',
 													disabled: !condition_enabled,
-													on_click: () => {
-														add_condition()
-													}
+													on_click: add_condition
 												}
 											]),
 									{
@@ -422,15 +417,15 @@
 						let nextType = field.type
 						let nextConfig = field.config ?? null
 
-					// Only auto-suggest for truly new fields (no key yet)
-					// and when the user hasn't explicitly changed type yet.
-					// Allow re-evaluating as the user keeps typing.
-					if (is_new_field && !field_type_changed) {
-						const suggested = update_field_type(text)
-						const is_suggested_visible = visible_field_types.some((ft) => ft.id === suggested)
+						// Only auto-suggest for truly new fields (no key yet)
+						// and when the user hasn't explicitly changed type yet.
+						// Allow re-evaluating as the user keeps typing.
+						if (is_new_field && !field_type_changed) {
+							const suggested = update_field_type(text)
+							const is_suggested_visible = visible_field_types.some((ft) => ft.id === suggested)
 
-						// Ignore suggestions that are not visible in this context (e.g. site-field in Site editor)
-						if (suggested && suggested !== field.type && is_suggested_visible) {
+							// Ignore suggestions that are not visible in this context (e.g. site-field in Site editor)
+							if (suggested && suggested !== field.type && is_suggested_visible) {
 								nextType = suggested
 								// Provide default config for specific types
 								if (suggested === 'page' || suggested === 'page-list') {
@@ -447,6 +442,7 @@
 								}
 								// Immediately reflect the auto-selected type in the UI select
 								selected_field_type_id = nextType
+								// config updates handled via onchange
 							}
 						}
 
@@ -489,7 +485,7 @@
 					<div class="field-options">
 						{#if $mod_key_held}
 							<div class="overlay-actions">
-								<button onclick={add_condition}>
+								<button onclick={add_condition} disabled={!condition_enabled}>
 									<Icon icon="mdi:show" />
 								</button>
 								<button onclick={() => onduplicate(field.id)}>
@@ -520,9 +516,7 @@
 													label: 'Add Condition',
 													icon: 'mdi:show',
 													disabled: !condition_enabled,
-													on_click: () => {
-														add_condition()
-													}
+													on_click: add_condition
 												}
 											]),
 									{
@@ -557,8 +551,9 @@
 		{#if field.type === 'image'}
 			<ImageFieldOptions
 				{field}
-				on:input={(event) => {
-					onchange({ id: field.id, data: event.detail })
+				on:input={({ detail }) => {
+					const next = { ...(field.config || {}), ...(detail?.config || {}) }
+					onchange({ id: field.id, data: { config: next } })
 				}}
 			/>
 		{/if}
@@ -594,19 +589,15 @@
 				}}
 			/>
 		{/if}
-		{#if field.config?.condition}
+		{#if show_condition_editor}
 			<Condition
 				{field}
-				field_to_compare={fields.find((f) => f.id === field.config?.condition.field)}
+				field_to_compare={fields.find((f) => f.id === field.config?.condition?.field)}
 				{comparable_fields}
 				{collapsed}
 				on:input={({ detail: condition }) => {
-					onchange({
-						id: field.id,
-						data: {
-							config: { ...field.config, condition }
-						}
-					})
+					const next = { ...(field.config || {}), condition }
+					onchange({ id: field.id, data: { config: next } })
 				}}
 			/>
 		{/if}
