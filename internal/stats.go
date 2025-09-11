@@ -33,7 +33,6 @@ import (
 
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/security"
 )
 
 type instanceStats struct {
@@ -57,39 +56,6 @@ const usageStatsHost = "https://us.i.posthog.com"
 // Check if usage statistics are enabled
 func isUsageStateEnabled() bool {
 	return os.Getenv("PALA_DISABLE_USAGE_STATS") != "true"
-}
-
-// Get or create unique instance ID
-func getInstanceId(pb *pocketbase.PocketBase) (string, error) {
-	collection, err := pb.FindCollectionByNameOrId("telemetry_values")
-	if err != nil {
-		return "", err
-	}
-
-	var instanceId string
-	record, err := pb.FindFirstRecordByData(collection.Id, "key", "instance_id")
-	if err != nil {
-		// ID not found, let's create it
-		instanceId = security.RandomString(20)
-		record = core.NewRecord(collection)
-		record.Set("key", "instance_id")
-		record.Set("value", instanceId)
-		if err := pb.Save(record); err != nil {
-			return "", err
-		}
-	} else {
-		instanceId = record.GetString("value")
-		if instanceId == "" {
-			// Empty ID, let's fill it
-			instanceId = security.RandomString(20)
-			record.Set("value", instanceId)
-			if err := pb.Save(record); err != nil {
-				return "", err
-			}
-		}
-	}
-
-	return instanceId, nil
 }
 
 // Send usage statistics
@@ -141,11 +107,6 @@ func sendUsageStats(pb *pocketbase.PocketBase) error {
 	return nil
 }
 
-// Get version
-func getVersion() string {
-	return os.Getenv("PALA_VERSION") // or unknown
-}
-
 // Get basic instance statistics (anonymous)
 func getInstanceStats(pb *pocketbase.PocketBase) (*instanceStats, error) {
 	var err error
@@ -174,7 +135,7 @@ func RegisterUsageStats(pb *pocketbase.PocketBase) error {
 		return nil
 	}
 
-	pb.OnServe().BindFunc(func(event *core.ServeEvent) error {
+	pb.OnServe().BindFunc(func(serveEvent *core.ServeEvent) error {
 		// Send initial stats
 		if err := sendUsageStats(pb); err != nil {
 			return err
@@ -189,7 +150,7 @@ func RegisterUsageStats(pb *pocketbase.PocketBase) error {
 			return err
 		}
 
-		return event.Next()
+		return serveEvent.Next()
 	})
 
 	return nil

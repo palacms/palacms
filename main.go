@@ -33,6 +33,10 @@ func setup(pb *pocketbase.PocketBase) error {
 		return err
 	}
 
+	if err := internal.RegisterInfo(pb); err != nil {
+		return err
+	}
+
 	if err := internal.ServeSites(pb); err != nil {
 		return err
 	}

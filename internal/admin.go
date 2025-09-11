@@ -11,35 +11,6 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
-// // Serve admin pages
-// routerAdd('GET', '/admin/{path...}', (e) => {
-// 	if (!e.request?.url) {
-// 		throw new Error('No request URL')
-// 	}
-
-// 	const next = $apis.static('./pb_public', true)
-// 	const isFile = /\.\w+$/.test(e.request.url.path)
-// 	if (isFile || e.request.url.path === '/admin/setup') {
-// 		next(e)
-// 		return
-// 	}
-
-// 	const superuserCount = $app.countRecords(
-// 		'_superusers',
-// 		$dbx.not(
-// 			$dbx.hashExp({
-// 				email: '__pbinstaller@example.com'
-// 			})
-// 		)
-// 	)
-// 	const setupRequired = superuserCount === 0
-// 	if (setupRequired) {
-// 		e.redirect(302, '/admin/setup')
-// 	} else {
-// 		next(e)
-// 	}
-// })
-
 //go:embed build/*
 var build embed.FS
 

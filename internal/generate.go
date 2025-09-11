@@ -61,14 +61,6 @@ package internal
 // 	}
 // })
 
-// // Get instance ID
-// routerAdd('GET', '/_instance', (e) => {
-// 	const id = $app.findFirstRecordByData('telemetry_values', 'key', 'instance_id')
-// 	const version = $os.getenv('PALA_VERSION') || 'unknown'
-// 	const telemetry_enabled = $os.getenv('PALA_DISABLE_USAGE_STATS') !== 'true'
-// 	return e.json(200, { id: id.getString('value'), version, telemetry_enabled })
-// })
-
 func RegisterGenerateEndpoint() {
 
 }
