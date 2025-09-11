@@ -56,7 +56,7 @@ func init() {
 			return nil
 		},
 
-		// Use old filename to ensure that the migration will not be redone.
+		// Use old filename to ensure that the migration will not be redone on existing installations.
 		"1754640604_settings.js",
 	)
 }

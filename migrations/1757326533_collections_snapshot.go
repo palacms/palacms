@@ -3579,7 +3579,7 @@ func init() {
 			return nil
 		},
 
-		// Use old filename to ensure that the migration will not be redone.
-		"1757064119_updated_site_symbol_entries.js",
+		// Use old filename to ensure that the migration will not be redone on existing installations.
+		"1742987171_created_site_groups.js",
 	)
 }
