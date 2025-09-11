@@ -201,9 +201,17 @@ export const usePublishSite = (site_id?: string) => {
 
 	const { data } = $derived(shouldLoad && site && pages ? usePageData(site, pages) : { data: undefined })
 
-	const site_content = $derived(shouldLoad && site ? useContent(site) : undefined)
-	const page_type_content = $derived(shouldLoad && page_types ? Object.fromEntries(page_types.map((page_type) => [page_type.id, useContent(page_type)])) : undefined)
-	const section_content = $derived(shouldLoad && data ? Object.fromEntries([...data.page_type_sections, ...data.page_sections].map((section) => [section.id, useContent(section)])) : undefined)
+	const site_content = $derived(shouldLoad && site ? useContent(site, { target: 'live' }) : undefined)
+	const page_type_content = $derived(
+		shouldLoad && page_types && page_types.every((page_type) => !!useContent(page_type, { target: 'live' }))
+			? Object.fromEntries(page_types.map((page_type) => [page_type.id, useContent(page_type, { target: 'live' })]))
+			: undefined
+	)
+	const section_content = $derived(
+		shouldLoad && data && [...data.page_type_sections, ...data.page_sections].every((section) => !!useContent(section, { target: 'live' }))
+			? Object.fromEntries([...data.page_type_sections, ...data.page_sections].map((section) => [section.id, useContent(section, { target: 'live' })]))
+			: undefined
+	)
 
 	return worker
 }

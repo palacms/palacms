@@ -40,6 +40,39 @@ func generateSymbols(pb *pocketbase.PocketBase, system *filesystem.System, site 
 	return newFiles, nil
 }
 
+func generateUploads(pb *pocketbase.PocketBase, system *filesystem.System, site *core.Record) ([]string, error) {
+	collection, err := pb.FindCollectionByNameOrId("site_uploads")
+	if err != nil {
+		return nil, err
+	}
+
+	uploads, err := pb.FindRecordsByFilter(
+		collection.Id,
+		"site = {:site}",
+		"",
+		0,
+		0,
+		dbx.Params{"site": site.Id},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	newFiles := make([]string, 0, len(uploads))
+	for _, upload := range uploads {
+		name := upload.GetString("file")
+		sourceKey := collection.Id + "/" + upload.Id + "/" + name
+		destinationKey := "sites/" + site.GetString("host") + "/_uploads/" + name
+		if err := system.Copy(sourceKey, destinationKey); err != nil {
+			return nil, err
+		}
+
+		newFiles = append(newFiles, destinationKey)
+	}
+
+	return newFiles, nil
+}
+
 func generatePages(pb *pocketbase.PocketBase, system *filesystem.System, site *core.Record) ([]string, error) {
 	collection, err := pb.FindCollectionByNameOrId("pages")
 	if err != nil {
@@ -149,6 +182,11 @@ func RegisterGenerateEndpoint(pb *pocketbase.PocketBase) error {
 				return err
 			}
 
+			uploadFiles, err := generateUploads(pb, system, site)
+			if err != nil {
+				return err
+			}
+
 			pageFiles, err := generatePages(pb, system, site)
 			if err != nil {
 				return err
@@ -162,6 +200,12 @@ func RegisterGenerateEndpoint(pb *pocketbase.PocketBase) error {
 
 				for _, symbolFile := range symbolFiles {
 					if file.Key == symbolFile {
+						continue cleanup
+					}
+				}
+
+				for _, uploadFile := range uploadFiles {
+					if file.Key == uploadFile {
 						continue cleanup
 					}
 				}

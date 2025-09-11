@@ -63,7 +63,7 @@
 		css: symbol.css,
 		js: symbol.js
 	})
-	const _data = $derived(useContent(symbol))
+	const _data = $derived(useContent(symbol, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
 
 	let componentCode = $state()
@@ -73,12 +73,12 @@
 	// Create a cache key based on symbol ID and update timestamp
 	const cache_key = $derived(`${symbol.id}-${symbol.updated}`)
 	let last_cache_key = $state('')
-	
+
 	// Only regenerate if cache key changes (symbol updated)
 	$effect(async () => {
 		// Skip if cache key hasn't changed (symbol not updated)
 		if (cache_key === last_cache_key && componentCode) return
-		
+
 		last_cache_key = cache_key
 		is_loading = true
 		component_error = undefined
@@ -106,16 +106,20 @@
 				getInitialData: () => ({ block: symbol }),
 				onDragStart: () => {
 					if (typeof window !== 'undefined') {
-						window.dispatchEvent(new CustomEvent('palaDragStart', { 
-							detail: { block: symbol } 
-						}))
+						window.dispatchEvent(
+							new CustomEvent('palaDragStart', {
+								detail: { block: symbol }
+							})
+						)
 					}
 				},
 				onDrop: () => {
 					if (typeof window !== 'undefined') {
-						window.dispatchEvent(new CustomEvent('palaDragEnd', { 
-							detail: { block: symbol } 
-						}))
+						window.dispatchEvent(
+							new CustomEvent('palaDragEnd', {
+								detail: { block: symbol }
+							})
+						)
 					}
 				}
 			})

@@ -87,7 +87,7 @@
 
 	const fields = $derived('site' in block ? block.fields() : block.fields())
 	const entries = $derived('site' in block ? block.entries() : block.entries())
-	const data = $derived(useContent(block))
+	const data = $derived(useContent(block, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	let loading = $state(false)
