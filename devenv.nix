@@ -33,6 +33,7 @@
       "svelte.svelte-vscode"
       "esbenp.prettier-vscode"
       "eamodio.gitlens"
+      "golang.go"
     ];
   };
 }
