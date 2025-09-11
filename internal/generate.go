@@ -167,6 +167,16 @@ func RegisterGenerateEndpoint(pb *pocketbase.PocketBase) error {
 				return err
 			}
 
+			info, err := requestEvent.RequestInfo()
+			if err != nil {
+				return err
+			}
+
+			canAccess, err := requestEvent.App.CanAccessRecord(site, info, site.Collection().UpdateRule)
+			if !canAccess {
+				return requestEvent.ForbiddenError("", err)
+			}
+
 			system, err := pb.NewFilesystem()
 			if err != nil {
 				return err
