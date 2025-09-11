@@ -149,7 +149,8 @@ export const Sites = createCollectionMapping('sites', Site, manager, {
 			return SiteUploads.from(this.collection.instance).list({ filter: { site: this.id } })
 		},
 		page_types() {
-			return PageTypes.from(this.collection.instance).list({ filter: { site: this.id } })
+			// Sort by creation time ascending so newly created types appear at the bottom
+			return PageTypes.from(this.collection.instance).list({ filter: { site: this.id }, sort: 'created' })
 		},
 		pages() {
 			return Pages.from(this.collection.instance).list({ filter: { site: this.id } })
