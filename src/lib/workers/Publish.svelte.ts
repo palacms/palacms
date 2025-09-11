@@ -84,6 +84,17 @@ export const usePublishSite = (site_id?: string) => {
 			}
 
 			await Promise.all(promises)
+			await fetch(new URL('/api/palacms/generate', self.baseURL), {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ site_id })
+			}).then((res) => {
+				if (!res.ok) {
+					throw new Error('Failed to generate site: Not OK response')
+				}
+			})
 		}
 	)
 

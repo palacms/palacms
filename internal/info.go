@@ -46,7 +46,7 @@ func getInstanceId(pb *pocketbase.PocketBase) (string, error) {
 	return instanceId, nil
 }
 
-func RegisterInfo(pb *pocketbase.PocketBase) error {
+func RegisterInfoEndpoint(pb *pocketbase.PocketBase) error {
 	pb.OnServe().BindFunc(func(serveEvent *core.ServeEvent) error {
 		serveEvent.Router.GET("/api/palacms/info", func(requestEvent *core.RequestEvent) error {
 			id, err := getInstanceId(pb)

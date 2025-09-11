@@ -1,66 +1,186 @@
 package internal
 
-// // Serve site previews
-// routerAdd('GET', '/_preview/{site}', (e) => {
-// 	if (!e.request) {
-// 		throw new Error('No request')
-// 	}
+import (
+	"github.com/pocketbase/dbx"
+	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/filesystem"
+)
 
-// 	const siteId = e.request.pathValue('site')
-// 	let site
-// 	try {
-// 		site = $app.findRecordById('sites', siteId)
-// 	} catch {
-// 		throw new NotFoundError('Site not found')
-// 	}
+func generateSymbols(pb *pocketbase.PocketBase, system *filesystem.System, site *core.Record) ([]string, error) {
+	collection, err := pb.FindCollectionByNameOrId("site_symbols")
+	if err != nil {
+		return nil, err
+	}
 
-// 	// Respond with compiled HTML
-// 	const fileKey = site.baseFilesPath() + '/' + site.get('preview')
-// 	let fsys, reader, content
-// 	try {
-// 		fsys = $app.newFilesystem()
-// 		reader = fsys.getReader(fileKey)
-// 		content = toString(reader)
-// 		return e.blob(200, 'text/html', content)
-// 	} catch {
-// 		return e.string(404, 'Preview not found')
-// 	} finally {
-// 		reader?.close()
-// 		fsys?.close()
-// 	}
-// })
+	symbols, err := pb.FindRecordsByFilter(
+		collection.Id,
+		"site = {:site}",
+		"",
+		0,
+		0,
+		dbx.Params{"site": site.Id},
+	)
+	if err != nil {
+		return nil, err
+	}
 
-// // Serve compiled symbol JavaScript
-// routerAdd('GET', '/_symbols/{filename}', (e) => {
-// 	if (!e.request?.url) {
-// 		throw new Error('No request URL')
-// 	}
+	newFiles := make([]string, 0, len(symbols))
+	for _, symbol := range symbols {
+		name := symbol.GetString("compiled_js")
+		sourceKey := collection.Id + "/" + symbol.Id + "/" + name
+		destinationKey := "sites/" + site.GetString("host") + "/_symbols/" + symbol.Id + ".js"
+		if err := system.Copy(sourceKey, destinationKey); err != nil {
+			return nil, err
+		}
 
-// 	const filename = e.request.pathValue('filename')
+		newFiles = append(newFiles, destinationKey)
+	}
 
-// 	// Filename must end with .js
-// 	if (!filename.endsWith('.js')) {
-// 		throw new NotFoundError('File not found')
-// 	}
+	return newFiles, nil
+}
 
-// 	// Find symbol
-// 	const symbolId = filename.slice(0, -'.js'.length)
-// 	const symbol = $app.findRecordById('site_symbols', symbolId)
+func generatePages(pb *pocketbase.PocketBase, system *filesystem.System, site *core.Record) ([]string, error) {
+	collection, err := pb.FindCollectionByNameOrId("pages")
+	if err != nil {
+		return nil, err
+	}
 
-// 	// Respond with compiled JavaScript
-// 	const fileKey = symbol.baseFilesPath() + '/' + symbol.get('compiled_js')
-// 	let fsys, reader, content
-// 	try {
-// 		fsys = $app.newFilesystem()
-// 		reader = fsys.getReader(fileKey)
-// 		content = toString(reader)
-// 		return e.blob(200, 'text/javascript', content)
-// 	} finally {
-// 		reader?.close()
-// 		fsys?.close()
-// 	}
-// })
+	pages, err := pb.FindRecordsByFilter(
+		collection.Id,
+		"site = {:site}",
+		"",
+		0,
+		0,
+		dbx.Params{"site": site.Id},
+	)
+	if err != nil {
+		return nil, err
+	}
 
-func RegisterGenerateEndpoint() {
+	newFiles := make([]string, 0, len(pages))
+	for _, page := range pages {
+		if page.GetString("parent") == "" {
+			newPageFiles, err := generatePage(
+				system,
+				collection,
+				site,
+				pages,
+				page,
+				"",
+			)
+			if err != nil {
+				return nil, err
+			}
 
+			newFiles = append(newFiles, newPageFiles...)
+		}
+	}
+
+	return newFiles, nil
+}
+
+func generatePage(
+	system *filesystem.System,
+	collection *core.Collection,
+	site *core.Record,
+	pages []*core.Record,
+	page *core.Record,
+	path string,
+) ([]string, error) {
+	name := page.GetString("compiled_html")
+	sourceKey := collection.Id + "/" + page.Id + "/" + name
+	destinationKey := "sites/" + site.GetString("host") + path + "/index.html"
+	if err := system.Copy(sourceKey, destinationKey); err != nil {
+		return nil, err
+	}
+
+	newFiles := []string{destinationKey}
+	for _, subPage := range pages {
+		if subPage.GetString("parent") == page.Id {
+			newSubPageFiles, err := generatePage(
+				system,
+				collection,
+				site,
+				pages,
+				subPage,
+				path+"/"+subPage.GetString("slug"),
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			newFiles = append(newFiles, newSubPageFiles...)
+		}
+	}
+
+	return newFiles, nil
+}
+
+func RegisterGenerateEndpoint(pb *pocketbase.PocketBase) error {
+	pb.OnServe().BindFunc(func(serveEvent *core.ServeEvent) error {
+		serveEvent.Router.POST("/api/palacms/generate", func(requestEvent *core.RequestEvent) error {
+			body := struct {
+				SiteId string `json:"site_id"`
+			}{}
+			requestEvent.BindBody(&body)
+
+			if body.SiteId == "" {
+				return requestEvent.BadRequestError("site_id missing", nil)
+			}
+
+			site, err := pb.FindRecordById("sites", body.SiteId)
+			if err != nil {
+				return err
+			}
+
+			system, err := pb.NewFilesystem()
+			if err != nil {
+				return err
+			}
+
+			existingFiles, err := system.List("sites/" + site.GetString("host") + "/")
+			if err != nil {
+				return err
+			}
+
+			symbolFiles, err := generateSymbols(pb, system, site)
+			if err != nil {
+				return err
+			}
+
+			pageFiles, err := generatePages(pb, system, site)
+			if err != nil {
+				return err
+			}
+
+		cleanup:
+			for _, file := range existingFiles {
+				if file.IsDir {
+					continue
+				}
+
+				for _, symbolFile := range symbolFiles {
+					if file.Key == symbolFile {
+						continue cleanup
+					}
+				}
+
+				for _, pageFile := range pageFiles {
+					if file.Key == pageFile {
+						continue cleanup
+					}
+				}
+
+				if err := system.Delete(file.Key); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		return serveEvent.Next()
+	})
+
+	return nil
 }

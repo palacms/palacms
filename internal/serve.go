@@ -2,6 +2,7 @@ package internal
 
 import (
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 
@@ -17,7 +18,31 @@ func ServeSites(pb *pocketbase.PocketBase) error {
 		}
 
 		serveEvent.Router.GET("/{path...}", func(requestEvent *core.RequestEvent) error {
+			// Resolve site ID from current URL or referrer URL
+			siteId := requestEvent.Request.URL.Query().Get("_site")
+			referer := requestEvent.Request.Header.Get("Referer")
+			if siteId == "" && referer != "" {
+				refererUrl, err := url.Parse(referer)
+				if err != nil {
+					return err
+				}
+
+				if refererUrl.Host == requestEvent.Request.Host {
+					siteId = refererUrl.Query().Get("_site")
+				}
+			}
+
 			reqHost := requestEvent.Request.Host
+			if siteId != "" {
+				site, err := pb.FindRecordById("sites", siteId)
+				if err != nil {
+					return err
+				}
+
+				// Override host based on the resolved site ID
+				reqHost = site.GetString("host")
+			}
+
 			reqPath := requestEvent.Request.PathValue("path")
 			fileKey := "sites/" + reqHost + "/" + reqPath
 			fileName := path.Base(fileKey)
