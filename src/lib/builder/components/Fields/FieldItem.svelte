@@ -674,9 +674,16 @@
 			padding: 0.5rem;
 			border-radius: 0.25rem;
 			transition: 0.1s;
+			border: 1px solid transparent;
+			outline: 0;
 
 			&:hover {
 				background: var(--color-gray-8);
+			}
+
+			&:focus-visible {
+				border-color: var(--weave-primary-color);
+				outline: 0;
 			}
 		}
 
