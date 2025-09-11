@@ -624,16 +624,20 @@
 
 	let compiled_code = $state<string>('')
 	// Watch for changes in block code or component data and regenerate
-	watch(
-		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
-		({ html, data }) => {
-			// Generate code even if there's no data (for blocks without fields)
-			if (compiled_code !== html && component_data) {
-				generate_component_code(block)
-				compiled_code = html
-			}
-		}
-	)
+watch(
+    () => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
+    ({ html, css, js, data }) => {
+        // Wait until content data has resolved (avoid compiling with undefined data)
+        if (data === undefined) return
+
+        // Recompile when any source (html/css/js) changes.
+        const signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
+        if (compiled_code !== signature) {
+            generate_component_code(block)
+            compiled_code = signature
+        }
+    }
+)
 
 	let mutation_observer
 	let iframe_resize_observer = $state()
@@ -768,23 +772,22 @@
 		}
 	}
 
-// Watch for changes and send to iframe when ready
-// Only send when this component's data meaningfully changed to avoid
-// triggering re-renders of unrelated symbols.
-let last_sent_data = $state<any>()
-watch(
-    () => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
-    ({ js, data, ready }) => {
-        if (!(ready && data && js)) return
+	// Watch for changes and send to iframe when ready
+	// Send when either code (js) OR data changes to reflect live edits.
+	let last_sent = $state<any>()
+	watch(
+		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
+		({ js, data, ready }) => {
+			if (!(ready && data && js)) return
 
-        // Skip if data is deeply equal to the last sent value
-        if (_.isEqual(last_sent_data, data)) return
+			const signature = { js, data }
+			if (_.isEqual(last_sent, signature)) return
 
-        // Store a snapshot to avoid mutation side-effects
-        last_sent_data = _.cloneDeep(data)
-        send_component_to_iframe(js, data)
-    }
-)
+			// Store a snapshot to avoid mutation side-effects
+			last_sent = _.cloneDeep(signature)
+			send_component_to_iframe(js, data)
+		}
+	)
 
 	async function send_component_to_iframe(js, data) {
 		try {
