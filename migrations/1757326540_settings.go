@@ -46,6 +46,7 @@ func init() {
 				record.Set("password", userPassword)
 				record.Set("name", "Test User")
 				record.Set("serverRole", "developer")
+				record.SetVerified(true)
 				app.Save(record)
 			}
 
