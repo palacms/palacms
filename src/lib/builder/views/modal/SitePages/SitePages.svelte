@@ -77,31 +77,21 @@
 	 * Note: Only copies root-level entries for now, nested entries are handled on-demand
 	 */
 	async function create_page_with_sections(page_data: Omit<Page, 'id' | 'index'>) {
-		// Get existing siblings and sort them
-		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent)
-			.sort((a, b) => a.index - b.index)
-		
-		// For home page children, index 0 is reserved for home, so start at 1
-		// For other children, start at 0
-		const new_index = page_data.parent === home_page?.id ? 1 : 0
-		
-		// Shift existing siblings down to make room at the top
-		sibling_pages.forEach((sibling) => {
-			if (page_data.parent === home_page?.id) {
-				// For home page children, only shift if index >= 1
-				if (sibling.index >= 1) {
-					Pages.update(sibling.id, { index: sibling.index + 1 })
-				}
-			} else {
-				// For other children, shift all siblings
-				Pages.update(sibling.id, { index: sibling.index + 1 })
-			}
-		})
+    // Get existing siblings and sort them
+    const sibling_pages = all_pages
+        .filter((page) => page.parent === page_data.parent)
+        .sort((a, b) => a.index - b.index)
 
-		new_page = Pages.create({
-			...page_data,
-			index: new_index
-		})
+    // Append to the end of the sibling list
+    const startIndex = page_data.parent === home_page?.id ? 1 : 0
+    const lastIndex = sibling_pages.length > 0 ? Math.max(...sibling_pages.map((p) => p.index)) : startIndex - 1
+    const new_index = lastIndex + 1
+
+    // Create the page at the computed index (no shifting of existing siblings)
+    new_page = Pages.create({
+        ...page_data,
+        index: new_index
+    })
 	}
 </script>
 
