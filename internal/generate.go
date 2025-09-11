@@ -28,6 +28,10 @@ func generateSymbols(pb *pocketbase.PocketBase, system *filesystem.System, site 
 	newFiles := make([]string, 0, len(symbols))
 	for _, symbol := range symbols {
 		name := symbol.GetString("compiled_js")
+		if name == "" {
+			continue
+		}
+
 		sourceKey := collection.Id + "/" + symbol.Id + "/" + name
 		destinationKey := "sites/" + site.GetString("host") + "/_symbols/" + symbol.Id + ".js"
 		if err := system.Copy(sourceKey, destinationKey); err != nil {
