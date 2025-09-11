@@ -27,13 +27,15 @@ palacms/
 │   │   │   ├── utils/      # Utility functions
 │   │   │   └── views/      # Builder views (editor, modals)
 │   │   ├── common/         # Code shared between frontend and backend applications
-│   │   │   └── models/     # TypeScript data models
+│   │   │   └── models/     # Zod data models
 │   │   ├── pocketbase/     # PocketBase client & collection mappings
 │   │   └── components/     # Shared UI components
-│   └── routes/            # SvelteKit routes and pages
-├── pb_hooks/              # PocketBase server-side JavaScript hooks
-├── pb_migrations/         # Database schema migrations
-├── pb_data/               # PocketBase database & uploaded files
+│   └── routes/             # SvelteKit routes and pages
+|   └── workers/            # Worker functions for Svelte components
+├── internal/               # PocketBase server-side code
+├── migrations/             # Database schema migrations
+├── pb_data/                # PocketBase database & uploaded files
+    ├── storage/sites       # Generated sites by host address
 ```
 
 ## 🚀 Development Setup
@@ -108,15 +110,14 @@ palacms/
 
 ### Database Schema
 
-- Schema changes go in `pb_migrations/`
-- Migrations use JavaScript format
-- Migrations are auto-generated when you use Pocketbase admin UI to modify the collections
-  - Remember to format the auto-generated migrations
+- Schema changes go in `migrations/`
+- Migrations use Golang
+- Migrations should be written manually
 
-### Server Hooks
+### Server-side code
 
-- Hooks are in `pb_hooks/` (CommonJS format)
-- Keep hooks simple and secure
+- Server-side code exists mostly in `internal/` directory
+- Entry point to the server application can be found from `main.go` which exists in the root directory
 - Used for tasks such as validation and serving files
 - Only the business logic that has no place in the frontend application should be added here
 
