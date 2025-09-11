@@ -33,7 +33,7 @@
 		"@tiptap/extension-image": "^3.4.2",
 		"@tiptap/extension-link": "^3.4.2",
 		"@tiptap/extension-typography": "^3.4.2",
-		"@tiptap/extension-youtube": "^3.4.1",
+		"@tiptap/extension-youtube": "^3.4.2",
 		"@tiptap/pm": "^3.4.2",
 		"@tiptap/starter-kit": "^3.4.2",
 		"@tiptap/static-renderer": "^3.4.2",
