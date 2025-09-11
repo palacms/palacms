@@ -70,33 +70,31 @@
 	let component_error = $state()
 	let is_loading = $state(true)
 
-	// Create a cache key based on symbol ID and update timestamp
-	const cache_key = $derived(`${symbol.id}-${symbol.updated}`)
-	let last_cache_key = $state('')
-	
-	// Only regenerate if cache key changes (symbol updated)
-	$effect(async () => {
-		// Skip if cache key hasn't changed (symbol not updated)
-		if (cache_key === last_cache_key && componentCode) return
-		
-		last_cache_key = cache_key
-		is_loading = true
-		component_error = undefined
+	// Rebuild preview whenever code or data meaningfully change
+	let last_signature = $state<any>()
+	watch(
+		() => ({ html: symbol.html, css: symbol.css, js: symbol.js, data }),
+		async ({ html, css, js, data }) => {
+			const signature = { html, css, js, data }
+			if (_.isEqual(last_signature, signature)) return
+			last_signature = _.cloneDeep(signature)
 
-		try {
-			const blockData = data || {}
-			const res = await block_html({ code, data: blockData })
-			// Only set componentCode if we have actual content
-			if (res && res.body) {
-				componentCode = res
+			is_loading = true
+			component_error = undefined
+			try {
+				const blockData = data || {}
+				const res = await block_html({ code: { html, css, js }, data: blockData })
+				if (res && res.body) {
+					componentCode = res
+				}
+			} catch (error) {
+				console.error('Sidebar symbol error for', symbol.name, ':', error)
+				component_error = error
+			} finally {
+				is_loading = false
 			}
-		} catch (error) {
-			console.error('Sidebar symbol error for', symbol.name, ':', error)
-			component_error = error
-		} finally {
-			is_loading = false
 		}
-	})
+	)
 
 	let element = $state()
 	$effect(() => {
