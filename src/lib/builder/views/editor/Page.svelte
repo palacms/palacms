@@ -477,7 +477,12 @@
 		if (sections_mounted === sections.length && sections_mounted !== 0) {
 			page_mounted = true
 		} else if (page_is_empty) {
+			// For empty pages, consider the page mounted and loaded immediately
 			page_mounted = true
+			if (!page_fade_loaded) {
+				page_loaded.set(true)
+				page_fade_loaded = true
+			}
 		}
 	})
 	let block_toolbar_on_locked_block = $derived($locked_blocks.find((b) => b === hovered_section?.id))
