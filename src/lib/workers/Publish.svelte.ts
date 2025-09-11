@@ -25,13 +25,15 @@ export const usePublishSite = (site_id?: string) => {
 					continue
 				}
 
+				const locale = 'en' as const
+				const { css } = await processors.css(symbol.css || '')
 				const promise = processors
 					.html({
 						component: {
 							html: symbol.html,
 							js: symbol.js,
-							css: symbol.css,
-							data: {}
+							css,
+							data: symbol_content?.[symbol.id]?.[locale] ?? {}
 						},
 						buildStatic: false,
 						css: 'external'
@@ -121,14 +123,13 @@ export const usePublishSite = (site_id?: string) => {
 
 					const { html, css: postcss, js } = symbol
 
-					const content = section_content?.[section.id]?.[locale] ?? {}
 					const { css } = await processors.css(postcss || '')
 					return [
 						{
 							html: `<div data-section="${section.id}" id="section-${section.id}" data-symbol="${symbol.id}">${html}</div>`,
 							js,
 							css,
-							data: content
+							data: section_content?.[section.id]?.[locale] ?? {}
 						}
 					]
 				})
@@ -184,7 +185,7 @@ export const usePublishSite = (site_id?: string) => {
 						sections
 							.filter((section) => section.symbol === symbol.id)
 							.map((section) => {
-								const content = section_content?.[section.id][locale]
+								const content = section_content?.[section.id]?.[locale]
 								return `hydrate(App, { target: document.querySelector('#section-${section.id}'), props: ${JSON.stringify(content)} });`
 							})
 							.join('') +
@@ -210,6 +211,11 @@ export const usePublishSite = (site_id?: string) => {
 	const section_content = $derived(
 		shouldLoad && data && [...data.page_type_sections, ...data.page_sections].every((section) => !!useContent(section, { target: 'live' }))
 			? Object.fromEntries([...data.page_type_sections, ...data.page_sections].map((section) => [section.id, useContent(section, { target: 'live' })]))
+			: undefined
+	)
+	const symbol_content = $derived(
+		shouldLoad && data && data.symbols.every((symbol) => !!useContent(symbol, { target: 'live' }))
+			? Object.fromEntries(data.symbols.map((symbol) => [symbol.id, useContent(symbol, { target: 'live' })]))
 			: undefined
 	)
 
