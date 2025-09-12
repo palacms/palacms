@@ -31,18 +31,6 @@
 
 	let renaming = $state(false)
 	let new_name = $state(symbol.name)
-	async function toggle_name_input() {
-		renaming = !renaming
-		// workaround for inability to see cursor when div empty
-		if (new_name === '') {
-			new_name = 'Block'
-		}
-	}
-
-	// Disabled CollectionMapping update to avoid reactive loops
-	// $effect(() => {
-	// 	SiteSymbols.update(symbol.id, { name: new_name })
-	// })
 
 	async function save_rename() {
 		if (!symbol || !new_name.trim()) return
@@ -76,7 +64,7 @@
 		() => ({ html: symbol.html, css: symbol.css, js: symbol.js, data }),
 		async ({ html, css, js, data }) => {
 			const signature = { html, css, js, data }
-			if (_.isEqual(last_signature, signature)) return
+			if (_.isEqual(last_signature, signature) || !data) return
 			last_signature = _.cloneDeep(signature)
 
 			is_loading = true
@@ -103,18 +91,11 @@
 				element,
 				getInitialData: () => ({ block: symbol }),
 				onDragStart: () => {
-					if (typeof window !== 'undefined') {
-						window.dispatchEvent(new CustomEvent('palaDragStart', { 
-							detail: { block: symbol } 
-						}))
+					// TODO
 					}
 				},
 				onDrop: () => {
-					if (typeof window !== 'undefined') {
-						window.dispatchEvent(new CustomEvent('palaDragEnd', { 
-							detail: { block: symbol } 
-						}))
-					}
+					// TODO
 				}
 			})
 		}
