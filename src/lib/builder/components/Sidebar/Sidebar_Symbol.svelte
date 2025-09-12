@@ -62,7 +62,7 @@
 	let last_signature = $state<any>()
 	watch(
 		() => ({ html: symbol.html, css: symbol.css, js: symbol.js, data }),
-		async ({ html, css, js, data }) => {
+		({ html, css, js, data }) => {
 			const signature = { html, css, js, data }
 			if (_.isEqual(last_signature, signature) || !data) return
 			last_signature = _.cloneDeep(signature)
@@ -71,10 +71,11 @@
 			component_error = undefined
 			try {
 				const blockData = data || {}
-				const res = await block_html({ code: { html, css, js }, data: blockData })
-				if (res && res.body) {
-					componentCode = res
-				}
+				block_html({ code: { html, css, js }, data: blockData }).then((res) => {
+					if (res && res.body) {
+						componentCode = res
+					}
+				})
 			} catch (error) {
 				console.error('Sidebar symbol error for', symbol.name, ':', error)
 				component_error = error
@@ -92,7 +93,6 @@
 				getInitialData: () => ({ block: symbol }),
 				onDragStart: () => {
 					// TODO
-					}
 				},
 				onDrop: () => {
 					// TODO
