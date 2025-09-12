@@ -17,6 +17,7 @@
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import type { Page } from '$lib/common/models/Page'
 	import { build_cms_page_url } from '$lib/pages'
+	import { goto } from '$app/navigation'
 
 	let editing_page = $state(false)
 
@@ -329,6 +330,16 @@
 												})
 
 												await manager.commit()
+
+												// If the deleted page was the one open, navigate to homepage
+												try {
+													if (page_slug === page.slug) {
+														const home_url = build_cms_page_url(home_page, pageState.url)
+														if (home_url) await goto(home_url, { replaceState: true })
+													}
+												} catch (e) {
+													console.warn('Navigation after delete failed', e)
+												}
 											}
 											delete_warning_dialog = true
 										} else {
@@ -345,6 +356,16 @@
 											})
 
 											await manager.commit()
+
+											// If the deleted page was the one open, navigate to homepage
+											try {
+												if (page_slug === page.slug) {
+													const home_url = build_cms_page_url(home_page, pageState.url)
+													if (home_url) await goto(home_url, { replaceState: true })
+												}
+											} catch (e) {
+												console.warn('Navigation after delete failed', e)
+											}
 										}
 									}
 								}
