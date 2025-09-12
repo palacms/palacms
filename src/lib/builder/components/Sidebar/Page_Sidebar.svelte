@@ -119,7 +119,7 @@
 
 {#snippet content()}
 	{#if page && page_type_fields && page_entries}
-		<div class="page-type-fields">
+		<div class="page-type-fields" class:p-2={!has_symbols}>
 			<Content
 				entity={page}
 				fields={page_type_fields}
@@ -173,15 +173,6 @@
 		/* padding-top: 0.5rem; */
 	}
 
-	.container {
-		display: flex;
-		flex-direction: column;
-		overflow-y: auto;
-		padding: 1rem;
-		height: 100%;
-		gap: 1rem;
-	}
-
 	.page-type-fields {
 		flex: 1;
 	}
@@ -198,5 +189,7 @@
 		text-align: right;
 		text-decoration: underline;
 		color: var(--color-gray-4);
+		margin-bottom: 0.5rem;
+		margin-right: 0.5rem;
 	}
 </style>
