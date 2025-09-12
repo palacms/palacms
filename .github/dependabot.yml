@@ -8,6 +8,14 @@ updates:
     schedule:
       interval: 'weekly'
 
+  # Enable version updates for Go
+  - package-ecosystem: 'gomod'
+    # Look for `go.mod` and `go.lock` files in the `root` directory
+    directory: '/'
+    # Check the Go module updates once a week
+    schedule:
+      interval: 'weekly'
+
   # Enable version updates for Docker
   - package-ecosystem: 'docker'
     # Look for a `Dockerfile` in the `root` directory

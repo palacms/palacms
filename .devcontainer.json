@@ -5,7 +5,8 @@
         "bbenoist.Nix",
         "svelte.svelte-vscode",
         "esbenp.prettier-vscode",
-        "eamodio.gitlens"
+        "eamodio.gitlens",
+        "golang.go"
       ]
     }
   },

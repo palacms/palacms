@@ -1,4 +1,4 @@
-.env 
+.env
 .DS_Store
 .vercel/output
 .vscode
@@ -32,4 +32,7 @@ devenv.local.nix
 # PocketBase
 /pb_data
 /pb_public
-/pb_hooks/common
+
+# Outputs
+/internal/common
+/internal/build

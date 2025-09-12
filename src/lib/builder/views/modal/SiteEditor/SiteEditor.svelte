@@ -18,7 +18,7 @@
 	const site = site_context.get()
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
-	const site_data = $derived(useContent(site)?.[$locale] ?? {})
+	const site_data = $derived(useContent(site, { target: 'cms' })?.[$locale] ?? {})
 
 	hide_dynamic_field_types_context.set(true)
 

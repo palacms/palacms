@@ -132,7 +132,7 @@
 		$site_html = null
 	})
 
-	const data = $derived(useContent(site))
+	const data = $derived(useContent(site, { target: 'cms' }))
 	const site_data = $derived(data && (data[$locale] ?? {}))
 	async function compile_component_head({ html, data }) {
 		const compiled = await processCode({
