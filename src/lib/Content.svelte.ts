@@ -98,24 +98,36 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			// Handle group fields specially - collect subfield entries into an object
 			if (field.type === 'group' && field.key) {
 				const [entry] = fieldEntries
-				if (!entry) continue
+				if (!entry) {
+					if (!content.en) content.en = {}
+					content.en![field.key] = {}
+					continue
+				}
 				if (!content[entry.locale]) content[entry.locale] = {}
 
 				const data = getContent(field, entry)
-				if (!data) return
+				if (!data) {
+					content[entry.locale]![field.key] = {}
+					continue
+				}
 
 				content[entry.locale]![field.key] = data[entry.locale]
 			}
 
 			// Handle repeater fields specially - collect array of subfield entries into an object
 			else if (field.type === 'repeater' && field.key) {
+				// Ensure we always provide an array, even if there are no entries
+				if (fieldEntries.length === 0) {
+					if (!content.en) content.en = {}
+					content.en![field.key] = []
+				}
 				for (const entry of fieldEntries) {
 					if (!content[entry.locale]) content[entry.locale] = {}
 					if (!content[entry.locale]![field.key]) content[entry.locale]![field.key] = []
 
 					const data = getContent(field, entry)
-					if (!data) return
-					;(content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
+					if (!data) continue
+						; (content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
 				}
 			}
 
@@ -143,13 +155,13 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!content[entry.locale]) content[entry.locale] = {}
 
 				const page = Pages.one(entry.value)
-				if (!page) return
+				if (!page) continue
 
 				const data = useContent(page)
-				if (!data) return
+				if (!data) continue
 
 				const url = build_live_page_url(page)?.pathname
-				if (url === undefined) return
+				if (url === undefined) continue
 
 				content[entry.locale]![field.key] = {
 					...data[entry.locale],
@@ -165,10 +177,10 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			// Handle page-list fields specially
 			else if (field.type === 'page-list' && field.key) {
 				const pages = Pages.list({ filter: { page_type: field.config.page_type } })?.sort((a, b) => a.index - b.index)
-				if (!pages) return
+				if (!pages) continue
 
 				const data = pages.map((page) => useContent(page))
-				if (data.some((content) => !content)) return
+				if (data.some((content) => !content)) continue
 
 				for (let index = 0; index < pages.length; index++) {
 					for (const locale in { en: {}, ...data[index] }) {
@@ -176,7 +188,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 						if (!content[locale][field.key]) content[locale][field.key] = []
 
 						const url = build_live_page_url(pages[index])?.pathname
-						if (url === undefined) return
+						if (url === undefined) continue
 
 						content[locale][field.key].push({
 							...data[index]?.[locale],
