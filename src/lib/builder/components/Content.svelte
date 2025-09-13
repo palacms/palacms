@@ -65,6 +65,7 @@
 		justify-content: stretch;
 
 		.empty-description {
+			padding-inline: 0.5rem;
 			color: var(--color-gray-4);
 			font-size: var(--font-size-2);
 			height: 100%;

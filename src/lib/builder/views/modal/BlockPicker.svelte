@@ -32,6 +32,9 @@
 	let selected: ObjectOf<typeof LibrarySymbols>[] = $state([])
 	let checked: string[] = $state([])
 
+	// Loading state for the header button
+	let loading = $state(false)
+
 	function include_symbol(symbol: ObjectOf<typeof LibrarySymbols>) {
 		if (selected.some((s) => s.id === symbol.id) || checked.includes(symbol.id)) {
 			selected = selected.filter((item) => item.id !== symbol.id)
@@ -48,8 +51,16 @@
 	title="Add Library Blocks to Site"
 	button={{
 		label: `Add ${selected.length} Blocks`,
-		onclick: () => onsave(selected),
-		disabled: selected.length === 0
+		onclick: async () => {
+			loading = true
+			try {
+				await onsave(selected)
+			} finally {
+				loading = false
+			}
+		},
+		disabled: selected.length === 0 || loading,
+		loading
 	}}
 />
 

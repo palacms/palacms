@@ -26,7 +26,7 @@
 
 	const active_symbol_group_id = $derived(page.url.searchParams.get('group'))
 	const symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
-	
+
 	// Auto-select first group if none selected and groups exist
 	$effect(() => {
 		if (!active_symbol_group_id && symbol_groups.length > 0) {
@@ -35,7 +35,7 @@
 			goto(url, { replaceState: true })
 		}
 	})
-	
+
 	const active_symbol_group = $derived(active_symbol_group_id ? LibrarySymbolGroups.one(active_symbol_group_id) : undefined)
 
 	// Get symbols for the active group using direct query instead of relationship method
@@ -364,7 +364,7 @@
 		}
 	}}
 >
-	<Dialog.Content escapeKeydownBehavior="ignore" class="max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4 gap-0">
+	<Dialog.Content escapeKeydownBehavior="ignore" class="w-full h-full max-h-[100vh] flex flex-col p-4 gap-0">
 		<BlockEditor
 			symbol_type="library"
 			bind:has_unsaved_changes={creating_block_has_unsaved_changes}
@@ -398,7 +398,7 @@
 		}
 	}}
 >
-	<Dialog.Content escapeKeydownBehavior="ignore" class="max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4 gap-0">
+	<Dialog.Content escapeKeydownBehavior="ignore" class="h-full max-h-[100vh] flex flex-col p-4 gap-0">
 		<BlockEditor
 			block={symbol_being_edited}
 			symbol_type="library"
@@ -487,4 +487,3 @@
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
-

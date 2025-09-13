@@ -1,7 +1,7 @@
 export const dynamic_iframe_srcdoc = (head = '') => {
 	return `
   <!DOCTYPE html>
-  <html lang="en">
+  <html>
     <head>
       ${head}
       <meta charset="utf-8">
@@ -105,7 +105,7 @@ export const dynamic_iframe_srcdoc = (head = '') => {
 export const static_iframe_srcdoc = ({ head = '', html, css, foot = '' }) => {
 	return `
     <!DOCTYPE html>
-    <html lang="en">
+    <html>
       <head>${head}</head>
       <body id="page" style="margin:0">
         ${html}
@@ -119,7 +119,7 @@ export const static_iframe_srcdoc = ({ head = '', html, css, foot = '' }) => {
 export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
 	return `
     <!DOCTYPE html>
-    <html lang="en">
+    <html>
       <head>
         <script type="module">
           import { mount, unmount } from "https://esm.sh/svelte"
