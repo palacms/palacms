@@ -364,7 +364,7 @@
 		}
 	}}
 >
-	<Dialog.Content escapeKeydownBehavior="ignore" class="w-full h-full max-h-[100vh] flex flex-col p-4 gap-0">
+	<Dialog.Content escapeKeydownBehavior="ignore" class="w-full max-w-none h-full max-h-[100vh] flex flex-col p-4 gap-0">
 		<BlockEditor
 			symbol_type="library"
 			bind:has_unsaved_changes={creating_block_has_unsaved_changes}
@@ -398,7 +398,7 @@
 		}
 	}}
 >
-	<Dialog.Content escapeKeydownBehavior="ignore" class="h-full max-h-[100vh] flex flex-col p-4 gap-0">
+	<Dialog.Content escapeKeydownBehavior="ignore" class="w-full max-w-none h-full max-h-[100vh] flex flex-col p-4 gap-0">
 		<BlockEditor
 			block={symbol_being_edited}
 			symbol_type="library"

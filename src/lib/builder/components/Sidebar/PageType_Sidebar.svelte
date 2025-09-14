@@ -192,7 +192,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] w-full max-w-none h-full max-h-[100vh] flex flex-col p-4">
 		<BlockEditor
 			bind:has_unsaved_changes={creating_block_has_unsaved_changes}
 			header={{
@@ -215,7 +215,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] w-full max-w-none h-full max-h-[100vh] flex flex-col p-4">
 		<BlockPicker
 			{site}
 			onsave={async (blocks) => {
