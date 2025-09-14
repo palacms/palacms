@@ -24,7 +24,7 @@
 	import { type Snippet } from 'svelte'
 	import { site_context } from '$lib/builder/stores/context'
 	import { current_user } from '$lib/pocketbase/user'
-	import { resolve_page } from '$lib/pages'
+	import { resolve_page, build_cms_page_url } from '$lib/pages'
 
 	let { children }: { children: Snippet } = $props()
 
@@ -41,59 +41,40 @@
 	let going_up = $state(false)
 	let going_down = $state(false)
 
-	// Get root-level pages for navigation (homepage + direct children)
+	// Determine navigation scope based on current page (supports nested child pages)
 	const home_page = $derived(site?.homepage())
 	const child_pages = $derived(home_page?.children() ?? [])
-	const root_pages = $derived(home_page ? [home_page, ...child_pages] : [])
+	const nav_pages = $derived.by(() => {
+		if (!home_page) return []
+		// Only navigate within the same level as the current page.
+		// Base route or homepage (no parent) → no same-level navigation
+		if (!page || !page.parent) return []
+		// First-level children: siblings are the homepage's children
+		if (page.parent === home_page.id) return child_pages
+		// Deeper levels: siblings are the current parent’s children
+		const parent = Pages.one(page.parent)
+		return (parent?.children() ?? []).sort((a, b) => a.index - b.index)
+	})
 	const current_page_index = $derived.by(() => {
-		if (!page) {
-			// If no page is found, we might be on the homepage
-			const currentUrl = pageState.url.pathname
-			const siteBasePath = `/admin/sites/${site?.id}`
-			if (currentUrl === siteBasePath) {
-				// We're on the homepage
-				return 0
-			}
-		}
-		return root_pages.findIndex((p) => p.id === page?.id)
+		if (!page) return 0 // Treat base route as homepage
+		return nav_pages.findIndex((p) => p.id === page.id)
 	})
 	const can_navigate_up = $derived(current_page_index > 0)
-	const can_navigate_down = $derived(current_page_index < root_pages.length - 1 && current_page_index !== -1)
+	const can_navigate_down = $derived(current_page_index < nav_pages.length - 1 && current_page_index !== -1)
 
 	// Navigation functions
 	function navigate_up() {
-		if (can_navigate_up) {
-			const prev_page = root_pages[current_page_index - 1]
-			const base_path = `/admin/sites/${site?.id}`
-			// Check if this is the homepage (first page in root_pages array)
-			const target_url = prev_page === home_page ? base_path : `${base_path}/${prev_page.slug}`
-			console.log('Navigate up:', {
-				current_page_index,
-				prev_page: prev_page?.name,
-				prev_page_slug: prev_page?.slug,
-				is_homepage: prev_page === home_page,
-				target_url
-			})
-			goto(target_url)
-		}
+		if (!can_navigate_up) return
+		const prev_page = nav_pages[current_page_index - 1]
+		const url = build_cms_page_url(prev_page, pageState.url)
+		if (url) goto(url, { replaceState: false })
 	}
 
 	function navigate_down() {
-		if (can_navigate_down && current_page_index < root_pages.length - 1 && current_page_index !== -1) {
-			const next_page = root_pages[current_page_index + 1]
-			if (next_page) {
-				const base_path = `/admin/sites/${site?.id}`
-				// Check if this is the homepage (first page in root_pages array)
-				const target_url = next_page === home_page ? base_path : `${base_path}/${next_page.slug}`
-				console.log('Navigate down:', {
-					current_page_index,
-					next_page: next_page?.name,
-					next_page_slug: next_page?.slug,
-					is_homepage: next_page === home_page,
-					target_url
-				})
-				goto(target_url)
-			}
+		if (can_navigate_down && current_page_index < nav_pages.length - 1 && current_page_index !== -1) {
+			const next_page = nav_pages[current_page_index + 1]
+			const url = build_cms_page_url(next_page, pageState.url)
+			if (url) goto(url, { replaceState: false })
 		}
 	}
 
