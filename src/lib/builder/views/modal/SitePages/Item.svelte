@@ -28,6 +28,7 @@
 		active,
 		oncreate,
 		page_slug,
+		active_page_id,
 		hover_position = $bindable(null)
 	}: {
 		parent?: ObjectOf<typeof Pages>
@@ -35,6 +36,7 @@
 		active: boolean
 		oncreate: (new_page: Omit<Page, 'id' | 'index'>) => Promise<void>
 		page_slug: string
+		active_page_id?: string
 		hover_position?: string | null
 	} = $props()
 
@@ -399,7 +401,7 @@
 	{#if showing_children && has_children}
 		<ul class="page-list child" transition:slide={{ duration: has_toggled ? 100 : 0 }}>
 			{#each children as subpage}
-				<Item parent={page} page={subpage} active={subpage.slug === page_slug} {page_slug} {oncreate} bind:hover_position on:delete on:create />
+				<Item parent={page} page={subpage} active={subpage.id === active_page_id} {page_slug} {active_page_id} {oncreate} bind:hover_position on:delete on:create />
 			{/each}
 		</ul>
 	{/if}
