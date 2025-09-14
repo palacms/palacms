@@ -22,7 +22,52 @@
 	}
 
 	// track focused value inputs to auto-fill values when unedited
-	const clicked_value_inputs = new Set()
+	const clicked_value_inputs = new Set<number>()
+
+	function deleteOption(index: number) {
+		// Remove option
+		options = options.filter((_, i) => i !== index)
+		// Reindex clicked inputs to keep behavior stable after deletion
+		const nextClicked = new Set<number>()
+		clicked_value_inputs.forEach((i) => {
+			if (i < index) nextClicked.add(i)
+			else if (i > index) nextClicked.add(i - 1)
+		})
+		clicked_value_inputs.clear()
+		nextClicked.forEach((i) => clicked_value_inputs.add(i))
+		// Notify parent of config change
+		dispatch('input', { config: { options } })
+	}
+
+	function swap<T>(arr: T[], a: number, b: number) {
+		const next = [...arr]
+		;[next[a], next[b]] = [next[b], next[a]]
+		return next
+	}
+
+	function swap_clicked_indices(a: number, b: number) {
+		const hasA = clicked_value_inputs.has(a)
+		const hasB = clicked_value_inputs.has(b)
+		if (!hasA && !hasB) return
+		if (hasA) clicked_value_inputs.delete(a)
+		if (hasB) clicked_value_inputs.delete(b)
+		if (hasA) clicked_value_inputs.add(b)
+		if (hasB) clicked_value_inputs.add(a)
+	}
+
+	function moveOptionUp(index: number) {
+		if (index <= 0) return
+		options = swap(options, index, index - 1)
+		swap_clicked_indices(index, index - 1)
+		dispatch('input', { config: { options } })
+	}
+
+	function moveOptionDown(index: number) {
+		if (index >= options.length - 1) return
+		options = swap(options, index, index + 1)
+		swap_clicked_indices(index, index + 1)
+		dispatch('input', { config: { options } })
+	}
 </script>
 
 <!-- <div class="SelectField" style="margin-left: {1.5 + level}rem"> -->
@@ -62,16 +107,16 @@
 			/>
 			<div class="item-options" id="repeater-{field.key}-{i}">
 				{#if i !== 0}
-					<button title="Move {field.label} up" onclick={() => {}}>
+					<button title="Move {field.label} up" onclick={() => moveOptionUp(i)}>
 						<Icon icon="fa-solid:arrow-up" />
 					</button>
 				{/if}
 				{#if i !== options.length - 1}
-					<button title="Move {field.label} down" onclick={() => {}}>
+					<button title="Move {field.label} down" onclick={() => moveOptionDown(i)}>
 						<Icon icon="fa-solid:arrow-down" />
 					</button>
 				{/if}
-				<button style="color: var(--primo-color-danger)" title="Delete {field.label} item" onclick={() => {}}>
+				<button style="color: var(--primo-color-danger)" title="Delete {field.label} item" onclick={() => deleteOption(i)}>
 					<Icon icon="ion:trash" />
 				</button>
 			</div>
