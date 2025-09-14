@@ -5,6 +5,7 @@
 	import PageForm from './PageForm.svelte'
 	import Icon from '@iconify/svelte'
 	import { Pages, PageTypes, PageSections, PageSectionEntries, manager } from '$lib/pocketbase/collections'
+	import { resolve_page } from '$lib/pages'
 	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { fade, fly } from 'svelte/transition'
@@ -17,6 +18,8 @@
 	// Get site from context (preferred) or fallback to hostname lookup
 	const site = site_context.get()
 	const page_slug = $derived(pageState.params.page)
+	const current_path = $derived(pageState.params.page?.split('/'))
+	const active_page = $derived(site && current_path && resolve_page(site, current_path))
 	const is_page_type_route = $derived(!!pageState.params.page_type)
 	const all_pages = $derived(site?.pages() ?? [])
 	const home_page = $derived(site?.homepage())
@@ -77,21 +80,19 @@
 	 * Note: Only copies root-level entries for now, nested entries are handled on-demand
 	 */
 	async function create_page_with_sections(page_data: Omit<Page, 'id' | 'index'>) {
-    // Get existing siblings and sort them
-    const sibling_pages = all_pages
-        .filter((page) => page.parent === page_data.parent)
-        .sort((a, b) => a.index - b.index)
+		// Get existing siblings and sort them
+		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent).sort((a, b) => a.index - b.index)
 
-    // Append to the end of the sibling list
-    const startIndex = page_data.parent === home_page?.id ? 1 : 0
-    const lastIndex = sibling_pages.length > 0 ? Math.max(...sibling_pages.map((p) => p.index)) : startIndex - 1
-    const new_index = lastIndex + 1
+		// Append to the end of the sibling list
+		const startIndex = page_data.parent === home_page?.id ? 1 : 0
+		const lastIndex = sibling_pages.length > 0 ? Math.max(...sibling_pages.map((p) => p.index)) : startIndex - 1
+		const new_index = lastIndex + 1
 
-    // Create the page at the computed index (no shifting of existing siblings)
-    new_page = Pages.create({
-        ...page_data,
-        index: new_index
-    })
+		// Create the page at the computed index (no shifting of existing siblings)
+		new_page = Pages.create({
+			...page_data,
+			index: new_index
+		})
 	}
 </script>
 
@@ -99,12 +100,12 @@
 {#if home_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)] page-list">
 		<li class="page-item-wrapper">
-			<Item page={home_page} active={!page_slug && !is_page_type_route} {page_slug} oncreate={create_page_with_sections} bind:hover_position />
+			<Item page={home_page} active={!page_slug && !is_page_type_route} {page_slug} active_page_id={active_page?.id} oncreate={create_page_with_sections} bind:hover_position />
 			<div class="drop-indicator-inline" class:active={hover_position === 'home-bottom'}><div></div></div>
 		</li>
 		{#each child_pages.sort((a, b) => a.index - b.index) as child_page, i (child_page.id)}
 			<li class="page-item-wrapper" in:fly={{ y: 20, duration: 200, delay: i * 50 }} animate:flip={{ duration: 300, easing: quintOut }}>
-				<Item page={child_page} active={page_slug === child_page.slug} {page_slug} oncreate={create_page_with_sections} bind:hover_position />
+				<Item page={child_page} active={active_page?.id === child_page.id} {page_slug} active_page_id={active_page?.id} oncreate={create_page_with_sections} bind:hover_position />
 				<div class="drop-indicator-inline" class:active={hover_position === `${child_page.id}-bottom`}><div></div></div>
 			</li>
 		{/each}
