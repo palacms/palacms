@@ -21,14 +21,18 @@ self.addEventListener('message', (event) => {
 
 	const [port] = event.ports
 	port.addEventListener('message', (event) => {
-		if (!PB_REQUEST || event.data.type !== 'request') {
+		if (event.data.type !== 'request') {
 			return
 		}
 
 		const { id, request } = event.data
-		PB_REQUEST(request, (response) => {
-			port.postMessage({ type: 'response', id, response })
-		})
+		if ('PB_REQUEST' in self) {
+			PB_REQUEST(request, (response) => {
+				port.postMessage({ type: 'response', id, response })
+			})
+		} else {
+			port.postMessage({ type: 'response', id, response: { status: 502 } })
+		}
 	})
 	port.start()
 })
