@@ -66,7 +66,7 @@
 
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
-	const data = $derived(useContent(section))
+	const data = $derived(useContent(section, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	let floating_menu = $state()
@@ -773,18 +773,19 @@ watch(
 	}
 
 	// Watch for changes and send to iframe when ready
-	// Send when either code (js) OR data changes to reflect live edits.
-	let last_sent = $state<any>()
+	// Only send when this component's data meaningfully changed to avoid
+	// triggering re-renders of unrelated symbols.
+	let last_sent_data = $state<any>()
 	watch(
 		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
 		({ js, data, ready }) => {
 			if (!(ready && data && js)) return
 
-			const signature = { js, data }
-			if (_.isEqual(last_sent, signature)) return
+				// Skip if data is deeply equal to the last sent value
+				if (_.isEqual(last_sent_data, data)) return
 
-			// Store a snapshot to avoid mutation side-effects
-			last_sent = _.cloneDeep(signature)
+				// Store a snapshot to avoid mutation side-effects
+				last_sent_data = _.cloneDeep(data)
 			send_component_to_iframe(js, data)
 		}
 	)

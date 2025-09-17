@@ -12,7 +12,7 @@ const POSTHOG_HOST = 'https://us.i.posthog.com'
 export let instance: InstanceInfo
 
 export const initialized = (async () => {
-	instance = await fetch(new URL('/_instance', self.baseURL)).then((res) => res.json())
+	instance = await fetch(new URL('/api/palacms/info', self.baseURL)).then((res) => res.json())
 	if (!instance.telemetry_enabled) {
 		return
 	}

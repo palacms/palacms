@@ -3,6 +3,7 @@ name: palacms-production
 services:
   palacms:
     image: ${DOCKER_IMAGE}
+    restart: always
     volumes:
       - palacms-data:/app/pb_data
     networks:

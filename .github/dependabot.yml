@@ -4,9 +4,17 @@ updates:
   - package-ecosystem: 'npm'
     # Look for `package.json` and `lock` files in the `root` directory
     directory: '/'
-    # Check the npm registry for updates every day (weekdays)
+    # Check the npm registry for updates once a week
     schedule:
-      interval: 'daily'
+      interval: 'weekly'
+
+  # Enable version updates for Go
+  - package-ecosystem: 'gomod'
+    # Look for `go.mod` and `go.lock` files in the `root` directory
+    directory: '/'
+    # Check the Go module updates once a week
+    schedule:
+      interval: 'weekly'
 
   # Enable version updates for Docker
   - package-ecosystem: 'docker'

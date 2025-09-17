@@ -23,7 +23,15 @@ export const ENTITY_COLLECTIONS = {
 export type EntityOf<Collection extends keyof typeof ENTITY_COLLECTIONS> = ObjectOf<(typeof ENTITY_COLLECTIONS)[Collection]>
 export type Entity = EntityOf<keyof typeof ENTITY_COLLECTIONS>
 
-export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(entity: EntityOf<Collection>) => {
+export type UseContentOptions = {
+	/**
+	 * Whether the content should be tailored for a published site or editing.
+	 * This can effect how links are generated.
+	 */
+	target: 'cms' | 'live'
+}
+
+export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(entity: EntityOf<Collection>, options: UseContentOptions) => {
 	const [fields, entries, uploads] = (() => {
 		switch (true) {
 			// library_symbols
@@ -139,9 +147,14 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 				const upload_id: string | null | undefined = entry.value.upload
 				const upload = upload_id ? uploads.find((upload) => upload.id === upload_id) : null
+
 				const upload_url =
 					upload &&
-					(typeof upload.file === 'string' ? `${self.baseURL}/api/files/${'group' in entity ? 'library_uploads' : 'site_uploads'}/${upload.id}/${upload.file}` : URL.createObjectURL(upload.file))
+					(options.target === 'live'
+						? `/_uploads/${upload.file}`
+						: typeof upload.file === 'string'
+							? `${self.baseURL}/api/files/${'group' in entity ? 'library_uploads' : 'site_uploads'}/${upload.id}/${upload.file}`
+							: URL.createObjectURL(upload.file))
 				const input_url: string | undefined = entry.value.url
 				const url = input_url || upload_url
 				const alt: string = entry.value.alt
@@ -157,8 +170,8 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const page = Pages.one(entry.value)
 				if (!page) continue
 
-				const data = useContent(page)
-				if (!data) continue
+					const data = useContent(page, options)
+					if (!data) return
 
 				const url = build_live_page_url(page)?.pathname
 				if (url === undefined) continue
@@ -179,8 +192,8 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const pages = Pages.list({ filter: { page_type: field.config.page_type } })?.sort((a, b) => a.index - b.index)
 				if (!pages) continue
 
-				const data = pages.map((page) => useContent(page))
-				if (data.some((content) => !content)) continue
+					const data = pages.map((page) => useContent(page, options))
+					if (data.some((content) => !content)) return
 
 				for (let index = 0; index < pages.length; index++) {
 					for (const locale in { en: {}, ...data[index] }) {

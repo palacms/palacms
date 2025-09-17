@@ -49,7 +49,7 @@
 			| undefined
 	)
 
-	const _data = $derived(useContent(entity))
+	const _data = $derived(useContent(entity, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
 
 	const is_visible = $derived.by(() => {

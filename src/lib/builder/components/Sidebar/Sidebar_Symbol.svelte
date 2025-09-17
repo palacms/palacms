@@ -51,7 +51,7 @@
 		css: symbol.css,
 		js: symbol.js
 	})
-	const _data = $derived(useContent(symbol))
+	const _data = $derived(useContent(symbol, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
 
 	let componentCode = $state()
@@ -92,10 +92,22 @@
 				element,
 				getInitialData: () => ({ block: symbol }),
 				onDragStart: () => {
-					// TODO
+					if (typeof window !== 'undefined') {
+						window.dispatchEvent(
+							new CustomEvent('palaDragStart', {
+								detail: { block: symbol }
+							})
+						)
+					}
 				},
 				onDrop: () => {
-					// TODO
+					if (typeof window !== 'undefined') {
+						window.dispatchEvent(
+							new CustomEvent('palaDragEnd', {
+								detail: { block: symbol }
+							})
+						)
+					}
 				}
 			})
 		}
