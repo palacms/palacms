@@ -19,6 +19,11 @@ import (
 )
 
 func Serve(app core.App, baseURL *url.URL) error {
+	err := app.RunAllMigrations()
+	if err != nil {
+		return err
+	}
+
 	pbRouter, err := apis.NewRouter(app)
 	if err != nil {
 		return err

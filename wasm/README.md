@@ -9,19 +9,19 @@
 1. Copy wasm_exec.js glue code from Go:
 
    ```
-   cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .
+   cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" wasm/web/
    ```
 
 2. Build:
 
    ```
-   GOOS=js GOARCH=wasm go build -o main.wasm
+   GOOS=js GOARCH=wasm go build --tags sqlite3_dotlk -o wasm/web/palacms.wasm ./wasm
    ```
 
 3. Start a HTTP server which has a fallback to index.html:
 
    ```
-   npx serve --single
+   npx serve --single wasm/web/
    ```
 
 4. Open a browser to admin dashboard:

@@ -47,8 +47,12 @@ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWE
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/ncruces/go-sqlite3 v0.29.0 h1:1tsLiagCoqZEfcHDeKsNSv5jvrY/Iu393pAnw2wLNJU=
 github.com/ncruces/go-sqlite3 v0.29.0/go.mod h1:r1hSvYKPNJ+OlUA1O3r8o9LAawzPAlqeZiIdxTBBBJ0=
+github.com/ncruces/go-sqlite3/embed/bcw2 v0.24.0 h1:MTSMNSjAHK/fXEDz1NktEeolFVXJZvmH9ujbWccY+N4=
+github.com/ncruces/go-sqlite3/embed/bcw2 v0.24.0/go.mod h1:gna9swx/RpLuUGS7BQ/Wml9Fhwopwnq716T+HuwLKHQ=
 github.com/ncruces/julianday v1.0.0 h1:fH0OKwa7NWvniGQtxdJRxAgkBMolni2BjDHaWTxqt7M=
 github.com/ncruces/julianday v1.0.0/go.mod h1:Dusn2KvZrrovOMJuOt0TNXL6tB7U2E8kvza5fFc9G7g=
+github.com/ncruces/sort v0.1.5 h1:fiFWXXAqKI8QckPf/6hu/bGFwcEPrirIOFaJqWujs4k=
+github.com/ncruces/sort v0.1.5/go.mod h1:obJToO4rYr6VWP0Uw5FYymgYGt3Br4RXcs/JdKaXAPk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pocketbase/dbx v1.11.0 h1:LpZezioMfT3K4tLrqA55wWFw1EtH1pM4tzSVa7kgszU=

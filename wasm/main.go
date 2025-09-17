@@ -17,6 +17,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/hook"
 
 	palacms "github.com/palacms/palacms/internal"
+	_ "github.com/palacms/palacms/migrations"
 )
 
 func main() {
