@@ -9,7 +9,6 @@ replace github.com/palacms/palacms => ../
 require (
 	github.com/fatih/color v1.18.0
 	github.com/ncruces/go-sqlite3 v0.29.0
-	github.com/ncruces/go-sqlite3/embed/bcw2 v0.24.0
 	github.com/palacms/palacms v0.0.0-00010101000000-000000000000
 	github.com/pocketbase/dbx v1.11.0
 	github.com/pocketbase/pocketbase v0.30.0
