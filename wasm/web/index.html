@@ -2,10 +2,47 @@
 <html>
 	<head>
 		<title>PalaCMS</title>
-		<script src="/main.js"></script>
+		<style>
+			body {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				flex-direction: column;
+				box-sizing: border-box;
+				margin: 0;
+				font-family: sans-serif;
+			}
+
+			h1,
+			p {
+				margin: 0.5rem 1rem;
+			}
+
+			#output {
+				flex: 1;
+				white-space: pre-wrap;
+				overflow: auto;
+				background-color: #222;
+				color: white;
+				line-height: 1.5;
+				margin: 0;
+				padding: 1rem;
+			}
+
+			#output > span {
+				display: block;
+				margin-bottom: 0.25rem;
+			}
+		</style>
 	</head>
 	<body>
-		<p>Starting PalaCMS... Open a new tab to start using it. Keep this tab open.</p>
+		<h1>PalaCMS</h1>
+		<p>Starting PalaCMS... Wait until it's started and click the link below. Keep this tab open.</p>
 		<p><a href="/" target="_blank">Open PalaCMS</a></p>
+		<pre id="output"></pre>
+		<script src="/main.js"></script>
 	</body>
 </html>

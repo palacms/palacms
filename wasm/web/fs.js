@@ -56,6 +56,7 @@
 	let nextFd = 3
 	const handles = new Map()
 
+	globalThis.output ||= console.log
 	globalThis.fs = {
 		constants: {
 			O_WRONLY: 1 << 0,
@@ -71,7 +72,7 @@
 			outputBuf += decoder.decode(buf)
 			const nl = outputBuf.lastIndexOf('\n')
 			if (nl != -1) {
-				console.log(outputBuf.substring(0, nl))
+				globalThis.output(outputBuf.substring(0, nl))
 				outputBuf = outputBuf.substring(nl + 1)
 			}
 			return buf.length
