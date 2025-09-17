@@ -14,7 +14,6 @@ import (
 	"github.com/palacms/palacms/wasm/internal"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/hook"
 
 	palacms "github.com/palacms/palacms/internal"
 	_ "github.com/palacms/palacms/migrations"
@@ -22,21 +21,23 @@ import (
 
 func main() {
 	pb := pocketbase.NewWithConfig(pocketbase.Config{
-		DefaultDev:     true,
-		DefaultDataDir: "/pb_data",
-		DBConnect:      internal.DBConnect,
+		DefaultDev:       true,
+		DefaultDataDir:   "/pb_data",
+		DBConnect:        internal.DBConnect,
+		DataMaxOpenConns: 1,
+		DataMaxIdleConns: 1,
+		AuxMaxOpenConns:  1,
+		AuxMaxIdleConns:  1,
 	})
 
-	pb.OnServe().Bind(&hook.Handler[*core.ServeEvent]{
-		Func: func(e *core.ServeEvent) error {
-			js.Global().Set("PB_REQUEST", js.FuncOf(func(this js.Value, args []js.Value) any {
-				req := args[0]
-				res := args[1]
-				handle(e.Server.Handler, req, res)
-				return nil
-			}))
-			return e.Next()
-		},
+	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
+		js.Global().Set("PB_REQUEST", js.FuncOf(func(this js.Value, args []js.Value) any {
+			req := args[0]
+			cb := args[1]
+			go handle(e.Server.Handler, req, cb)
+			return nil
+		}))
+		return e.Next()
 	})
 
 	if err := setup(pb); err != nil {
@@ -89,7 +90,10 @@ func setup(pb *pocketbase.PocketBase) error {
 	return nil
 }
 
-func handle(handler http.Handler, req js.Value, res js.Value) {
+func handle(handler http.Handler, req js.Value, cb js.Value) {
+	res := js.Global().Call("Object")
+	defer cb.Invoke(res)
+
 	body := make([]byte, req.Get("body").Get("length").Int())
 	js.CopyBytesToGo(body, req.Get("body"))
 	request, err := http.NewRequest(

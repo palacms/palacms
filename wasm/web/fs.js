@@ -36,15 +36,15 @@
 		const segments = trimmedPath.split('/')
 		return segments
 	}
-	const resolveDirectory = (path) =>
-		navigator.storage.getDirectory().then(async (root) => {
-			const segments = getPathSegements(path)
-			let dir = root
-			for (const segment of segments) {
-				dir = await dir.getDirectoryHandle(segment)
-			}
-			return dir
-		})
+	const resolveDirectory = async (path) => {
+		const root = await navigator.storage.getDirectory()
+		const segments = getPathSegements(path)
+		let dir = root
+		for (const segment of segments) {
+			dir = await dir.getDirectoryHandle(segment)
+		}
+		return dir
+	}
 	const resolveFile = async (path, options) => {
 		const segments = getPathSegements(path)
 		const [name] = segments.slice(-1)

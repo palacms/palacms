@@ -2,7 +2,6 @@
 
 - Runs Pocketbase inside a browser using WebAssembly
 - Uses service worker to handle requests
-- Uses a temporary memory database
 
 ## Building and running
 
@@ -27,7 +26,5 @@
 4. Open a browser to admin dashboard:
 
    ```
-   firefox http://localhost:3000/_/
+   firefox http://localhost:3000/
    ```
-
-5. Pocketbase starts on the first load. Refresh the page to get to the login screen.

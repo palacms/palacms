@@ -4,11 +4,21 @@ let nextId = 1
 let port
 
 self.addEventListener('message', (event) => {
-	;[port] = event.ports
+	if (event.data === 'init') {
+		;[port] = event.ports
+	} else if (event.data === 'exit') {
+		port.close()
+		port = undefined
+	}
 })
 
 self.addEventListener('fetch', (event) => {
 	if (!port) {
+		return
+	}
+
+	const url = new URL(event.request.url)
+	if (url.origin !== location.origin) {
 		return
 	}
 

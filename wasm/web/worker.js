@@ -2,12 +2,19 @@ importScripts('/fs.js')
 importScripts('/wasm_exec.js')
 const go = new Go()
 WebAssembly.instantiateStreaming(fetch('/palacms.wasm'), go.importObject)
-	.then((result) => go.run(result.instance))
+	.then(async (result) => {
+		self.postMessage('ready')
+		await go.run(result.instance)
+	})
 	.catch((error) => {
 		console.error(error)
 	})
 
 self.addEventListener('message', (event) => {
+	if (event.data !== 'init') {
+		return
+	}
+
 	const [port] = event.ports
 	port.addEventListener('message', (event) => {
 		if (!PB_REQUEST) {
@@ -15,11 +22,10 @@ self.addEventListener('message', (event) => {
 		}
 
 		const request = event.data
-		const response = {
-			id: request.id
-		}
-		PB_REQUEST(request, response)
-		port.postMessage(response)
+		PB_REQUEST(request, (response) => {
+			response.id = request.id
+			port.postMessage(response)
+		})
 	})
 	port.start()
 })
