@@ -1,6 +1,7 @@
 importScripts('/fs.js')
 importScripts('/wasm_exec.js')
 const go = new Go()
+go.env.PALA_DISABLE_USAGE_STATS = 'true'
 WebAssembly.instantiateStreaming(fetch('/palacms.wasm'), go.importObject)
 	.then(async (result) => {
 		self.postMessage({ type: 'ready' })
