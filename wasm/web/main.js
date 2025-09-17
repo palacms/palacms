@@ -14,9 +14,13 @@ if (location.pathname !== '/') {
 	worker.addEventListener('message', (event) => {
 		const { type, value } = event.data
 		if (type === 'output') {
+			const isScrolledDown = output.scrollTop + output.clientHeight === output.scrollHeight
 			const line = document.createElement('span')
 			line.textContent = value + '\n'
 			output.appendChild(line)
+			if (isScrolledDown) {
+				output.scrollTop = output.scrollHeight - output.clientHeight
+			}
 		}
 	})
 
