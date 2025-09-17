@@ -25,7 +25,7 @@
 			js: symbol.js
 		}
 	)
-	const _data = $derived(useContent(symbol))
+	const _data = $derived(useContent(symbol, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
 
 	let generated_code = $state()

@@ -2,13 +2,16 @@
 
 {
   packages = with pkgs; [
-    pocketbase
+    wgo
   ];
   languages.javascript = {
     enable = true;
     package = pkgs.nodejs-slim_22;
     npm.enable = true;
     npm.install.enable = true;
+  };
+  languages.go = {
+    enable = true;
   };
   env = {
     PALA_VERSION = "dev";
@@ -21,7 +24,7 @@
   processes = {
     app-dev.exec = "vite --config app.config.js dev";
     common-build.exec = "vite --config common.config.js build --watch";
-    pocketbase.exec = "vite --config common.config.js build && pocketbase serve --dev";
+    server.exec = "wgo -dir internal go run . serve --dev";
   };
   devcontainer = {
     enable = true;
@@ -30,6 +33,7 @@
       "svelte.svelte-vscode"
       "esbenp.prettier-vscode"
       "eamodio.gitlens"
+      "golang.go"
     ];
   };
 }

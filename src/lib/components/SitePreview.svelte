@@ -55,7 +55,7 @@
 				style:height={iframeHeight}
 				class:fadein={iframeLoaded}
 				title="site preview"
-				src={`/_preview/${site.id}`}
+				src={`/?_site=${site.id}`}
 				onload={async () => {
 					await init_preview()
 					iframeLoaded = true
