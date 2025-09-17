@@ -25,7 +25,7 @@
 		"@sveltejs/adapter-static": "^3.0.9",
 		"@sveltejs/kit": "^2.39.1",
 		"@tailwindcss/postcss": "^4.1.13",
-		"@tiptap/core": "^3.2.0",
+		"@tiptap/core": "^3.4.4",
 		"@tiptap/extension-bubble-menu": "^3.4.2",
 		"@tiptap/extension-code-block-lowlight": "^3.4.2",
 		"@tiptap/extension-floating-menu": "^3.4.2",
