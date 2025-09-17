@@ -14,3 +14,4 @@ export const environment_context = new Context<'DESKTOP' | 'SERVER' | 'TRY'>('EN
 // Field visibility contexts
 export const hide_dynamic_field_types_context = new Context<boolean>('hide_dynamic_field_types')
 export const hide_page_field_field_type_context = new Context<boolean>('hide_page_field_field_type')
+export const hide_site_field_field_type_context = new Context<boolean>('hide_site_field_field_type')

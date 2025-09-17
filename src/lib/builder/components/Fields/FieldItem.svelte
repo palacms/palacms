@@ -15,7 +15,7 @@
 	import ImageFieldOptions from './ImageFieldOptions.svelte'
 	import fieldTypes from '../../stores/app/fieldTypes.js'
 	import { dynamic_field_types } from '$lib/builder/field-types'
-	import { site_context, hide_dynamic_field_types_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
+import { site_context, hide_dynamic_field_types_context, hide_page_field_field_type_context, hide_site_field_field_type_context } from '$lib/builder/stores/context'
 	import type { Field } from '$lib/common/models/Field'
 	import pluralize from 'pluralize'
 
@@ -44,11 +44,19 @@
 	const site = site_context.getOr(null)
 	const page_types = $derived(site?.page_types() ?? [])
 
-	const visible_field_types = hide_dynamic_field_types_context.getOr(false)
-		? $fieldTypes.filter((ft) => !dynamic_field_types.includes(ft.id))
-		: hide_page_field_field_type_context.getOr(false)
-			? $fieldTypes.filter((ft) => ft.id !== 'page-field')
-			: $fieldTypes
+let visible_field_types = $derived.by(() => {
+    let list = $fieldTypes
+    if (hide_dynamic_field_types_context.getOr(false)) {
+        list = list.filter((ft) => !dynamic_field_types.includes(ft.id))
+    }
+    if (hide_page_field_field_type_context.getOr(false)) {
+        list = list.filter((ft) => ft.id !== 'page-field')
+    }
+    if (hide_site_field_field_type_context.getOr(false)) {
+        list = list.filter((ft) => ft.id !== 'site-field')
+    }
+    return list
+})
 
 	let comparable_fields = $derived(
 		fields
