@@ -167,7 +167,7 @@ export const usePublishSite = (site_id?: string) => {
 			res.head +
 			'</head><body id="page">' +
 			res.body +
-			(no_js ? `` : '<script type="module">' + 'import { hydrate } from "https://esm.sh/svelte";' + fetch_modules(page_symbols_with_js) + '</script>') +
+			(no_js ? `` : '<script type="module">' + 'import { hydrate } from "https://esm.sh/svelte@5.38.10";' + fetch_modules(page_symbols_with_js) + '</script>') +
 			site?.foot +
 			'</body></html>'
 
