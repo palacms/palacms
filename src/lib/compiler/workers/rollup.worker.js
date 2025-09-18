@@ -2,7 +2,6 @@ import { rollup } from '@rollup/browser'
 import svelteWorker from './svelte.worker?worker'
 import PromiseWorker from 'promise-worker'
 import registerPromiseWorker from 'promise-worker/register'
-// (resolve.exports no longer needed)
 import commonjs from './plugins/commonjs'
 import json from './plugins/json'
 import glsl from './plugins/glsl'
