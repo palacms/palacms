@@ -624,20 +624,20 @@
 
 	let compiled_code = $state<string>('')
 	// Watch for changes in block code or component data and regenerate
-watch(
-    () => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
-    ({ html, css, js, data }) => {
-        // Wait until content data has resolved (avoid compiling with undefined data)
-        if (data === undefined) return
+	watch(
+		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
+		({ html, css, js, data }) => {
+			// Wait until content data has resolved (avoid compiling with undefined data)
+			if (data === undefined) return
 
-        // Recompile when any source (html/css/js) changes.
-        const signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
-        if (compiled_code !== signature) {
-            generate_component_code(block)
-            compiled_code = signature
-        }
-    }
-)
+			// Recompile when any source (html/css/js) changes.
+			const signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
+			if (compiled_code !== signature) {
+				generate_component_code(block)
+				compiled_code = signature
+			}
+		}
+	)
 
 	let mutation_observer
 	let iframe_resize_observer = $state()
@@ -769,6 +769,13 @@ watch(
 			doc.addEventListener('keyup', update_menu_positions)
 
 			setup_complete = true
+
+			// Every time setup is completed, we send the component to the IFrame.
+			// This happens also when the ComponentNode is moved in DOM due to IFrame resetting.
+			if (component_data && generated_js) {
+				last_sent_data = _.cloneDeep(component_data)
+				send_component_to_iframe(generated_js, component_data)
+			}
 		}
 	}
 
@@ -781,11 +788,11 @@ watch(
 		({ js, data, ready }) => {
 			if (!(ready && data && js)) return
 
-				// Skip if data is deeply equal to the last sent value
-				if (_.isEqual(last_sent_data, data)) return
+			// Skip if data is deeply equal to the last sent value
+			if (_.isEqual(last_sent_data, data)) return
 
-				// Store a snapshot to avoid mutation side-effects
-				last_sent_data = _.cloneDeep(data)
+			// Store a snapshot to avoid mutation side-effects
+			last_sent_data = _.cloneDeep(data)
 			send_component_to_iframe(js, data)
 		}
 	)
