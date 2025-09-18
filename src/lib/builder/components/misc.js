@@ -1,3 +1,5 @@
+import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
+
 export const dynamic_iframe_srcdoc = (head = '') => {
 	return `
   <!DOCTYPE html>
@@ -7,7 +9,7 @@ export const dynamic_iframe_srcdoc = (head = '') => {
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <script type="module">
-        import { mount, unmount } from "https://esm.sh/svelte@5.38.10";
+        import { mount, unmount } from "https://esm.sh/svelte@${SVELTE_VERSION}";
 
         let source;
         let c;
@@ -121,7 +123,7 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
       <head>
         <meta charset="utf-8">
         <script type="module">
-          import { mount, unmount } from "https://esm.sh/svelte@5.38.10"
+          import { mount, unmount } from "https://esm.sh/svelte@${SVELTE_VERSION}"
 
           let source;
           let c;

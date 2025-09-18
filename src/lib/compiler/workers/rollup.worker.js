@@ -5,6 +5,7 @@ import registerPromiseWorker from 'promise-worker/register'
 import commonjs from './plugins/commonjs'
 import json from './plugins/json'
 import glsl from './plugins/glsl'
+import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
 
 const sveltePromiseWorker = new PromiseWorker(new svelteWorker())
 
@@ -12,8 +13,6 @@ const sveltePromiseWorker = new PromiseWorker(new svelteWorker())
 
 // Use esm.sh for all remote module resolution, like the original worker
 const CDN_URL = 'https://esm.sh'
-// Pin to compiler version for compatibility
-const SVELTE_VERSION = '5.38.10'
 const SVELTE_CDN = `${CDN_URL}/svelte@${SVELTE_VERSION}`
 
 registerPromiseWorker(rollup_worker)
