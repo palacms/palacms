@@ -8,6 +8,7 @@ import { usePageData } from '../PageData.svelte'
 import { Sites } from '../pocketbase/collections'
 import { self } from '../pocketbase/PocketBase'
 import { useSvelteWorker } from './Worker.svelte'
+import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
 
 export const usePublishSite = (site_id?: string) => {
 	const worker = useSvelteWorker(
@@ -167,7 +168,7 @@ export const usePublishSite = (site_id?: string) => {
 			res.head +
 			'</head><body id="page">' +
 			res.body +
-			(no_js ? `` : '<script type="module">' + 'import { hydrate } from "https://esm.sh/svelte";' + fetch_modules(page_symbols_with_js) + '</script>') +
+			(no_js ? `` : '<script type="module">' + `import { hydrate } from "https://esm.sh/svelte@${SVELTE_VERSION}";` + fetch_modules(page_symbols_with_js) + '</script>') +
 			site?.foot +
 			'</body></html>'
 

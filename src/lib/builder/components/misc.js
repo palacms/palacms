@@ -1,3 +1,5 @@
+import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
+
 export const dynamic_iframe_srcdoc = (head = '') => {
 	return `
   <!DOCTYPE html>
@@ -7,7 +9,7 @@ export const dynamic_iframe_srcdoc = (head = '') => {
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <script type="module">
-        import { mount, unmount } from "https://esm.sh/svelte";
+        import { mount, unmount } from "https://esm.sh/svelte@${SVELTE_VERSION}";
 
         let source;
         let c;
@@ -24,57 +26,55 @@ export const dynamic_iframe_srcdoc = (head = '') => {
         }
 
         function update(props) {
-          const withLogs = \`
-            const channel = new BroadcastChannel('component_preview');
-            const primoLog = console ? console.log.bind(console) : null;
-            const primoError = console ? console.error.bind(console) : null;
+          // Reset logs and runtime error display in parent
+          try { channel.postMessage({ event: 'BEGIN' }); } catch (_) {}
 
-            // Throttled sender to avoid flooding the channel with repeated logs/errors
-            function createThrottledSender(interval = 120) {
+          // Install a safe console proxy that forwards logs to the parent
+          (function setupConsoleBridge(){
+            try {
+              const methods = ['log','info','warn','error'];
+              const original = Object.create(null);
+              for (const m of methods) {
+                const fn = (console && typeof console[m] === 'function') ? console[m].bind(console) : null;
+                original[m] = fn;
+              }
+
+              const safeSerialize = (v) => {
+                try { return JSON.parse(JSON.stringify(v)); } catch (_) { return typeof v === 'string' ? v : String(v); }
+              };
+
               let timer = null;
               let lastQueued = undefined;
               let lastSent = undefined;
-              const same = (a, b) => {
-                try { return JSON.stringify(a) === JSON.stringify(b); } catch (_) { return a === b; }
-              };
-              return (value) => {
+              const sendThrottled = (value) => {
                 lastQueued = value;
                 if (timer) return;
                 timer = setTimeout(() => {
                   timer = null;
-                  if (!same(lastQueued, lastSent)) {
-                    channel.postMessage({
-                      event: 'SET_CONSOLE_LOGS',
-                      payload: { logs: lastQueued }
-                    });
-                    lastSent = lastQueued;
+                  const payload = lastQueued;
+                  const key = (()=>{ try { return JSON.stringify(payload);} catch(_) { return String(payload);} })();
+                  if (key !== lastSent) {
+                    try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: payload } }); } catch(_) {}
+                    lastSent = key;
                   }
-                }, interval);
+                }, 120);
               };
+
+              for (const m of methods) {
+                console[m] = (...args) => {
+                  try {
+                    const payload = args.length <= 1 ? safeSerialize(args[0]) : args.map(safeSerialize);
+                    sendThrottled(payload);
+                  } catch(_) {}
+                  if (original[m]) try { original[m](...args); } catch(_) {}
+                };
+              }
+            } catch(_) {
+              // ignore logging bridge failures
             }
+          })();
 
-            const sendLogs = createThrottledSender(120);
-
-            channel.postMessage({ event: 'BEGIN' });
-            if (primoLog) console.log = (...args) => {
-              try {
-                sendLogs(args.length <= 1 ? args[0] : args);
-              } catch (e) {
-                // fall back to a simple string to avoid cyclic structures
-                try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: 'Could not serialize console.log args' } }); } catch (_) {}
-              }
-              primoLog(...args);
-            };
-            if (primoError) console.error = (...args) => {
-              try {
-                sendLogs(args.length <= 1 ? args[0] : args);
-              } catch (e) {
-                try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: 'Could not serialize console.error args' } }); } catch (_) {}
-              }
-              primoError(...args);
-            };
-            \` + source;
-          const blob = new Blob([withLogs], { type: 'text/javascript' });
+          const blob = new Blob([source], { type: 'text/javascript' });
           const url = URL.createObjectURL(blob);
           import(url).then(({ default: App }) => {
             if (c) unmount(c)
@@ -85,7 +85,6 @@ export const dynamic_iframe_srcdoc = (head = '') => {
               })
             } catch(e) {
               document.querySelector('#page').innerHTML = ''
-              console.error(e.toString())
               channel.postMessage({
                 event: 'SET_ERROR',
                 payload: {
@@ -93,6 +92,7 @@ export const dynamic_iframe_srcdoc = (head = '') => {
                 }
               });
             }
+            try { URL.revokeObjectURL(url) } catch (_) {}
           })
         }
 		  </script>
@@ -121,8 +121,9 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
     <!DOCTYPE html>
     <html>
       <head>
+        <meta charset="utf-8">
         <script type="module">
-          import { mount, unmount } from "https://esm.sh/svelte"
+          import { mount, unmount } from "https://esm.sh/svelte@${SVELTE_VERSION}"
 
           let source;
           let c;
@@ -152,6 +153,7 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
                 document.querySelector('#component').innerHTML = ''
                 console.error(e.toString())
               }
+              try { URL.revokeObjectURL(url) } catch (_) {}
             })
           }
         </script>

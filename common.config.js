@@ -7,6 +7,11 @@ export default defineConfig({
 			entry: 'src/lib/common/index.ts',
 			formats: ['cjs'],
 			fileName: 'index'
+		},
+		rollupOptions: {
+			output: {
+				hashCharacters: 'base36'
+			}
 		}
 	}
 })
