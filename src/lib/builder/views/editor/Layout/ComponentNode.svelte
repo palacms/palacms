@@ -870,7 +870,7 @@
 									await manager.commit()
 
 									// Refresh the upload record to get the server-side filename
-									const refreshedUpload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
+									const refreshedUpload = site ? await self.collection('site_uploads').getOne(current_image_value.upload) : await self.collection('library_uploads').getOne(current_image_value.upload)
 
 									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
 										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
