@@ -190,9 +190,9 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					continue
 				} else {
 					// Entity is not related to any page or page type
-					const page = page_context.getOr(null)
-					const pageType = page_type_context.getOr(null)
-					const site = site_context.getOr(null)
+					const { value: page } = page_context.getOr({ value: null })
+					const { value: pageType } = page_type_context.getOr({ value: null })
+					const { value: site } = site_context.getOr({ value: null })
 					if (page) {
 						// Use the current page
 						const pageType = PageTypes.one(page.page_type)

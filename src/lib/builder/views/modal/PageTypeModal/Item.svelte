@@ -10,7 +10,7 @@
 
 	let { active, page_type }: { active: boolean; page_type: PageType } = $props()
 
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 
 	let editing_page = $state(false)
 

@@ -73,7 +73,7 @@
 	let bubble_menu = $state()
 	let image_editor = $state()
 	let image_editor_is_visible = $state(false)
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 
 	let link_editor_is_visible = $state(false)
 

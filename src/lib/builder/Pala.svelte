@@ -32,7 +32,11 @@
 	} = $props()
 
 	// Set context so child components can access the site
-	site_context.set(site)
+	const context = $state({ value: site })
+	site_context.set(context)
+	$effect(() => {
+		context.value = site
+	})
 
 	let showing_sidebar = $state(true)
 

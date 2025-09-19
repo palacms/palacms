@@ -19,7 +19,7 @@
 	import { current_user } from '$lib/pocketbase/user'
 	import { resolve_page } from '$lib/pages'
 
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 	const path = $derived(pageState.params.page?.split('/'))
 	const page = $derived(site && (path ? resolve_page(site, path) : site.homepage()))
 	const page_type = $derived(page && PageTypes.one(page.page_type))

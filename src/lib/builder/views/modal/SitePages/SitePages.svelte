@@ -16,7 +16,7 @@
 	let hover_position = $state(null)
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 	const page_slug = $derived(pageState.params.page)
 	const current_path = $derived(pageState.params.page?.split('/'))
 	const active_page = $derived(site && current_path && resolve_page(site, current_path))

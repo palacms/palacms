@@ -28,7 +28,7 @@
 
 	let { children }: { children: Snippet } = $props()
 
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 	const page_path = $derived(pageState.params.page?.split('/'))
 	const page_type_id = $derived(pageState.params.page_type)
 	const page = $derived(site && page_path && resolve_page(site, page_path))

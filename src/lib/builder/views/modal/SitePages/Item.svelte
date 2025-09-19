@@ -41,7 +41,7 @@
 	} = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 	const full_url = $derived(build_cms_page_url(page, pageState.url))
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))

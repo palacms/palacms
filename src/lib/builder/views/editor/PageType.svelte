@@ -23,9 +23,13 @@
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
 
 	// Set context so child components can access the page type
-	page_type_context.set(page_type)
+	const context = $state({ value: page_type })
+	page_type_context.set(context)
+	$effect(() => {
+		context.value = page_type
+	})
 
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 	const site_symbols = $derived(site?.symbols() ?? [])
 	const page_type_sections = $derived(page_type?.sections() ?? [])
 	const page_type_symbols = $derived(page_type?.symbols() ?? [])
