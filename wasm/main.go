@@ -15,8 +15,8 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 
-	palacms "github.com/palacms/palacms/internal"
-	_ "github.com/palacms/palacms/migrations"
+	"github.com/palacms/palacms/server"
+	_ "github.com/palacms/palacms/server/migrations"
 )
 
 func main() {
@@ -59,31 +59,31 @@ func main() {
 }
 
 func setup(pb *pocketbase.PocketBase) error {
-	if err := palacms.RegisterValidation(pb); err != nil {
+	if err := server.RegisterValidation(pb); err != nil {
 		return err
 	}
 
-	if err := palacms.RegisterEmailInvitation(pb); err != nil {
+	if err := server.RegisterEmailInvitation(pb); err != nil {
 		return err
 	}
 
-	if err := palacms.RegisterInfoEndpoint(pb); err != nil {
+	if err := server.RegisterInfoEndpoint(pb); err != nil {
 		return err
 	}
 
-	if err := palacms.RegisterGenerateEndpoint(pb); err != nil {
+	if err := server.RegisterGenerateEndpoint(pb); err != nil {
 		return err
 	}
 
-	if err := palacms.RegisterAdminApp(pb); err != nil {
+	if err := server.RegisterAdminApp(pb); err != nil {
 		return err
 	}
 
-	if err := palacms.ServeSites(pb); err != nil {
+	if err := server.ServeSites(pb); err != nil {
 		return err
 	}
 
-	if err := palacms.RegisterUsageStats(pb); err != nil {
+	if err := server.RegisterUsageStats(pb); err != nil {
 		return err
 	}
 

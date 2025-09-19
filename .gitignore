@@ -34,5 +34,5 @@ devenv.local.nix
 /pb_public
 
 # Outputs
-/internal/common
-/internal/build
+/server/common
+/server/build

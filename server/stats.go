@@ -21,7 +21,7 @@
  * To disable: Set PALA_DISABLE_USAGE_STATS=true in your environment variables
  */
 
-package internal
+package server
 
 import (
 	"bytes"

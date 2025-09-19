@@ -1,4 +1,4 @@
-package internal
+package server
 
 import (
 	"github.com/pocketbase/dbx"

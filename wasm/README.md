@@ -14,7 +14,7 @@
 2. Build:
 
    ```
-   GOOS=js GOARCH=wasm go build --tags sqlite3_dotlk -o wasm/web/palacms.wasm ./wasm
+   GOOS=js GOARCH=wasm go build -C wasm -o web/palacms.wasm --tags sqlite3_dotlk
    ```
 
 3. Start a HTTP server which has a fallback to index.html:

@@ -32,8 +32,8 @@ palacms/
 │   │   └── components/     # Shared UI components
 │   └── routes/             # SvelteKit routes and pages
 |   └── workers/            # Worker functions for Svelte components
-├── internal/               # PocketBase server-side code
-├── migrations/             # Database schema migrations
+├── server/                 # PocketBase server-side code
+    └── migrations/         # Database schema migrations
 ├── pb_data/                # PocketBase database & uploaded files
     ├── storage/sites       # Generated sites by host address
 ```
@@ -116,8 +116,8 @@ palacms/
 
 ### Server-side code
 
-- Server-side code exists mostly in `internal/` directory
-- Entry point to the server application can be found from `main.go` which exists in the root directory
+- Server-side code exists mostly in `server/` directory
+- Entry point to the server application can be found from `main.go`
 - Used for tasks such as validation and serving files
 - Only the business logic that has no place in the frontend application should be added here
 

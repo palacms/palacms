@@ -21,11 +21,11 @@ COPY . /app
 WORKDIR /app
 
 # Copy built frontend
-COPY --from=node-builder /app/internal/build /app/internal/build
-COPY --from=node-builder /app/internal/common /app/internal/common
+COPY --from=node-builder /app/server/build /app/server/build
+COPY --from=node-builder /app/server/common /app/server/common
 
 # Build executable
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o palacms
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -C server/cmd -o palacms
 
 FROM alpine:3 AS runtime
 
@@ -38,7 +38,7 @@ ENV PALA_USER_EMAIL=
 ENV PALA_USER_PASSWORD=
 
 # Copy build executable
-COPY --from=go-builder /app/palacms /app/palacms
+COPY --from=go-builder /app/server/cmd/palacms /app/palacms
 
 EXPOSE 8080
 WORKDIR /app
