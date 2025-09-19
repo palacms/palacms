@@ -6,6 +6,7 @@ import { get_empty_value } from '$lib/builder/utils'
 import { self } from './pocketbase/PocketBase'
 import type { ObjectOf } from './pocketbase/CollectionMapping.svelte'
 import { build_live_page_url } from './pages'
+import { page_context, page_type_context, site_context } from './builder/stores/context'
 
 /**
  * Entry models by name of the owning collection.
@@ -83,43 +84,197 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 		}
 	})()
 
-	const getContent = (parentField?: Field, parentEntry?: Entry) => {
-		if (!fields || !entries || !uploads) {
+	const getContent = ({
+		entity,
+		fields,
+		entries,
+		parentField,
+		parentEntry
+	}: {
+		entity?: Entity | null
+		fields?: Field[] | null
+		entries?: Entry[] | null
+		parentField?: Field | null
+		parentEntry?: Entry | null
+	}) => {
+		if (!entity || !fields || !entries || !uploads) {
 			return
 		}
 
 		const content: { [K in (typeof locales)[number]]?: Record<string, unknown> } = {}
 		const filteredFields = fields
-			.filter((field) =>
-				'symbol' in entity
-					? 'symbol' in field && field.symbol === entity.symbol
-					: (!('symbol' in field) || field.symbol === entity.id) && (!('site' in field) || field.site === entity.id) && (!('page_type' in field) || field.page_type === entity.id)
-			)
+			.filter((field) => {
+				if ('symbol' in entity) {
+					// section
+					return 'symbol' in field && field.symbol === entity.symbol
+				} else if ('slug' in entity) {
+					// page
+					return 'page_type' in field && field.page_type === entity.page_type
+				} else if ('symbol' in field) {
+					// symbol
+					return field.symbol === entity.id
+				} else if ('site' in field) {
+					// site
+					return field.site === entity.id
+				} else if ('page_type' in field) {
+					// page_type
+					return field.page_type === entity.id
+				} else {
+					return false
+				}
+			})
 			.filter((field) => (parentField ? field.parent === parentField.id : !field.parent))
 			// Deduplicate
 			.filter((field1, index, array) => array.findIndex((field2) => field2.id === field1.id) === index)
 
 		for (const field of filteredFields) {
-			const fieldEntries = resolveEntries(entity, field, entries, parentEntry)
+			const fieldEntries = resolveEntries({ entity, field, entries, parentEntry })
 			if (!fieldEntries) return
 
-			// Handle group fields specially - collect subfield entries into an object
-			if (field.type === 'group' && field.key) {
-				const [entry] = fieldEntries
-				if (!entry) {
-					if (!content.en) content.en = {}
-					content.en![field.key] = {}
-					continue
-				}
-				if (!content[entry.locale]) content[entry.locale] = {}
+			// Handle page-field fields specially - get content from the page entity
+			if (field.type === 'page-field' && field.key) {
+				const locale = 'en'
+				if (!content[locale]) content[locale] = {}
 
-				const data = getContent(field, entry)
+				if (!field.config?.field) continue
+				const pageField = PageTypeFields.one(field.config.field)
+				if (!pageField) return
+
+				let data: ReturnType<typeof getContent> | null = null
+				if ('page' in entity && 'symbol' in entity) {
+					// This is a page section, get the page data
+					const page = Pages.one(entity.page)
+					if (!page) return
+
+					const pageType = PageTypes.one(page.page_type)
+					if (!pageType) return
+
+					const pageTypeFields = pageType.fields()
+					if (!pageTypeFields) return
+
+					const pageEntries = page?.entries()
+					if (!pageEntries) return
+
+					data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
+					if (!data) return
+
+					content[locale]![field.key] = data[locale]?.[pageField.key]
+				} else if ('page_type' in entity && 'symbol' in entity) {
+					// This is page type section, get the page type data
+					const pageType = PageTypes.one(entity.page_type)
+					if (!pageType) return
+
+					const pageTypeFields = pageType.fields()
+					if (!pageTypeFields) return
+
+					const pageTypeEntries = pageType?.entries()
+					if (!pageTypeEntries) return
+
+					data = getContent({ entity: pageType, fields: pageTypeFields, entries: pageTypeEntries })
+					if (!data) return
+
+					content[locale]![field.key] = data[locale]?.[pageField.key]
+				} else if ('slug' in entity) {
+					// This a page, cannot self-referense
+					continue
+				} else if ('site' in entity && 'head' in entity) {
+					// This is page type, cannot self-referense
+					continue
+				} else {
+					// Entity is not related to any page or page type
+					const page = page_context.getOr(null)
+					const pageType = page_type_context.getOr(null)
+					const site = site_context.getOr(null)
+					if (page) {
+						// Use the current page
+						const pageType = PageTypes.one(page.page_type)
+						if (!pageType) return
+
+						const pageTypeFields = pageType.fields()
+						if (!pageTypeFields) return
+
+						const pageEntries = page?.entries()
+						if (!pageEntries) return
+
+						data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
+						if (!data) return
+
+						content[locale]![field.key] = data[locale]?.[pageField.key]
+					} else if (pageType) {
+						// Use the current page type
+						const pageTypeFields = pageType.fields()
+						if (!pageTypeFields) return
+
+						const pageTypeEntries = pageType?.entries()
+						if (!pageTypeEntries) return
+
+						data = getContent({ entity: pageType, fields: pageTypeFields, entries: pageTypeEntries })
+						if (!data) return
+
+						content[locale]![field.key] = data[locale]?.[pageField.key]
+					} else if (site) {
+						// Use the home page
+						const page = site.homepage()
+						if (!page) return
+
+						const pageType = PageTypes.one(page.page_type)
+						if (!pageType) return
+
+						const pageTypeFields = pageType.fields()
+						if (!pageTypeFields) return
+
+						const pageEntries = page?.entries()
+						if (!pageEntries) return
+
+						data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
+						if (!data) return
+
+						content[locale]![field.key] = data[locale]?.[pageField.key]
+					} else {
+						// No context
+						continue
+					}
+				}
+			}
+
+			// Handle site fields specially - get content from the site entity
+			else if (field.type === 'site-field' && field.key) {
+				const locale = 'en'
+				if (!content[locale]) content[locale] = {}
+
+				if (!field.config?.field) continue
+				const siteField = SiteFields.one(field.config.field)
+				if (!siteField) return
+
+				const site = Sites.one(siteField.site)
+				if (!site) return
+
+				const siteFields = site.fields()
+				if (!siteFields) return
+
+				const siteEntries = site.entries()
+				if (!siteEntries) return
+
+				const data = getContent({ entity: site, fields: siteFields, entries: siteEntries })
+				if (!data) return
+
+				content[locale]![field.key] = data[locale]?.[siteField.key]
+			}
+
+			// Handle group fields specially - collect subfield entries into an object
+			else if (field.type === 'group' && field.key) {
+				const locale = 'en'
+				if (!content[locale]) content[locale] = {}
+				content[locale]![field.key] = {}
+
+				const [entry] = fieldEntries
+				const data = getContent({ entity, fields, entries, parentField: field, parentEntry: entry })
 				if (!data) {
 					content[entry.locale]![field.key] = {}
 					continue
 				}
 
-				content[entry.locale]![field.key] = data[entry.locale]
+				content[locale]![field.key] = data[locale]
 			}
 
 			// Handle repeater fields specially - collect array of subfield entries into an object
@@ -133,9 +288,9 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					if (!content[entry.locale]) content[entry.locale] = {}
 					if (!content[entry.locale]![field.key]) content[entry.locale]![field.key] = []
 
-					const data = getContent(field, entry)
+					const data = getContent({ entity, fields, entries, parentField: field, parentEntry: entry })
 					if (!data) continue
-						; (content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
+					;(content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
 				}
 			}
 
@@ -168,10 +323,19 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!content[entry.locale]) content[entry.locale] = {}
 
 				const page = Pages.one(entry.value)
-				if (!page) continue
+				if (!page) return
 
-					const data = useContent(page, options)
-					if (!data) return
+				const pageType = PageTypes.one(page.page_type)
+				if (!pageType) return
+
+				const pageTypeFields = pageType.fields()
+				if (!pageTypeFields) return
+
+				const pageEntries = page.entries()
+				if (!pageEntries) return
+
+				const data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
+				if (!data) return
 
 				const url = build_live_page_url(page)?.pathname
 				if (url === undefined) continue
@@ -189,11 +353,26 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 			// Handle page-list fields specially
 			else if (field.type === 'page-list' && field.key) {
+				if (!field.config?.page_type) continue
 				const pages = Pages.list({ filter: { page_type: field.config.page_type } })?.sort((a, b) => a.index - b.index)
 				if (!pages) continue
 
-					const data = pages.map((page) => useContent(page, options))
-					if (data.some((content) => !content)) return
+				const data = pages.map((page) => {
+					const pageType = PageTypes.one(page.page_type)
+					if (!pageType) return
+
+					const pageTypeFields = pageType.fields()
+					if (!pageTypeFields) return
+
+					const pageEntries = page.entries()
+					if (!pageEntries) return
+
+					const data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
+					if (!data) return
+
+					return data
+				})
+				if (data.some((content) => !content)) return
 
 				for (let index = 0; index < pages.length; index++) {
 					for (const locale in { en: {}, ...data[index] }) {
@@ -250,7 +429,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 		return content
 	}
 
-	return getContent()
+	return getContent({ entity, fields, entries })
 }
 
 export const useEntries = (entity: Entity, field: Field, parentEntry?: Entry) => {
@@ -289,10 +468,10 @@ export const useEntries = (entity: Entity, field: Field, parentEntry?: Entry) =>
 		}
 	})()
 
-	return entries && resolveEntries(entity, field, entries, parentEntry)
+	return entries && resolveEntries({ entity, field, entries, parentEntry })
 }
 
-const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEntry?: Entry): Entry[] | undefined => {
+const resolveEntries = ({ entity, field, entries, parentEntry }: { entity: Entity; field: Field; entries: Entry[]; parentEntry?: Entry | null }): Entry[] | undefined => {
 	const fieldEntries = entries
 		.filter((entry) => entry.field === field.id && (!('section' in entry) || entry.section === entity.id))
 		.filter((entry) => (parentEntry ? entry.parent === parentEntry.id : !entry.parent))
@@ -326,7 +505,7 @@ const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEn
 		const sourceEntries = 'page_type' in sourceEntity ? sourceEntity.entries() : sourceEntity.entries()
 		if (!sourceEntries) return
 
-		return resolveEntries(sourceEntity, sourceField, sourceEntries)
+		return resolveEntries({ entity: sourceEntity, field: sourceField, entries: sourceEntries })
 	}
 
 	// Handle site fields specially - get entries from the site entity
@@ -341,7 +520,7 @@ const resolveEntries = (entity: Entity, field: Field, entries: Entry[], parentEn
 		const siteEntries = site.entries()
 		if (!siteEntries) return
 
-		return resolveEntries(site, siteField, siteEntries)
+		return resolveEntries({ entity: site, field: siteField, entries: siteEntries })
 	}
 
 	// Otherwise, return direct entries
