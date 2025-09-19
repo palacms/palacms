@@ -257,7 +257,36 @@
 
 		rename(from, to, callback) {
 			console.debug('rename', from, to)
-			callback(errors.enosys())
+
+			let buffer
+			Promise.resolve()
+				.then(async () => {
+					const segments = getPathSegements(from)
+					const [name] = segments.slice(-1)
+					const parentPath = '/' + segments.slice(0, -1).join('/')
+					const dir = await resolveDirectory(parentPath)
+					const f = await dir.getFileHandle(name)
+					const handle = await f.createSyncAccessHandle()
+					const size = handle.getSize()
+					buffer = new Uint8Array(size)
+					handle.read(buffer)
+					handle.close()
+					await dir.removeEntry(name, { recursive: true })
+				})
+				.then(async () => {
+					const segments = getPathSegements(to)
+					const [name] = segments.slice(-1)
+					const parentPath = '/' + segments.slice(0, -1).join('/')
+					const dir = await resolveDirectory(parentPath)
+					const f = await dir.getFileHandle(name, { create: true })
+					const handle = await f.createSyncAccessHandle()
+					handle.write(buffer)
+					handle.close()
+				})
+				.then(() => {
+					callback(null)
+				})
+				.catch(ErrorHandler(callback))
 		},
 
 		rmdir(path, callback) {
