@@ -95,7 +95,12 @@
 				}
 
 				const handle = handles.get(fd)
-				const n = handle.write(buf, { at: position })
+				if (position !== null) {
+					handle.pos = position
+				}
+
+				const n = handle.write(buf, { at: handle.pos })
+				handle.pos += n
 				callback(null, n)
 			}
 		},
@@ -216,6 +221,7 @@
 				.then(async (f) => {
 					const fd = nextFd++
 					const handle = await f.createSyncAccessHandle()
+					handle.pos = 0
 					handles.set(fd, handle)
 					callback(null, fd)
 				})
@@ -230,7 +236,12 @@
 			}
 
 			const handle = handles.get(fd)
-			const n = handle.read(buffer, { at: position })
+			if (position !== null) {
+				handle.pos = position
+			}
+
+			const n = handle.read(buffer, { at: handle.pos })
+			handle.pos += n
 			callback(null, n)
 		},
 
