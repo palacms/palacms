@@ -138,21 +138,26 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 				if (!field.config?.field) continue
 				const pageField = PageTypeFields.one(field.config.field)
+				if (pageField === null) continue
 				if (!pageField) return
 
 				let data: ReturnType<typeof getContent> | null = null
 				if ('page' in entity && 'symbol' in entity) {
 					// This is a page section, get the page data
 					const page = Pages.one(entity.page)
+					if (page === null) continue
 					if (!page) return
 
 					const pageType = PageTypes.one(page.page_type)
+					if (pageType === null) continue
 					if (!pageType) return
 
 					const pageTypeFields = pageType.fields()
+					if (pageTypeFields === null) continue
 					if (!pageTypeFields) return
 
 					const pageEntries = page?.entries()
+					if (pageEntries === null) continue
 					if (!pageEntries) return
 
 					data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
@@ -162,12 +167,15 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				} else if ('page_type' in entity && 'symbol' in entity) {
 					// This is page type section, get the page type data
 					const pageType = PageTypes.one(entity.page_type)
+					if (pageType === null) continue
 					if (!pageType) return
 
 					const pageTypeFields = pageType.fields()
+					if (pageTypeFields === null) continue
 					if (!pageTypeFields) return
 
 					const pageTypeEntries = pageType?.entries()
+					if (pageTypeEntries === null) continue
 					if (!pageTypeEntries) return
 
 					data = getContent({ entity: pageType, fields: pageTypeFields, entries: pageTypeEntries })
@@ -188,12 +196,15 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					if (page) {
 						// Use the current page
 						const pageType = PageTypes.one(page.page_type)
+						if (pageType === null) continue
 						if (!pageType) return
 
 						const pageTypeFields = pageType.fields()
+						if (pageTypeFields === null) continue
 						if (!pageTypeFields) return
 
 						const pageEntries = page?.entries()
+						if (pageEntries === null) continue
 						if (!pageEntries) return
 
 						data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
@@ -203,9 +214,11 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					} else if (pageType) {
 						// Use the current page type
 						const pageTypeFields = pageType.fields()
+						if (pageTypeFields === null) continue
 						if (!pageTypeFields) return
 
 						const pageTypeEntries = pageType?.entries()
+						if (pageTypeEntries === null) continue
 						if (!pageTypeEntries) return
 
 						data = getContent({ entity: pageType, fields: pageTypeFields, entries: pageTypeEntries })
@@ -215,15 +228,19 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					} else if (site) {
 						// Use the home page
 						const page = site.homepage()
+						if (page === null) continue
 						if (!page) return
 
 						const pageType = PageTypes.one(page.page_type)
+						if (pageType === null) continue
 						if (!pageType) return
 
 						const pageTypeFields = pageType.fields()
+						if (pageTypeFields === null) continue
 						if (!pageTypeFields) return
 
 						const pageEntries = page?.entries()
+						if (pageEntries === null) continue
 						if (!pageEntries) return
 
 						data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
@@ -244,15 +261,19 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 				if (!field.config?.field) continue
 				const siteField = SiteFields.one(field.config.field)
+				if (siteField === null) continue
 				if (!siteField) return
 
 				const site = Sites.one(siteField.site)
+				if (site === null) continue
 				if (!site) return
 
 				const siteFields = site.fields()
+				if (siteFields === null) continue
 				if (!siteFields) return
 
 				const siteEntries = site.entries()
+				if (siteEntries === null) continue
 				if (!siteEntries) return
 
 				const data = getContent({ entity: site, fields: siteFields, entries: siteEntries })
@@ -323,15 +344,19 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!content[entry.locale]) content[entry.locale] = {}
 
 				const page = Pages.one(entry.value)
+				if (page === null) continue
 				if (!page) return
 
 				const pageType = PageTypes.one(page.page_type)
+				if (pageType === null) continue
 				if (!pageType) return
 
 				const pageTypeFields = pageType.fields()
+				if (pageTypeFields === null) continue
 				if (!pageTypeFields) return
 
 				const pageEntries = page.entries()
+				if (pageEntries === null) continue
 				if (!pageEntries) return
 
 				const data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
@@ -359,12 +384,15 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 				const data = pages.map((page) => {
 					const pageType = PageTypes.one(page.page_type)
+					if (pageType === null) return null
 					if (!pageType) return
 
 					const pageTypeFields = pageType.fields()
+					if (pageTypeFields === null) return null
 					if (!pageTypeFields) return
 
 					const pageEntries = page.entries()
+					if (pageEntries === null) return null
 					if (!pageEntries) return
 
 					const data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
@@ -372,6 +400,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 					return data
 				})
+				if (data.some((content) => content === null)) continue
 				if (data.some((content) => !content)) return
 
 				for (let index = 0; index < pages.length; index++) {
@@ -402,6 +431,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!content[entry.locale]) content[entry.locale] = {}
 
 				const page = entry.value.page ? Pages.one(entry.value.page) : null
+				if (page === null) continue
 				if (page === undefined) return
 
 				const url = page ? build_live_page_url(page)?.pathname : entry.value.url
@@ -481,6 +511,7 @@ const resolveEntries = ({ entity, field, entries, parentEntry }: { entity: Entit
 	if (field.type === 'page-field' && field.key) {
 		if (!field.config?.field) return []
 		const sourceField = PageTypeFields.one(field.config.field)
+		if (sourceField === null) return []
 		if (!sourceField) return
 
 		let sourceEntity: ObjectOf<typeof Pages> | ObjectOf<typeof PageTypes> | undefined | null
@@ -500,9 +531,11 @@ const resolveEntries = ({ entity, field, entries, parentEntry }: { entity: Entit
 			// Entity is not related to any page or page type
 			return []
 		}
+		if (sourceEntity === null) return []
 		if (!sourceEntity) return
 
 		const sourceEntries = 'page_type' in sourceEntity ? sourceEntity.entries() : sourceEntity.entries()
+		if (sourceEntries === null) return []
 		if (!sourceEntries) return
 
 		return resolveEntries({ entity: sourceEntity, field: sourceField, entries: sourceEntries })
@@ -512,12 +545,15 @@ const resolveEntries = ({ entity, field, entries, parentEntry }: { entity: Entit
 	else if (field.type === 'site-field' && field.key) {
 		if (!field.config?.field) return []
 		const siteField = SiteFields.one(field.config.field)
+		if (siteField === null) return []
 		if (!siteField) return
 
 		const site = Sites.one(siteField.site)
+		if (site === null) return []
 		if (!site) return
 
 		const siteEntries = site.entries()
+		if (siteEntries === null) return []
 		if (!siteEntries) return
 
 		return resolveEntries({ entity: site, field: siteField, entries: siteEntries })
