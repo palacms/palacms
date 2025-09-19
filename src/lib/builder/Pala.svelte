@@ -36,6 +36,11 @@
 	site_context.set(context)
 	$effect(() => {
 		context.value = site
+
+		if (!site_data) return
+		compile_component_head({ html: site.head, data: site_data }).then((generated_code) => {
+			$site_html = generated_code
+		})
 	})
 
 	let showing_sidebar = $state(true)
