@@ -44,11 +44,26 @@
 		setFieldEntries({ fields, entries, updateEntry: SiteEntries.update, createEntry: SiteEntries.create, values })
 		onchange({})
 	}
+
+	function deleteEntryRelatedRecords(entry_id: string) {
+		// Delete all sub-entries.
+		for (const entry of entries) {
+			if (entry.parent === entry_id) {
+				deleteEntryRelatedRecords(entry.id)
+				SiteEntries.delete(entry.id)
+			}
+		}
+	}
+
+	function handleDeleteEntry(entry_id: string) {
+		deleteEntryRelatedRecords(entry_id)
+		SiteEntries.delete(entry_id)
+	}
 </script>
 
-{#if resolvedField && fieldType && entry}
+{#if site && resolvedField && fieldType}
 	{@const SvelteComponent = fieldType.component}
-	<SvelteComponent {entity} field={{ ...resolvedField, label: field.label }} {entry} {fields} {entries} onchange={handleFieldChange} {level} />
+	<SvelteComponent entity={site} field={{ ...resolvedField, label: field.label }} {entry} {fields} {entries} onchange={handleFieldChange} ondelete={handleDeleteEntry} {level} />
 {:else if !field.config?.field}
 	<span>Please configure this field to select a site field.</span>
 {:else if !entry}
