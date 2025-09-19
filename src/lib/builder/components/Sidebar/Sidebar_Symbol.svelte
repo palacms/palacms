@@ -31,18 +31,6 @@
 
 	let renaming = $state(false)
 	let new_name = $state(symbol.name)
-	async function toggle_name_input() {
-		renaming = !renaming
-		// workaround for inability to see cursor when div empty
-		if (new_name === '') {
-			new_name = 'Block'
-		}
-	}
-
-	// Disabled CollectionMapping update to avoid reactive loops
-	// $effect(() => {
-	// 	SiteSymbols.update(symbol.id, { name: new_name })
-	// })
 
 	async function save_rename() {
 		if (!symbol || !new_name.trim()) return
@@ -70,33 +58,32 @@
 	let component_error = $state()
 	let is_loading = $state(true)
 
-	// Create a cache key based on symbol ID and update timestamp
-	const cache_key = $derived(`${symbol.id}-${symbol.updated}`)
-	let last_cache_key = $state('')
+	// Rebuild preview whenever code or data meaningfully change
+	let last_signature = $state<any>()
+	watch(
+		() => ({ html: symbol.html, css: symbol.css, js: symbol.js, data }),
+		({ html, css, js, data }) => {
+			const signature = { html, css, js, data }
+			if (_.isEqual(last_signature, signature) || !data) return
+			last_signature = _.cloneDeep(signature)
 
-	// Only regenerate if cache key changes (symbol updated)
-	$effect(async () => {
-		// Skip if cache key hasn't changed (symbol not updated)
-		if (cache_key === last_cache_key && componentCode) return
-
-		last_cache_key = cache_key
-		is_loading = true
-		component_error = undefined
-
-		try {
-			const blockData = data || {}
-			const res = await block_html({ code, data: blockData })
-			// Only set componentCode if we have actual content
-			if (res && res.body) {
-				componentCode = res
+			is_loading = true
+			component_error = undefined
+			try {
+				const blockData = data || {}
+				block_html({ code: { html, css, js }, data: blockData }).then((res) => {
+					if (res && res.body) {
+						componentCode = res
+					}
+				})
+			} catch (error) {
+				console.error('Sidebar symbol error for', symbol.name, ':', error)
+				component_error = error
+			} finally {
+				is_loading = false
 			}
-		} catch (error) {
-			console.error('Sidebar symbol error for', symbol.name, ':', error)
-			component_error = error
-		} finally {
-			is_loading = false
 		}
-	})
+	)
 
 	let element = $state()
 	$effect(() => {

@@ -36,7 +36,7 @@
 	} = $props()
 
 	const entry = $derived(passedEntry || { value: default_value }) as Omit<Entry, 'value'> & { value: ImageFieldValue }
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 
 	async function upload_image(image: File) {
 		try {

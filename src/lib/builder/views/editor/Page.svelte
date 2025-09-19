@@ -21,7 +21,11 @@
 	let { page }: { page: ObjectOf<typeof Pages> } = $props()
 
 	// Set context so child components can access the page
-	page_context.set(page)
+	const context = $state({ value: page })
+	page_context.set(context)
+	$effect(() => {
+		context.value = page
+	})
 
 	const site = $derived(Sites.one(page.site))
 	const page_type = $derived(page.page_type ? PageTypes.one(page.page_type) : null)
@@ -90,18 +94,18 @@
 		// Copy all symbol entries to the new section instance, handling parent/child relationships
 		if (entries_to_add?.length > 0) {
 			const entry_map = new Map()
-			
+
 			// Sort entries so parent-less entries come first
 			const sorted_entries = [...entries_to_add].sort((a, b) => {
 				if (!a.parent && b.parent) return -1
 				if (a.parent && !b.parent) return 1
 				return (a.index || 0) - (b.index || 0)
 			})
-			
+
 			// Create entries in order, handling parent relationships
 			for (const entry of sorted_entries) {
 				const parent_section_entry = entry.parent ? entry_map.get(entry.parent) : undefined
-				
+
 				const section_entry = PageSectionEntries.create({
 					section: new_section.id,
 					field: entry.field,
@@ -477,7 +481,12 @@
 		if (sections_mounted === sections.length && sections_mounted !== 0) {
 			page_mounted = true
 		} else if (page_is_empty) {
+			// For empty pages, consider the page mounted and loaded immediately
 			page_mounted = true
+			if (!page_fade_loaded) {
+				page_loaded.set(true)
+				page_fade_loaded = true
+			}
 		}
 	})
 	let block_toolbar_on_locked_block = $derived($locked_blocks.find((b) => b === hovered_section?.id))
@@ -495,21 +504,21 @@
 	let page_fade_loaded = $state(false)
 	let current_page_id = $state(page.id)
 	let fade_timeout = $state(null)
-	
+
 	$effect(() => {
 		// Reset fade state when page changes
 		if (current_page_id !== page.id) {
 			current_page_id = page.id
 			page_loaded.set(false)
 			page_fade_loaded = false
-			
+
 			// Clear any pending timeout
 			if (fade_timeout) {
 				clearTimeout(fade_timeout)
 				fade_timeout = null
 			}
 		}
-		
+
 		// Use MutationObserver to detect when page content is rendered
 		if (page_el && !page_fade_loaded) {
 			const observer = new MutationObserver(() => {
@@ -518,10 +527,11 @@
 				if (hasContent && !page_fade_loaded && current_page_id === page.id) {
 					// Clear any existing timeout
 					if (fade_timeout) clearTimeout(fade_timeout)
-					
+
 					// Small delay to ensure content is fully rendered
 					fade_timeout = setTimeout(() => {
-						if (current_page_id === page.id) { // Double-check page hasn't changed
+						if (current_page_id === page.id) {
+							// Double-check page hasn't changed
 							page_loaded.set(true)
 							page_fade_loaded = true
 							fade_timeout = null
@@ -529,12 +539,12 @@
 					}, 100)
 				}
 			})
-			
+
 			observer.observe(page_el, {
 				childList: true,
 				subtree: true
 			})
-			
+
 			// Also check immediately in case content is already there
 			const hasContent = page_el.querySelector('[data-section]')
 			if (hasContent && !page_fade_loaded && current_page_id === page.id) {
@@ -546,7 +556,7 @@
 					}
 				}, 100)
 			}
-			
+
 			return () => {
 				observer.disconnect()
 				if (fade_timeout) {
@@ -576,7 +586,7 @@
 			}
 		}}
 	>
-		<Dialog.Content class="z-[999] max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4">
+		<Dialog.Content class="z-[999] max-w-none h-full max-h-[100vh] flex flex-col p-4">
 			<SectionEditor
 				bind:has_unsaved_changes={section_has_unsaved_changes}
 				component={hovered_section}

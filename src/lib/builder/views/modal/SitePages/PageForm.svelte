@@ -11,7 +11,7 @@
 
 	let { parent, oncreate }: { parent?: ObjectOf<typeof Pages>; oncreate: (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => void | Promise<void> } = $props()
 
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 	const page_types = $derived(site?.page_types())
 
 	// set page type equal to the last type used under this parent

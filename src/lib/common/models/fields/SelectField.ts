@@ -1,5 +1,6 @@
 import { FieldBase } from '../FieldBase'
 import { z } from 'zod'
+import { Condition } from '../Condition'
 
 export const SelectField = FieldBase.extend({
 	type: z.literal('select'),
@@ -11,7 +12,8 @@ export const SelectField = FieldBase.extend({
 					label: z.string(),
 					icon: z.string()
 				})
-				.array()
+				.array(),
+			condition: Condition.nullable().optional()
 		})
 		.nullable()
 })

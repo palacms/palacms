@@ -7,7 +7,7 @@
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
 	import { watch } from 'runed'
 
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 	const { field }: { field: PageFieldField } = $props()
 
 	const dispatch = createEventDispatcher()

@@ -149,7 +149,8 @@ export const Sites = createCollectionMapping('sites', Site, manager, {
 			return SiteUploads.from(this.collection.instance).list({ filter: { site: this.id } })
 		},
 		page_types() {
-			return PageTypes.from(this.collection.instance).list({ filter: { site: this.id } })
+			// Sort by creation time ascending so newly created types appear at the bottom
+			return PageTypes.from(this.collection.instance).list({ filter: { site: this.id }, sort: 'created' })
 		},
 		pages() {
 			return Pages.from(this.collection.instance).list({ filter: { site: this.id } })
@@ -276,7 +277,7 @@ export const Pages = createCollectionMapping('pages', Page, manager, {
 			return this.collection.list({ filter: { parent: this.id } })?.sort((a, b) => (a.index || 0) - (b.index || 0))
 		},
 		sections() {
-			return PageSections.from(this.collection.instance).list({ filter: { page: this.id } })
+			return PageSections.from(this.collection.instance).list({ filter: { page: this.id } })?.sort((a, b) => a.index - b.index)
 		},
 		entries() {
 			return PageEntries.from(this.collection.instance).list({ filter: { page: this.id } })

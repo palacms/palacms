@@ -7,7 +7,7 @@
 	import { site_context } from '$lib/builder/stores/context'
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 
 	async function create_page_type(new_page_type) {
 		if (!site) return

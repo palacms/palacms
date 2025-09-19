@@ -4,7 +4,7 @@
 	import type { PageField } from '$lib/common/models/fields/PageField'
 	import UI from '../../ui/index.js'
 
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 	const { field }: { field: PageField } = $props()
 
 	const dispatch = createEventDispatcher()

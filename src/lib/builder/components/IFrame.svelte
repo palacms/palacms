@@ -65,11 +65,13 @@
 	let setup_complete = $state(false)
 	let generated_srcdoc = $state('')
 	let active_code = {}
+	let active_append = ''
 	async function set_srcdoc(componentCode) {
-		if (_.isEqual(active_code, componentCode)) {
+		if (_.isEqual(active_code, componentCode) && active_append === append) {
 			return
 		}
 		active_code = _.cloneDeep(componentCode)
+		active_append = append
 		generated_srcdoc = static_iframe_srcdoc({
 			head: componentCode.head,
 			html: componentCode.body,

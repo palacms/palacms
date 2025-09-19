@@ -49,7 +49,7 @@ export async function html({ component, head, buildStatic = true, css = 'externa
 			dev_mode
 		})
 	} catch (e) {
-		console.log('error', e)
+		// swallow logging here; callers handle error state
 		res = {
 			error: e.toString()
 		}
@@ -97,7 +97,6 @@ export async function html({ component, head, buildStatic = true, css = 'externa
 				js: res.dom
 			}
 		} catch (e) {
-			console.log({ e })
 			payload = {
 				head: '',
 				body: '',
