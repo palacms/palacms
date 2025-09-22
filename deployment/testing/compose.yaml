@@ -21,7 +21,7 @@ services:
       - traefik.http.routers.testing-palacms-https.rule=Host(`testing.palacms.com`)
       - traefik.http.routers.testing-palacms-https.service=testing-palacms
       - traefik.http.routers.testing-palacms-https.tls=true
-      - traefik.http.routers.testing-palacms-https.tls.certresolver=le
+      - traefik.http.routers.testing-palacms-https.tls.certresolver=palacms
 
 volumes:
   palacms-data:
