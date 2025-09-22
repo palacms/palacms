@@ -101,18 +101,6 @@
 	// Save component
 	onModKey(modalKeys, 's', save_component)
 
-	// Also keep listening to global hotkey events for compatibility
-	$effect(() => {
-		const unsubscribe_e = hotkey_events.on('e', toggle_tab)
-		const unsubscribe_save = hotkey_events.on('save', save_component)
-
-		// Cleanup on unmount
-		return () => {
-			unsubscribe_e()
-			unsubscribe_save()
-		}
-	})
-
 	function toggle_tab() {
 		tab = tab === 'code' ? 'content' : 'code'
 	}
