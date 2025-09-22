@@ -10,7 +10,7 @@
 
 	let { onClose }: { onClose?: () => void } = $props()
 
-	const page_type = page_type_context.get()
+	const { value: page_type } = page_type_context.get()
 	const fields = $derived(page_type?.fields() ?? [])
 	const entries = $derived(page_type?.entries() ?? [])
 

@@ -6,7 +6,7 @@
 
 	const dispatch = createEventDispatcher()
 
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 	const { field }: { field: PageListField } = $props()
 </script>
 

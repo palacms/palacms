@@ -37,7 +37,9 @@
 </script>
 
 <div class="Content">
-	{#each fields.filter((f) => !f.parent) as field (field.id)}
+	{#each fields
+		.filter((f) => !f.parent || f.parent === '')
+		.sort((a, b) => (a.index || 0) - (b.index || 0)) as field (field.id)}
 		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} ondelete={handle_delete_entry} />
 	{:else}
 		<p class="empty-description">
@@ -65,6 +67,7 @@
 		justify-content: stretch;
 
 		.empty-description {
+			padding-inline: 0.5rem;
 			color: var(--color-gray-4);
 			font-size: var(--font-size-2);
 			height: 100%;

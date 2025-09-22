@@ -17,6 +17,7 @@
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import type { Page } from '$lib/common/models/Page'
 	import { build_cms_page_url } from '$lib/pages'
+	import { goto } from '$app/navigation'
 
 	let editing_page = $state(false)
 
@@ -27,6 +28,7 @@
 		active,
 		oncreate,
 		page_slug,
+		active_page_id,
 		hover_position = $bindable(null)
 	}: {
 		parent?: ObjectOf<typeof Pages>
@@ -34,11 +36,12 @@
 		active: boolean
 		oncreate: (new_page: Omit<Page, 'id' | 'index'>) => Promise<void>
 		page_slug: string
+		active_page_id?: string
 		hover_position?: string | null
 	} = $props()
 
 	// Get site from context (preferred) or fallback to hostname lookup
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 	const full_url = $derived(build_cms_page_url(page, pageState.url))
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
@@ -329,6 +332,16 @@
 												})
 
 												await manager.commit()
+
+												// If the deleted page was the one open, navigate to homepage
+												try {
+													if (page_slug === page.slug) {
+														const home_url = build_cms_page_url(home_page, pageState.url)
+														if (home_url) await goto(home_url, { replaceState: true })
+													}
+												} catch (e) {
+													console.warn('Navigation after delete failed', e)
+												}
 											}
 											delete_warning_dialog = true
 										} else {
@@ -345,6 +358,16 @@
 											})
 
 											await manager.commit()
+
+											// If the deleted page was the one open, navigate to homepage
+											try {
+												if (page_slug === page.slug) {
+													const home_url = build_cms_page_url(home_page, pageState.url)
+													if (home_url) await goto(home_url, { replaceState: true })
+												}
+											} catch (e) {
+												console.warn('Navigation after delete failed', e)
+											}
 										}
 									}
 								}
@@ -378,7 +401,7 @@
 	{#if showing_children && has_children}
 		<ul class="page-list child" transition:slide={{ duration: has_toggled ? 100 : 0 }}>
 			{#each children as subpage}
-				<Item parent={page} page={subpage} active={subpage.slug === page_slug} {page_slug} {oncreate} bind:hover_position on:delete on:create />
+				<Item parent={page} page={subpage} active={subpage.id === active_page_id} {page_slug} {active_page_id} {oncreate} bind:hover_position on:delete on:create />
 			{/each}
 		</ul>
 	{/if}

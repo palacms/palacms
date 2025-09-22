@@ -73,7 +73,7 @@
 	let bubble_menu = $state()
 	let image_editor = $state()
 	let image_editor_is_visible = $state(false)
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 
 	let link_editor_is_visible = $state(false)
 
@@ -626,11 +626,15 @@
 	// Watch for changes in block code or component data and regenerate
 	watch(
 		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
-		({ html, data }) => {
-			// Generate code even if there's no data (for blocks without fields)
-			if (compiled_code !== html && component_data) {
+		({ html, css, js, data }) => {
+			// Wait until content data has resolved (avoid compiling with undefined data)
+			if (data === undefined) return
+
+			// Recompile when any source (html/css/js) changes.
+			const signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
+			if (compiled_code !== signature) {
 				generate_component_code(block)
-				compiled_code = html
+				compiled_code = signature
 			}
 		}
 	)
@@ -765,6 +769,13 @@
 			doc.addEventListener('keyup', update_menu_positions)
 
 			setup_complete = true
+
+			// Every time setup is completed, we send the component to the IFrame.
+			// This happens also when the ComponentNode is moved in DOM due to IFrame resetting.
+			if (component_data && generated_js) {
+				last_sent_data = _.cloneDeep(component_data)
+				send_component_to_iframe(generated_js, component_data)
+			}
 		}
 	}
 
@@ -859,7 +870,7 @@
 									await manager.commit()
 
 									// Refresh the upload record to get the server-side filename
-									const refreshedUpload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
+									const refreshedUpload = site ? await self.collection('site_uploads').getOne(current_image_value.upload) : await self.collection('library_uploads').getOne(current_image_value.upload)
 
 									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
 										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`

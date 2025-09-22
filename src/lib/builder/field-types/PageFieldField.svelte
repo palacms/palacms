@@ -36,7 +36,7 @@
 		return $fieldTypes.find((ft) => ft.id === resolvedField.type)
 	})
 
-	const page = page_context.getOr(null)
+	const { value: page } = page_context.getOr({ value: null })
 	const page_type = $derived(page && PageTypes.one(page.page_type))
 	const fields = $derived(page_type?.fields() ?? [])
 	const entries = $derived(page?.entries() ?? [])
@@ -58,11 +58,26 @@
 		})
 		onchange({})
 	}
+
+	function deleteEntryRelatedRecords(entry_id: string) {
+		// Delete all sub-entries.
+		for (const entry of entries) {
+			if (entry.parent === entry_id) {
+				deleteEntryRelatedRecords(entry.id)
+				PageEntries.delete(entry.id)
+			}
+		}
+	}
+
+	function handleDeleteEntry(entry_id: string) {
+		deleteEntryRelatedRecords(entry_id)
+		PageEntries.delete(entry_id)
+	}
 </script>
 
-{#if resolvedField && fieldType && entry}
+{#if page && resolvedField && fieldType}
 	{@const SvelteComponent = fieldType.component}
-	<SvelteComponent {entity} field={{ ...resolvedField, label: field.label }} {entry} {fields} {entries} onchange={handleFieldChange} {level} />
+	<SvelteComponent entity={page} field={{ ...resolvedField, label: field.label }} {entry} {fields} {entries} onchange={handleFieldChange} ondelete={handleDeleteEntry} {level} />
 {:else if !field.config?.field}
 	<span>Please configure this field to select a page field.</span>
 {:else if !entry}

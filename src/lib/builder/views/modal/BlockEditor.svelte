@@ -65,7 +65,7 @@
 	const FieldCollection = $derived(symbol_type === 'library' ? LibrarySymbolFields : SiteSymbolFields)
 	const EntryCollection = $derived(symbol_type === 'library' ? LibrarySymbolEntries : SiteSymbolEntries)
 
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 
 	const active_symbol_group_id = $derived(page.url.searchParams.get('group'))
 	const active_symbol_group = $derived(symbol_type === 'library' && active_symbol_group_id ? LibrarySymbolGroups.one(active_symbol_group_id) : undefined)
@@ -100,18 +100,6 @@
 
 	// Save component
 	onModKey(modalKeys, 's', save_component)
-
-	// Also keep listening to global hotkey events for compatibility
-	$effect(() => {
-		const unsubscribe_e = hotkey_events.on('e', toggle_tab)
-		const unsubscribe_save = hotkey_events.on('save', save_component)
-
-		// Cleanup on unmount
-		return () => {
-			unsubscribe_e()
-			unsubscribe_save()
-		}
-	})
 
 	function toggle_tab() {
 		tab = tab === 'code' ? 'content' : 'code'

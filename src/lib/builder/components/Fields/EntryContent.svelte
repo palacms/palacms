@@ -7,6 +7,7 @@
 	import { fieldTypes } from '../../stores/app/index.js'
 	import type { Component } from 'svelte'
 	import Icon from '@iconify/svelte'
+	import { EyeOff } from 'lucide-svelte'
 	import { current_user } from '$lib/pocketbase/user'
 	import { locale } from '../../stores/app/misc'
 
@@ -50,24 +51,24 @@
 
 	const _data = $derived(useContent(entity, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
+
 	const is_visible = $derived.by(() => {
-		if (!field.config?.condition) return true // has no condition
+		// No condition set → visible
+		if (!field.config?.condition) return true
 
-		const { field: field_to_check, value, comparison } = field.config.condition
+		const { field: field_to_check, value: expected, comparison } = field.config.condition
 
-		// Find the field that this condition depends on
+		// Find the field this condition depends on (limited to same entity and, if applicable, same parent)
 		const comparable_field = fields.find((f) => f.id === field_to_check)
-		if (!comparable_field) return true // field not found, show by default
+		if (!comparable_field) return true // if missing, fail open
 
-		// Check the condition
-		const comparable_value = data[comparable_field.key]
-		if (comparison === '=' && value === comparable_value) {
-			return true
-		} else if (comparison === '!=' && value !== comparable_value) {
-			return true
-		}
+		// Prefer live entries (respecting parent nesting) so visibility reacts immediately to edits
+		const [comparable_entry] = useEntries(entity, comparable_field, parent) ?? []
+		const comparable_value = comparable_entry?.value ?? data?.[comparable_field.key]
 
-		return false // condition not met, hide field
+		if (comparison === '=' && expected === comparable_value) return true
+		if (comparison === '!=' && expected !== comparable_value) return true
+		return false
 	})
 </script>
 
@@ -94,7 +95,7 @@
 	</Card>
 {:else if $current_user?.siteRole === 'developer' && !is_visible}
 	<div class="hidden-field">
-		<Icon icon="mdi:hidden" />
+		<EyeOff size="14" />
 		<span>This field will be hidden from content editors</span>
 	</div>
 {/if}
@@ -113,5 +114,8 @@
 		padding: 1rem;
 		color: var(--color-gray-2);
 		font-size: 0.875rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 	}
 </style>

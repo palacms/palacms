@@ -2,16 +2,18 @@ import { rollup } from '@rollup/browser'
 import svelteWorker from './svelte.worker?worker'
 import PromiseWorker from 'promise-worker'
 import registerPromiseWorker from 'promise-worker/register'
-import * as resolve from 'resolve.exports'
 import commonjs from './plugins/commonjs'
 import json from './plugins/json'
 import glsl from './plugins/glsl'
+import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
 
 const sveltePromiseWorker = new PromiseWorker(new svelteWorker())
 
 // Based on https://github.com/pngwn/REPLicant & the Svelte REPL package (https://github.com/sveltejs/sites/tree/master/packages/repl)
 
-const CDN_URL = 'https://esm.sh' // or 'https://cdn.jsdelivr.net/npm' or 'https://unpkg.com'
+// Use esm.sh for all remote module resolution, like the original worker
+const CDN_URL = 'https://esm.sh'
+const SVELTE_CDN = `${CDN_URL}/svelte@${SVELTE_VERSION}`
 
 registerPromiseWorker(rollup_worker)
 async function rollup_worker({ component, head, hydrated, buildStatic = true, css = 'external', format = 'esm', dev_mode = false }) {
@@ -116,92 +118,47 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 	async function compile(svelteOptions = {}) {
 		return await rollup({
 			input: './App.svelte',
-			external: (id) => {
-				if (/^https?:/.test(id)) return true
-			},
+			// Keep remote modules external; browser will fetch them by URL
+			external: (id) => /^https?:/.test(id),
 			plugins: [
 				commonjs,
 				{
 					name: 'repl-plugin',
 					async resolveId(importee, importer) {
-						// handle imports from 'svelte'
+						// 1) Virtual esm-env
+						if (importee === 'esm-env') return 'virtual:esm-env'
 
-						// import x from 'svelte'
-						if (importee === 'svelte') return `${CDN_URL}/svelte`
-
-						// import x from 'svelte/somewhere'
-						if (importee.startsWith('svelte/')) {
-							return `${CDN_URL}/${importee}`
-						}
-
-						// import x from './file.js' (via a 'svelte' or 'svelte/x' package)
-						if (importer && importer.startsWith(CDN_URL + '/')) {
-							if (importee.startsWith(CDN_URL + '/')) {
-								return importee
-							}
-
-							if (importee.startsWith('/')) {
-								return `${CDN_URL}${importee}`
-							}
-						}
-
-						// local repl components
+						// 2) Local virtual files (in-memory Svelte sources)
 						if (component_lookup.has(importee)) return importee
 
-						// relative imports from a remote package
-						if (importee.startsWith('.')) {
-							return new URL(importee, importer).href
-						}
-
-						// importing from a URL
+						// 3) Absolute remote URL stays as-is
 						if (/^https?:/.test(importee)) return importee
 
-						const match = /^((?:@[^/]+\/)?[^/]+)(\/.+)?$/.exec(importee)
-						if (!match) {
-							return console.error(`Invalid import "${importee}"`)
+						// 4) Resolve relative from remote importer
+						if (importee.startsWith('.')) {
+							if (importer && /^https?:/.test(importer)) return new URL(importee, importer).href
+							return importee
 						}
 
-						const pkg_name = match[1]
-						const subpath = `.${match[2] ?? ''}`
-
-						const fetch_package_info = async () => {
-							try {
-								const pkg_url = await follow_redirects(`${CDN_URL}/${pkg_name}/package.json`)
-
-								if (!pkg_url) throw new Error()
-
-								const pkg_json = (await fetch_if_uncached(pkg_url))?.body
-								const pkg = JSON.parse(pkg_json ?? '""')
-
-								const pkg_url_base = pkg_url.replace(/\/package\.json$/, '')
-
-								return {
-									pkg,
-									pkg_url_base
-								}
-							} catch (_e) {
-								throw new Error(`Error fetching "${pkg_name}" from unpkg. Does the package exist?`)
-							}
+						// 5) Handle esm.sh absolute subpaths
+						if (importer && importer.startsWith(`${CDN_URL}/`)) {
+							if (importee.startsWith(`${CDN_URL}/`)) return importee
+							if (importee.startsWith('/')) return new URL(importee, CDN_URL).href
 						}
 
-						const { pkg, pkg_url_base } = await fetch_package_info()
+						// 6) Svelte runtime pinned
+						if (importee === 'svelte') return SVELTE_CDN
+						if (importee.startsWith('svelte/')) return `${SVELTE_CDN}/${importee.slice('svelte/'.length)}`
 
-						try {
-							const resolved_id = await resolve_from_pkg(pkg, subpath, pkg_url_base)
-							const final = resolved_id ? new URL(resolved_id + '', `${pkg_url_base}/`).href : pkg_url_base
-							return final
-						} catch (reason) {
-							throw new Error(`Cannot import "${importee}": ${reason}.`)
-						}
+						// 7) Bare package → let esm.sh resolve
+						return `${CDN_URL}/${importee}`
 					},
 					async load(id) {
-						// local repl components are stored in memory
-						// this is our virtual filesystem
+						if (id === 'virtual:esm-env') {
+							return `export const DEV = false; export const PROD = true; export const BROWSER = true;`
+						}
 						if (component_lookup.has(id)) return component_lookup.get(id)
-
-						// everything else comes from a cdn
-						let res = await fetch_if_uncached(id)
-						return res?.body
+						return null
 					},
 					async transform(code, id) {
 						// our only transform is to compile svelte components
@@ -246,133 +203,4 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 	return final
 }
 
-/**
- * @param {string} url
- */
-async function follow_redirects(url) {
-	const res = await fetch_if_uncached(url)
-	return res?.url
-}
-
-/** @type {Map<string, Promise<{ url: string; body: string; }>>} */
-const FETCH_CACHE = new Map()
-
-/**
- * @param {string} url
- */
-async function fetch_if_uncached(url) {
-	if (FETCH_CACHE.has(url)) {
-		return FETCH_CACHE.get(url)
-	}
-
-	// cache bust for files in local dev
-	if (url.includes('localhost')) {
-		url = url + '?t=' + Date.now()
-	}
-
-	// fetch the file as is, then try adding .js and /index.js
-	const promise = fetchWithFallbacks(url, ['', '.js', '/index.js'])
-	if (promise) FETCH_CACHE.set(url, promise)
-
-	return promise
-
-	async function fetchWithFallbacks(url, suffixes) {
-		for (const suffix of suffixes) {
-			const full_url = url + suffix
-
-			try {
-				const response = await fetch(full_url)
-
-				if (!response.ok || response.headers.get('content-type')?.includes('text/html')) {
-					throw new Error(`Fetch failed for URL: ${full_url}` + (await response.text()))
-				}
-
-				return {
-					url,
-					body: await response.text()
-				}
-			} catch (error) {
-				console.warn(`Failed to fetch from ${full_url}, trying next fallback.`)
-			}
-		}
-
-		console.error('All fetch attempts failed for' + url) // If all fallbacks fail
-	}
-}
-
-/**
- *
- * @param {Record<string, unknown>} pkg
- * @param {string} subpath
- * @param {string} pkg_url_base
- */
-async function resolve_from_pkg(pkg, subpath, pkg_url_base) {
-	// match legacy Rollup logic — pkg.svelte takes priority over pkg.exports
-	if (typeof pkg.svelte === 'string' && subpath === '.') {
-		return pkg.svelte
-	}
-
-	if (pkg.jsdelivr && subpath === '.') {
-		return pkg.jsdelivr
-	}
-
-	// modern
-	if (pkg.exports) {
-		try {
-			const [resolved] =
-				resolve.exports(pkg, subpath, {
-					browser: true,
-					conditions: ['svelte', 'production']
-				}) ?? []
-
-			return resolved
-		} catch {
-			//   throw `no matched export path was found in "${pkg_name}/package.json"`
-			throw `no matched export path was found in "pkg_name/package.json"`
-		}
-	}
-
-	// legacy
-	if (subpath === '.') {
-		let resolved_id = resolve.legacy(pkg, {
-			fields: ['browser', 'module', 'main']
-		})
-
-		if (typeof resolved_id === 'object' && !Array.isArray(resolved_id)) {
-			const subpath = resolved_id['.']
-			if (subpath === false) return 'data:text/javascript,export {}'
-
-			resolved_id =
-				subpath ??
-				resolve.legacy(pkg, {
-					fields: ['module', 'main']
-				})
-		}
-
-		if (!resolved_id) {
-			// last ditch — try to match index.js/index.mjs
-			for (const index_file of ['/index.mjs', '/index.js', '.js']) {
-				try {
-					const indexUrl = new URL(index_file, `${pkg_url_base}`).href
-					return (await follow_redirects(indexUrl)) ?? ''
-				} catch {
-					// maybe the next option will be successful
-				}
-			}
-
-			//   throw `could not find entry point in "${pkg_name}/package.json"`
-			throw `could not find entry point in "pkg_name/package.json"`
-		}
-
-		return resolved_id
-	}
-
-	if (typeof pkg.browser === 'object') {
-		// this will either return `pkg.browser[subpath]` or `subpath`
-		return resolve.legacy(pkg, {
-			browser: subpath
-		})
-	}
-
-	return subpath
-}
+/** Removed legacy remote resolution helpers; esm.sh handles bare specifiers. */

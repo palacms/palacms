@@ -29,7 +29,7 @@
 	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
 
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 	const page_type_id = $derived(page.params.page_type)
 	const page_type = $derived(PageTypes.one(page_type_id))
 	const fields = $derived(page_type?.fields() ?? [])
@@ -157,7 +157,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] max-w-none h-full max-h-[100vh] flex flex-col p-4">
 		<BlockEditor
 			block={active_block}
 			bind:has_unsaved_changes={editing_block_has_unsaved_changes}
@@ -192,7 +192,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] w-full max-w-none h-full max-h-[100vh] flex flex-col p-4">
 		<BlockEditor
 			bind:has_unsaved_changes={creating_block_has_unsaved_changes}
 			header={{
@@ -215,7 +215,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] w-full max-w-none h-full max-h-[100vh] flex flex-col p-4">
 		<BlockPicker
 			{site}
 			onsave={async (blocks) => {
@@ -493,7 +493,6 @@
 							commit_task = setTimeout(() => manager.commit(), 500)
 						}}
 						ondelete_entry={(entry_id) => {
-							console.log({ entry_id })
 							PageTypeEntries.delete(entry_id)
 							clearTimeout(commit_task)
 							commit_task = setTimeout(() => manager.commit(), 500)
