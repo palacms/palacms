@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
-	import { tick, untrack } from 'svelte'
+	import { tick } from 'svelte'
 	import { site_context, page_type_context } from '$lib/builder/stores/context'
 	import { fade } from 'svelte/transition'
 	import { flip } from 'svelte/animate'
@@ -18,7 +18,6 @@
 	import { manager, PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
 	import { self as pb } from '$lib/pocketbase/PocketBase'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { FiniteStateMachine } from 'runed'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
 
@@ -40,16 +39,9 @@
 	const footer_sections = $derived(page_type_sections.filter((s) => s.zone === 'footer'))
 
 	// Page type head and foot editors
-	let head = $state('')
-	let foot = $state('')
+	let head = $state(page_type.head || '')
+	let foot = $state(page_type.foot || '')
 	let save_timeout = null
-
-	$effect.pre(() => {
-		if (page_type) {
-			head = page_type.head || ''
-			foot = page_type.foot || ''
-		}
-	})
 
 	async function save_page_type_code() {
 		if (!page_type) return
