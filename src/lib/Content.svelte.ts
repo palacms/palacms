@@ -123,7 +123,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 					const data = getContent(field, entry)
 					if (!data) return
-					;(content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
+						; (content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
 				}
 			}
 
@@ -210,14 +210,17 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!entry) continue
 				if (!content[entry.locale]) content[entry.locale] = {}
 
+				// If a page is referenced, try to resolve it; otherwise fall back to the raw URL
 				const page = entry.value.page ? Pages.one(entry.value.page) : null
-				if (page === undefined) return
+				// If the referenced page hasn't loaded yet, skip this field for now instead of aborting
+				if (page === undefined) continue
 
 				const url = page ? build_live_page_url(page)?.pathname : entry.value.url
-				if (url === undefined) return
+				// If we still don't have a URL (e.g. unresolved page and no URL), set empty string rather than aborting
+				const safe_url = url ?? ''
 
-				const label = entry.value.label
-				content[entry.locale]![field.key] = { url, label }
+				const label = entry.value.label ?? ''
+				content[entry.locale]![field.key] = { url: safe_url, label }
 			}
 
 			// If field has a key but no entries, fill with empty value

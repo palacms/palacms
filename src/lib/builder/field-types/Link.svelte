@@ -48,7 +48,7 @@
 			{#if selected === 'page'}
 				<UI.Select
 					value={entry.value.page}
-					options={selectable_pages.map((p) => ({ ...p, label: p.name, value: p.id }))}
+					options={selectable_pages.sort((a, b) => a.index - b.index).map((p) => ({ ...p, label: p.name, value: p.id }))}
 					on:input={({ detail: pageId }) => {
 						const page = selectable_pages.find((p) => p.id === pageId)
 						if (page) {
