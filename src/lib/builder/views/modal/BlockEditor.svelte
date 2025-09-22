@@ -13,7 +13,7 @@
 	import Fields, { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
 	import { locale } from '$lib/builder/stores/app/misc.js'
 	import hotkey_events from '$lib/builder/stores/app/hotkey_events.js'
-	import { PressedKeys } from 'runed'
+	import { PressedKeys, watch } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import {
@@ -121,6 +121,10 @@
 		if (!$has_error) {
 			loading = true
 			await manager.commit()
+			// Reset baselines after successful save
+			initial_code = { html, css, js }
+			initial_data = _.cloneDeep(component_data)
+			has_unsaved_changes = false
 			loading = false
 			header.button.onclick(block)
 		}
@@ -131,26 +135,28 @@
 	let js = $state(block.js)
 
 	// Store initial data for comparison
-	const initial_code = { html: block.html, css: block.css, js: block.js }
-	const initial_data = _.cloneDeep(component_data)
+	let initial_code = $state({ html: block.html, css: block.css, js: block.js })
+	let initial_data = $state(_.cloneDeep(component_data))
 
-	// Compare current state to initial data
-	$effect(() => {
-		const code_changed = html !== initial_code.html || css !== initial_code.css || js !== initial_code.js
-		const data_changed = !_.isEqual(initial_data, component_data)
-		has_unsaved_changes = code_changed || data_changed
-	})
+	// Compare current state to initial data (explicit watch)
+	watch(
+		() => [html, css, js, component_data],
+		() => {
+			const code_changed = html !== initial_code.html || css !== initial_code.css || js !== initial_code.js
+			const data_changed = !_.isEqual(initial_data, component_data)
+			has_unsaved_changes = code_changed || data_changed
+		}
+	)
 
-	// Add beforeunload listener to warn about unsaved changes
+	// Add beforeunload listener via effect (lifecycle)
 	$effect(() => {
 		if (!browser) return
+		if (!has_unsaved_changes) return
 
 		const handleBeforeUnload = (e) => {
-			if (has_unsaved_changes) {
-				e.preventDefault()
-				e.returnValue = ''
-				return ''
-			}
+			e.preventDefault()
+			e.returnValue = ''
+			return ''
 		}
 
 		window.addEventListener('beforeunload', handleBeforeUnload)

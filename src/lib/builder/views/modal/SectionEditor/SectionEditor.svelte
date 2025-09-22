@@ -14,7 +14,7 @@
 	import { locale } from '../../../stores/app/misc.js'
 	import hotkey_events from '../../../stores/app/hotkey_events.js'
 	import { site_html } from '$lib/builder/stores/app/page.js'
-	import { PressedKeys } from 'runed'
+	import { PressedKeys, watch } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { browser } from '$app/environment'
 	import { PageSectionEntries, PageSections, PageEntries, PageTypeSectionEntries, SiteSymbolFields, SiteSymbols, SiteSymbolEntries, SiteEntries, manager, Sites } from '$lib/pocketbase/collections'
@@ -54,8 +54,8 @@
 	const data = $derived(useContent(component, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
 
-	const initial_code = { html: symbol?.html, css: symbol?.css, js: symbol?.js }
-	const initial_data = _.cloneDeep(component_data)
+	const initial_code = $state({ html: symbol?.html, css: symbol?.css, js: symbol?.js })
+	const initial_data = $state(_.cloneDeep(component_data))
 	let loading = $state(false)
 	let newly_created_fields = new Set()
 
@@ -166,23 +166,25 @@
 	let css = $state(symbol?.css ?? '')
 	let js = $state(symbol?.js ?? '')
 
-	// Compare current state to initial data
-	$effect(() => {
-		const code_changed = html !== initial_code.html || css !== initial_code.css || js !== initial_code.js
-		const data_changed = !_.isEqual(initial_data, component_data)
-		has_unsaved_changes = code_changed || data_changed
-	})
+	// Compare current state to initial data (explicit watch)
+	watch(
+		() => [html, css, js, component_data],
+		() => {
+			const code_changed = html !== initial_code.html || css !== initial_code.css || js !== initial_code.js
+			const data_changed = !_.isEqual(initial_data, component_data)
+			has_unsaved_changes = code_changed || data_changed
+		}
+	)
 
-	// Add beforeunload listener to warn about unsaved changes
+	// Add beforeunload listener via effect (lifecycle)
 	$effect(() => {
 		if (!browser) return
+		if (!has_unsaved_changes) return
 
 		const handleBeforeUnload = (e) => {
-			if (has_unsaved_changes) {
-				e.preventDefault()
-				e.returnValue = ''
-				return ''
-			}
+			e.preventDefault()
+			e.returnValue = ''
+			return ''
 		}
 
 		window.addEventListener('beforeunload', handleBeforeUnload)
@@ -257,6 +259,7 @@
 
 						// Track this as a newly created field
 						if (newField) {
+							has_unsaved_changes = true
 							newly_created_fields.add(newField.id)
 						}
 
