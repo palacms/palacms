@@ -87,6 +87,10 @@
 	// Store editor instances by markdown ID so we can access them later
 	let markdown_editors = new Map()
 
+	// Keep markdown locked when blur is caused by clicking editor UI buttons
+	let suppress_blur_unlock = $state(false)
+	let suppress_timer: any
+
 	let error = $state('')
 
 	let generated_js = $state('')
@@ -114,6 +118,7 @@
 
 	let scrolling = false
 	let is_editing = $state(false)
+	$inspect({ is_editing })
 
 	const markdown_classes = {}
 	let field_save_timeout
@@ -280,8 +285,10 @@
 							update_formatting_state()
 						},
 						onBlur: async ({ event }) => {
-							// Don't call handle_unlock for markdown - let it stay locked
-							dispatch('unlock')
+							// Only unlock when blur wasn't caused by clicking editor UI
+							if (!suppress_blur_unlock) {
+								handle_unlock()
+							}
 							// Final save on blur
 							clearTimeout(field_save_timeout)
 							const json = editor.getJSON()
@@ -1111,7 +1118,17 @@
 </Dialog.Root>
 
 {#if image_editor_is_visible}
-	<button style:pointer-events={scrolling ? 'none' : 'all'} in:fade={{ duration: 100 }} class="image-editor" bind:this={image_editor}>
+	<button
+		style:pointer-events={scrolling ? 'none' : 'all'}
+		in:fade={{ duration: 100 }}
+		class="image-editor"
+		bind:this={image_editor}
+		onmousedown={() => {
+			suppress_blur_unlock = true
+			clearTimeout(suppress_timer)
+			suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
+		}}
+	>
 		<Icon icon="uil:image-upload" />
 	</button>
 {/if}
@@ -1148,7 +1165,17 @@
   </pre>
 {/if}
 
-<div class="menu floating-menu primo-reset" bind:this={floating_menu} style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="menu floating-menu primo-reset"
+	bind:this={floating_menu}
+	style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}"
+	onmousedown={() => {
+		suppress_blur_unlock = true
+		clearTimeout(suppress_timer)
+		suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
+	}}
+>
 	{#if active_editor}
 		<MarkdownButton
 			icon="fa-solid:heading"
@@ -1206,7 +1233,17 @@
 		/>
 	{/if}
 </div>
-<div class="menu bubble-menu primo-reset" bind:this={bubble_menu} style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="menu bubble-menu primo-reset"
+	bind:this={bubble_menu}
+	style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}"
+	onmousedown={() => {
+		suppress_blur_unlock = true
+		clearTimeout(suppress_timer)
+		suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
+	}}
+>
 	{#if active_editor}
 		<MarkdownButton
 			icon="fa-solid:link"
