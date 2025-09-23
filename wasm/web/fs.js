@@ -88,7 +88,6 @@
 				const n = this.writeSync(fd, buf)
 				callback(null, n)
 			} else {
-				console.debug('write', fd)
 				if (!handles.has(fd)) {
 					callback(errors.ebadf())
 					return
@@ -106,17 +105,14 @@
 		},
 
 		chmod(path, mode, callback) {
-			console.debug('chmod', path)
 			callback(errors.enosys())
 		},
 
 		chown(path, uid, gid, callback) {
-			console.debug('chown', path)
 			callback(errors.enosys())
 		},
 
 		close(fd, callback) {
-			console.debug('close', fd)
 			if (!handles.has(fd)) {
 				callback(errors.ebadf())
 				return
@@ -129,17 +125,14 @@
 		},
 
 		fchmod(fd, mode, callback) {
-			console.debug('fchmod', fd)
 			callback(errors.enosys())
 		},
 
 		fchown(fd, uid, gid, callback) {
-			console.debug('fchown', fd)
 			callback(errors.enosys())
 		},
 
 		fstat(fd, callback) {
-			console.debug('fstat', fd)
 			if (!handles.has(fd)) {
 				callback(errors.ebadf())
 			}
@@ -164,7 +157,6 @@
 		},
 
 		fsync(fd, callback) {
-			console.debug('fsync', fd)
 			if (!handles.has(fd)) {
 				callback(errors.ebadf())
 				return
@@ -176,7 +168,6 @@
 		},
 
 		ftruncate(fd, length, callback) {
-			console.debug('ftruncate', fd)
 			if (!handles.has(fd)) {
 				callback(errors.ebadf())
 			}
@@ -187,22 +178,18 @@
 		},
 
 		lchown(path, uid, gid, callback) {
-			console.debug('lchown', path)
 			callback(errors.enosys())
 		},
 
 		link(path, link, callback) {
-			console.debug('link', path, link)
 			callback(errors.enosys())
 		},
 
 		lstat(path, callback) {
-			console.debug('lstat', path)
 			this.stat(path, callback)
 		},
 
 		mkdir(path, perm, callback) {
-			console.debug('mkdir', path)
 			const segments = getPathSegements(path)
 			const [name] = segments.slice(-1)
 			const parentPath = '/' + segments.slice(0, -1).join('/')
@@ -216,7 +203,6 @@
 
 		open(path, flags, mode, callback) {
 			const options = { create: !!(flags & this.constants.O_CREAT) }
-			console.debug('open', path, options)
 			resolveFile(path, options)
 				.then(async (f) => {
 					const fd = nextFd++
@@ -229,7 +215,6 @@
 		},
 
 		read(fd, buffer, offset, length, position, callback) {
-			console.debug('read', fd)
 			if (!handles.has(fd)) {
 				callback(errors.ebadf())
 				return
@@ -246,18 +231,14 @@
 		},
 
 		readdir(path, callback) {
-			console.debug('readdir', path)
 			callback(errors.enosys())
 		},
 
 		readlink(path, callback) {
-			console.debug('readlink', path)
 			callback(errors.enosys())
 		},
 
 		rename(from, to, callback) {
-			console.debug('rename', from, to)
-
 			let buffer
 			Promise.resolve()
 				.then(async () => {
@@ -290,7 +271,6 @@
 		},
 
 		rmdir(path, callback) {
-			console.debug('rmdir', path)
 			const segments = getPathSegements(path)
 			const [name] = segments.slice(-1)
 			const parentPath = '/' + segments.slice(0, -1).join('/')
@@ -303,7 +283,6 @@
 		},
 
 		stat(path, callback) {
-			console.debug('stat', path)
 			const segments = getPathSegements(path)
 			const [name] = segments.slice(-1)
 			const parentPath = '/' + segments.slice(0, -1).join('/')
@@ -353,12 +332,10 @@
 		},
 
 		symlink(path, link, callback) {
-			console.debug('symlink', path)
 			callback(errors.enosys())
 		},
 
 		truncate(path, length, callback) {
-			console.debug('truncate', path)
 			resolveFile(path)
 				.then(async (f) => {
 					const handle = await f.createSyncAccessHandle()
@@ -370,7 +347,6 @@
 		},
 
 		unlink(path, callback) {
-			console.debug('unlink', path)
 			const segments = getPathSegements(path)
 			const [name] = segments.slice(-1)
 			const parentPath = '/' + segments.slice(0, -1).join('/')
@@ -383,7 +359,6 @@
 		},
 
 		utimes(path, atime, mtime, callback) {
-			console.debug('utimes', path)
 			callback(errors.enosys())
 		}
 	}

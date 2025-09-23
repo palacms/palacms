@@ -21,7 +21,7 @@ import (
 
 func main() {
 	pb := pocketbase.NewWithConfig(pocketbase.Config{
-		DefaultDev:       true,
+		DefaultDev:       false,
 		DefaultDataDir:   "/pb_data",
 		DBConnect:        internal.DBConnect,
 		DataMaxOpenConns: 1,
