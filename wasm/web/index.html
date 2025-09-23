@@ -3,6 +3,7 @@
 	<head>
 		<title>PalaCMS Demo</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" type="image/png" href="/favicon.png" />
 		<style>
 			body {
 				position: absolute;
@@ -53,16 +54,31 @@
 			}
 
 			.button:not([hidden]) {
-				background-color: transparent;
-				border: 1px solid white;
-				color: white;
-				padding: 0.5rem;
-				box-shadow: 2px 2px white;
-				cursor: pointer;
-				display: inline-block;
-				text-decoration: none;
-				font-size: 1rem;
-			}
+        color: #cecece;
+        font-weight: 500;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        padding: .65rem;
+        border: 1.5px solid #70809e;
+        border-radius: .25rem;
+        cursor: pointer;
+        user-select: none;
+        text-decoration: none;
+        background-color: transparent;
+        font-size: 1rem;
+      }
+
+			.button:focus {
+        background-color: var(--weave-primary-color-dark);
+      }
+
+      .button:hover {
+        background-color: #70809e;
+        transition: .2s;
+        color: #121212;
+      }
 
 			.container {
 				padding-inline: 1rem;
@@ -99,11 +115,14 @@
 					<summary class="button"">About</summary>
 					<ul>
 						<li>The demo will run locally on the browser you are using. The data you create will also be saved into the browser local storage.</li>
-						<li>Once started, PalaCMS will open into a new tab. Keep this tab open while demo is being used.</li>
+						<li>Once started, PalaCMS will open into a new tab. <b>Keep this tab open while demo is being used.</b></li>
 						<li>It will be slower than actual deployment of PalaCMS, so be patient with the demo.</li>
 						<li>
 							Remember that data loss is entirely possible.
 							<b>The demo is only suitable for testing purposes.</b>
+						</li>
+						<li>
+						  Username is <i>demo@palacms.com</i>, password is <i>demo1234</i>
 						</li>
 						<li>Have fun!</li>
 					</ul>
