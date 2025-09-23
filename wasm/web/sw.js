@@ -1,11 +1,21 @@
 skipWaiting()
 
+const listeners = new Map()
 let nextId = 1
 let port
 
 self.addEventListener('message', (event) => {
 	if (event.data.type === 'init') {
 		;[port] = event.ports
+		port.addEventListener('message', (event) => {
+			const { type, id, response } = event.data
+			if (type === 'response') {
+				const listener = listeners.get(id)
+				listener(response)
+				listeners.delete(id)
+			}
+		})
+		port.start()
 	} else if (event.data.type === 'close') {
 		port.close()
 		port = undefined
@@ -24,23 +34,17 @@ self.addEventListener('fetch', (event) => {
 
 	event.respondWith(
 		event.request.arrayBuffer().then((buffer) => {
-			const id = nextId++
-			const request = {
-				method: event.request.method,
-				url: event.request.url,
-				headers: Array.from(event.request.headers),
-				body: new Uint8Array(buffer)
-			}
-			port.postMessage({ type: 'request', id, request })
-
 			return new Promise((resolve) => {
-				port.addEventListener('message', (event) => {
-					const { type, id: responseId, response } = event.data
-					if (type === 'response' && responseId === id) {
-						resolve(new Response(response.body, response))
-					}
-				})
-				port.start()
+				const id = nextId++
+				const request = {
+					method: event.request.method,
+					url: event.request.url,
+					headers: Array.from(event.request.headers),
+					body: new Uint8Array(buffer)
+				}
+
+				listeners.set(id, (response) => resolve(new Response(response.body, response)))
+				port.postMessage({ type: 'request', id, request })
 			})
 		})
 	)
