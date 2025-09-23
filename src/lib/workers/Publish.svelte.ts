@@ -156,11 +156,11 @@ export const usePublishSite = (site_id?: string) => {
 		})
 
 		const page_symbols_with_js = sections
-			.map((section) => section.symbol)
-			.filter(deduplicate)
-			.map((symbol_id) => data?.symbols.find((symbol) => symbol.id === symbol_id))
+			.map((section) => ({ symbol_id: section.symbol }))
+			.filter(deduplicate('symbol_id'))
+			.map(({ symbol_id }) => data?.symbols.find((symbol) => symbol.id === symbol_id))
 			.filter((symbol) => !!symbol)
-			.filter((symbol) => symbol.js)
+			.filter((symbol) => !!symbol.js)
 		no_js ||= page_symbols_with_js.length === 0
 
 		const final =
