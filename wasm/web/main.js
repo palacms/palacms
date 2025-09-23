@@ -37,6 +37,7 @@ const startServer = async () =>
 
 if (window.name === 'server') {
 	startServer()
+	document.querySelector('#info').open = false
 	document.querySelector('#open').hidden = false
 } else {
 	document.querySelector('#start').hidden = false
@@ -48,6 +49,7 @@ document.querySelector('#start').addEventListener('click', () => {
 		window.open(location.href, '_blank')
 		history.replaceState(null, '', '/')
 	})
+	document.querySelector('#info').open = false
 	document.querySelector('#open').hidden = false
 	document.querySelector('#start').hidden = true
 })

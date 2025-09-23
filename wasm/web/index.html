@@ -26,30 +26,30 @@
 			}
 
 			details {
-			  position: relative;
+				position: relative;
 			}
 
 			details[open]::details-content {
-			  position: absolute;
+				position: absolute;
 				top: 100%;
 				left: 0;
 				width: max-content;
 				max-width: calc(100dvw - 4rem);
-			  background-color: white;
+				background-color: white;
 				color: black;
 				padding: 1rem;
 			}
 
 			details[open]::details-content::before {
-			  content: '';
+				content: '';
 				position: absolute;
 				bottom: 100%;
 				left: 0.5rem;
-			  width: 0;
-        height: 0;
-        border-left: 0.5rem solid transparent;
-        border-right: 0.5rem solid transparent;
-        border-bottom: 0.5rem solid white;
+				width: 0;
+				height: 0;
+				border-left: 0.5rem solid transparent;
+				border-right: 0.5rem solid transparent;
+				border-bottom: 0.5rem solid white;
 			}
 
 			.button:not([hidden]) {
@@ -69,9 +69,9 @@
 			}
 
 			.group {
-  			display: flex;
-  			flex-wrap: wrap;
-        gap: 1rem;
+				display: flex;
+				flex-wrap: wrap;
+				gap: 1rem;
 			}
 
 			#output {
@@ -93,20 +93,23 @@
 	</head>
 	<body>
 		<div class="container">
-			<h1>PalaCMS Demo</h1>
+			<h1><img alt="palacms" src="/logo.svg" style="height: 1em;"></h1>
 			<div class="group">
-  			<details>
-  				<summary class="button"">About</summary>
-  				<ul>
-  				  <li>The demo will run locally on the browser you are using. The data you create will also be saved into the browser local storage.</li>
-  					<li>Once started, PalaCMS will open into a new tab. Keep this tab open while demo is being used.</li>
-  					<li>It will be slower than actual deployment of PalaCMS, so be patient with the demo.</li>
-            <li>Remember that data loss is entirely possible. <b>The demo is only suitable for testing purposes.</b></li>
-            <li>Have fun!</li>
-  				</ul>
-  			</details>
-  			<button type="button" id="start" class="button" hidden>Start PalaCMS</button>
-  			<a id="open" class="button" href="/admin" target="_blank" hidden>Open PalaCMS</a>
+				<details id="info" open>
+					<summary class="button"">About</summary>
+					<ul>
+						<li>The demo will run locally on the browser you are using. The data you create will also be saved into the browser local storage.</li>
+						<li>Once started, PalaCMS will open into a new tab. Keep this tab open while demo is being used.</li>
+						<li>It will be slower than actual deployment of PalaCMS, so be patient with the demo.</li>
+						<li>
+							Remember that data loss is entirely possible.
+							<b>The demo is only suitable for testing purposes.</b>
+						</li>
+						<li>Have fun!</li>
+					</ul>
+				</details>
+				<button type="button" id="start" class="button" hidden>Start PalaCMS</button>
+				<a id="open" class="button" href="/admin" target="_blank" hidden>Open PalaCMS</a>
 			</div>
 		</div>
 		<pre id="output"></pre>
