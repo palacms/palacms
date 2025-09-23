@@ -197,7 +197,6 @@
 	{#each (fields || []).filter((f) => !f.parent || f.parent === '').sort((a, b) => a.index - b.index) as field (field.id)}
 		{@const active_tab = selected_tabs[field.id] ?? 'entry'}
 		<div class="entries-item">
-			<!-- TODO: hotkeys for tab switching  -->
 			{#if $current_user?.siteRole === 'developer'}
 				<div class="top-tabs">
 					<button

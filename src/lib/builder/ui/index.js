@@ -7,7 +7,6 @@ import Switch from './Switch.svelte'
 import Card from './Card.svelte'
 import ListItem from './ListItem.svelte'
 import IconButton from './IconButton.svelte'
-import Tabs from './Tabs.svelte'
 import LargeSwitch from './LargeSwitch.svelte'
 import Toggle from './Toggle/Toggle.svelte'
 
@@ -22,6 +21,5 @@ export default {
 	LargeSwitch,
 	Toggle,
 	Card,
-	ListItem,
-	Tabs
+	ListItem
 }

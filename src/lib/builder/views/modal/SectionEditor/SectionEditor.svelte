@@ -12,9 +12,8 @@
 	import ComponentPreview, { refresh_preview, has_error } from '$lib/builder/components/ComponentPreview.svelte'
 	import Fields, { setFieldEntries } from '../../../components/Fields/FieldsContent.svelte'
 	import { locale } from '../../../stores/app/misc.js'
-	import hotkey_events from '../../../stores/app/hotkey_events.js'
 	import { site_html } from '$lib/builder/stores/app/page.js'
-	import { PressedKeys, watch } from 'runed'
+	import { watch } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { browser } from '$app/environment'
 	import { PageSectionEntries, PageSections, PageEntries, PageTypeSectionEntries, SiteSymbolFields, SiteSymbols, SiteSymbolEntries, SiteEntries, manager, Sites } from '$lib/pocketbase/collections'
@@ -95,26 +94,11 @@
 			: []
 	)
 
-	// Set up hotkey listeners for modal
-	const modalKeys = new PressedKeys()
-
-	// Toggle between code and content tabs
-	onModKey(modalKeys, 'e', toggle_tab)
+	// Set up hotkey listeners for modal (global fallback)
+	onModKey('e', toggle_tab)
 
 	// Save component
-	onModKey(modalKeys, 's', save_component)
-
-	// Also keep listening to global hotkey events for compatibility
-	$effect.pre(() => {
-		const unsubscribe_e = hotkey_events.on('e', toggle_tab)
-		const unsubscribe_save = hotkey_events.on('save', save_component)
-
-		// Cleanup on unmount
-		return () => {
-			unsubscribe_e()
-			unsubscribe_save()
-		}
-	})
+	onModKey('s', save_component)
 
 	function toggle_tab() {
 		if ($current_user?.siteRole !== 'developer') {

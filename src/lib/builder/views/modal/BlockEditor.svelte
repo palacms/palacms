@@ -12,8 +12,7 @@
 	import ComponentPreview, { has_error } from '$lib/builder/components/ComponentPreview.svelte'
 	import Fields, { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
 	import { locale } from '$lib/builder/stores/app/misc.js'
-	import hotkey_events from '$lib/builder/stores/app/hotkey_events.js'
-	import { PressedKeys, watch } from 'runed'
+	import { watch } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import {
@@ -93,13 +92,10 @@
 	let loading = $state(false)
 
 	// Set up hotkey listeners for modal
-	const modalKeys = new PressedKeys()
-
-	// Toggle between code and content tabs
-	onModKey(modalKeys, 'e', toggle_tab)
+	onModKey('e', toggle_tab)
 
 	// Save component
-	onModKey(modalKeys, 's', save_component)
+	onModKey('s', save_component)
 
 	function toggle_tab() {
 		tab = tab === 'code' ? 'content' : 'code'

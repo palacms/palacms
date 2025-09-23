@@ -27,6 +27,7 @@
 
 	// Set up keyboard shortcuts for tab switching
 	// Use a simple global keydown listener for when CodeMirror isn't focused
+	// (tried using onModKey but it's wonkey here idk why)
 	function handleGlobalKeydown(e) {
 		// Check if CodeMirror has focus by checking if the active element is within a .cm-editor
 		const isCodeMirrorFocused = document.activeElement?.closest('.cm-editor')

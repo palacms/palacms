@@ -3,7 +3,6 @@
 	import { fade } from 'svelte/transition'
 	import { createEventDispatcher } from 'svelte'
 	import { mod_key_held } from '../stores/app/misc'
-	import hotkey_events from '../stores/app/hotkey_events.js'
 	const dispatch = createEventDispatcher()
 
 	/**
@@ -16,8 +15,6 @@
 
 	/** @type {Props} */
 	let { active_tab_id = $bindable(tabs[0]?.id), variant = 'primary', disable_hotkeys = false, style = '' } = $props()
-
-	hotkey_events.on('e', toggle_switch)
 
 	function toggle_switch() {
 		if (active_tab_id === 'code') {
