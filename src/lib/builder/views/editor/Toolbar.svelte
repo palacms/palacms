@@ -13,7 +13,7 @@
 	import { active_users } from '$lib/builder/stores/app/misc'
 	import { page as pageState } from '$app/state'
 	import { PageTypes, Pages, manager } from '$lib/pocketbase/collections'
-	import hotkey_events from '$lib/builder/stores/app/hotkey_events'
+	import { onModKey } from '$lib/builder/utils/keyboard'
 
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
 	import SitePages from '$lib/builder/views/modal/SitePages/SitePages.svelte'
@@ -29,11 +29,14 @@
 	let { children }: { children: Snippet } = $props()
 
 	const { value: site } = site_context.get()
-	const page_path = $derived(pageState.params.page?.split('/'))
-	const page_type_id = $derived(pageState.params.page_type)
-	const page = $derived(site && page_path && resolve_page(site, page_path))
-	const page_type = $derived(page_type_id && PageTypes.one(page_type_id))
-	const page_page_type = $derived(page && PageTypes.one(page.page_type))
+	const homepage = $derived(site.homepage())
+
+	const active_page_path = $derived(pageState.params.page?.split('/'))
+	const active_page = $derived(active_page_path ? resolve_page(site, active_page_path) : homepage)
+	const active_page_page_type = $derived(active_page && PageTypes.one(active_page.page_type))
+
+	const active_page_type_id = $derived(pageState.params.page_type)
+	const active_page_type = $derived(active_page_type_id && PageTypes.one(active_page_type_id))
 
 	const publish = $derived(usePublishSite(site?.id))
 	const publish_in_progress = $derived(['loading', 'working'].includes(publish.status))
@@ -41,44 +44,39 @@
 	let going_up = $state(false)
 	let going_down = $state(false)
 
-	// Determine navigation scope based on current page (supports nested child pages)
-	const home_page = $derived(site?.homepage())
-	const child_pages = $derived(home_page?.children() ?? [])
-	const nav_pages = $derived.by(() => {
-		if (!home_page) return []
-		// Only navigate within the same level as the current page.
-		// Base route or homepage (no parent) → no same-level navigation
-		if (!page || !page.parent) return []
-		// First-level children: siblings are the homepage's children
-		if (page.parent === home_page.id) return child_pages
-		// Deeper levels: siblings are the current parent’s children
-		const parent = Pages.one(page.parent)
-		return (parent?.children() ?? []).sort((a, b) => a.index - b.index)
+	const all_pages = $derived(site?.pages() ?? [])
+
+	const pages_at_current_level = $derived.by(() => {
+		if (!active_page || !homepage) return []
+		if (active_page.id === homepage.id || active_page.parent === homepage.id) return [homepage, ...all_pages.filter((p) => p.parent === homepage.id)].sort((a, b) => a.index - b.index) // home page or direct sibling
+		return all_pages.filter((p) => p.parent === active_page?.parent).sort((a, b) => a.index - b.index) // standard children
 	})
-	const current_page_index = $derived.by(() => {
-		if (!page) return 0 // Treat base route as homepage
-		return nav_pages.findIndex((p) => p.id === page.id)
-	})
-	const can_navigate_up = $derived(current_page_index > 0)
-	const can_navigate_down = $derived(current_page_index < nav_pages.length - 1 && current_page_index !== -1)
+
+	const can_navigate_up = $derived(active_page ? active_page.index > 0 : false)
+	const can_navigate_down = $derived(active_page ? active_page.index < pages_at_current_level.length - 1 : false)
 
 	// Navigation functions
 	function navigate_up() {
-		if (!can_navigate_up) return
-		const prev_page = nav_pages[current_page_index - 1]
+		if (!can_navigate_up || !active_page) return
+		going_up = true
+		const prev_page = pages_at_current_level.find((p) => p.index === active_page.index - 1)
+		if (!prev_page) return
 		const url = build_cms_page_url(prev_page, pageState.url)
 		if (url) goto(url, { replaceState: false })
+		setTimeout(() => (going_up = false), 150)
 	}
 
 	function navigate_down() {
-		if (can_navigate_down && current_page_index < nav_pages.length - 1 && current_page_index !== -1) {
-			const next_page = nav_pages[current_page_index + 1]
-			const url = build_cms_page_url(next_page, pageState.url)
-			if (url) goto(url, { replaceState: false })
-		}
+		if (!can_navigate_down || !active_page) return
+		going_down = true
+		const next_page = pages_at_current_level.find((p) => p.index === active_page.index + 1)
+		if (!next_page) return
+		const url = build_cms_page_url(next_page, pageState.url)
+		if (url) goto(url, { replaceState: false })
+		setTimeout(() => (going_down = false), 150)
 	}
 
-	let customAnchor = $state<HTMLElement>(null!)
+	let page_dropdown_anchor = $state<HTMLElement>(null!)
 
 	let editing_site = $state(false)
 	let site_has_unsaved_changes = $state(false)
@@ -96,24 +94,29 @@
 		publish_stage = 'INITIAL'
 	})
 
-	// Hotkey event listeners
-	hotkey_events.on('up', () => {
-		if (can_navigate_up) {
-			going_up = true
+	// workaround for what seems to be a runed PressedKeys bugs when holding mod and pressing up/down keys
+	function handleGlobalKeydown(e) {
+		const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+		if (!(isMac ? e.metaKey : e.ctrlKey)) return
+		if (e.key === 'ArrowUp') {
+			e.preventDefault()
 			navigate_up()
-			setTimeout(() => (going_up = false), 150)
-		}
-	})
-
-	hotkey_events.on('down', () => {
-		if (can_navigate_down) {
-			going_down = true
+		} else if (e.key === 'ArrowDown') {
+			e.preventDefault()
 			navigate_down()
-			setTimeout(() => (going_down = false), 150)
+		}
+	}
+
+	// Add the global listener on mount
+	$effect(() => {
+		window.addEventListener('keydown', handleGlobalKeydown)
+
+		return () => {
+			window.removeEventListener('keydown', handleGlobalKeydown)
 		}
 	})
 
-	hotkey_events.on('publish', () => {
+	onModKey('p', () => {
 		publishing = true
 	})
 </script>
@@ -197,7 +200,7 @@
 						<div style:color={going_down ? 'var(--weave-primary-color)' : 'inherit'} style:opacity={can_navigate_down ? 1 : 0.3}>&#8984; ↓</div>
 					</div>
 				{:else}
-					<div class="flex rounded" style="border: 1px solid #222" bind:this={customAnchor}>
+					<div class="flex rounded" style="border: 1px solid #222" bind:this={page_dropdown_anchor}>
 						<ToolbarButton label="Pages" icon="iconoir:multiple-pages" on:click={() => (editing_pages = true)} />
 						{#if $current_user?.siteRole === 'developer' || $current_user?.serverRole === 'developer'}
 							<DropdownMenu.Root>
@@ -209,7 +212,7 @@
 										</button>
 									{/snippet}
 								</DropdownMenu.Trigger>
-								<DropdownMenu.Content side="bottom" class="z-[999]" align="start" sideOffset={4} {customAnchor}>
+								<DropdownMenu.Content side="bottom" class="z-[999]" align="start" sideOffset={4} customAnchor={page_dropdown_anchor}>
 									<DropdownMenu.Item onclick={() => (editing_page_types = true)} class="text-xs cursor-pointer">
 										<LayoutTemplate style="width: .75rem" />
 										<span>Page Types</span>
@@ -223,24 +226,24 @@
 		</div>
 		<div class="site-name">
 			<span class="site">{site?.name}</span>
-			{#if page_type}
+			{#if active_page_type}
 				<span class="separator">/</span>
-				<div class="page-type" style:background={page_type.color}>
-					<Icon icon={page_type.icon} />
-					<span>{page_type.name}</span>
+				<div class="page-type" style:background={active_page_type.color}>
+					<Icon icon={active_page_type.icon} />
+					<span>{active_page_type.name}</span>
 				</div>
-			{:else if page}
+			{:else if active_page}
 				<span class="separator">/</span>
-				<span class="page">{page.name}</span>
-				{#if page_page_type}
+				<span class="page">{active_page.name}</span>
+				{#if active_page_page_type}
 					{#if $current_user?.siteRole === 'developer'}
 						{@const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}
-						<a class="page-type-badge" style="background-color: {page_page_type.color};" href="{base_path}/page-type--{page_page_type.id}">
-							<Icon icon={page_page_type.icon} />
+						<a class="page-type-badge" style="background-color: {active_page_page_type.color};" href="{base_path}/page-type--{active_page_page_type.id}">
+							<Icon icon={active_page_page_type.icon} />
 						</a>
 					{:else}
-						<span class="page-type-badge" style="background-color: {page_page_type.color};">
-							<Icon icon={page_page_type.icon} />
+						<span class="page-type-badge" style="background-color: {active_page_page_type.color};">
+							<Icon icon={active_page_page_type.icon} />
 						</span>
 					{/if}
 				{/if}

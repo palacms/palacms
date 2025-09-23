@@ -25,7 +25,6 @@
 	let {
 		parent,
 		page,
-		active,
 		oncreate,
 		page_slug,
 		active_page_id,
@@ -33,7 +32,6 @@
 	}: {
 		parent?: ObjectOf<typeof Pages>
 		page: ObjectOf<typeof Pages>
-		active: boolean
 		oncreate: (new_page: Omit<Page, 'id' | 'index'>) => Promise<void>
 		page_slug: string
 		active_page_id?: string
@@ -42,15 +40,17 @@
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const { value: site } = site_context.get()
+	const homepage = $derived(site.homepage())
+
 	const full_url = $derived(build_cms_page_url(page, pageState.url))
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
-	const home_page = $derived(site.homepage())
 
 	let showing_children = $state(false)
 	let children = $derived(page.children() ?? [])
 	let has_children = $derived(children.length > 0 && page.slug !== '')
 	let has_toggled = $state(false)
+	const active = $derived(page.id === active_page_id)
 
 	get(`page-list-toggle--${page.id}`).then((toggled) => {
 		if (toggled !== undefined) showing_children = toggled
@@ -327,7 +327,7 @@
 												const sibling_pages = allPages.filter((p) => p.parent === parent_id && p.id !== page.id && !descendants.some((d) => d.id === p.id)).sort((a, b) => a.index - b.index)
 
 												sibling_pages.forEach((sibling_page, i) => {
-													const index = parent_id === home_page?.id ? i + 1 : i
+													const index = parent_id === homepage?.id ? i + 1 : i
 													Pages.update(sibling_page.id, { index })
 												})
 
@@ -336,7 +336,7 @@
 												// If the deleted page was the one open, navigate to homepage
 												try {
 													if (page_slug === page.slug) {
-														const home_url = build_cms_page_url(home_page, pageState.url)
+														const home_url = build_cms_page_url(homepage, pageState.url)
 														if (home_url) await goto(home_url, { replaceState: true })
 													}
 												} catch (e) {
@@ -353,7 +353,7 @@
 											const sibling_pages = allPages.filter((p) => p.parent === parent_id && p.id !== page.id).sort((a, b) => a.index - b.index)
 
 											sibling_pages.forEach((sibling_page, i) => {
-												const index = parent_id === home_page?.id ? i + 1 : i
+												const index = parent_id === homepage?.id ? i + 1 : i
 												Pages.update(sibling_page.id, { index })
 											})
 
@@ -362,7 +362,7 @@
 											// If the deleted page was the one open, navigate to homepage
 											try {
 												if (page_slug === page.slug) {
-													const home_url = build_cms_page_url(home_page, pageState.url)
+													const home_url = build_cms_page_url(homepage, pageState.url)
 													if (home_url) await goto(home_url, { replaceState: true })
 												}
 											} catch (e) {
