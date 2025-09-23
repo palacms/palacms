@@ -70,33 +70,36 @@
 	let component_error = $state()
 	let is_loading = $state(true)
 
-	// Create a cache key based on symbol ID and update timestamp
-	const cache_key = $derived(`${symbol.id}-${symbol.updated}`)
-	let last_cache_key = $state('')
+	// Regenerate when code or data changes and data is available
+	let compiled_code = $state<object>({ html: '', css: '', js: '' })
+	let compiled_data = $state<any>()
+	watch(
+		() => ({ updated_code: { html: symbol.html, css: symbol.css, js: symbol.js }, updated_data: data }),
+		({ updated_code, updated_data }) => {
+			if (!updated_data) return
+			const code_changed = !_.isEqual(compiled_code, updated_code)
+			const data_changed = !_.isEqual(compiled_data, updated_data)
+			if (!code_changed && !data_changed && componentCode) return
 
-	// Only regenerate if cache key changes (symbol updated)
-	$effect(async () => {
-		// Skip if cache key hasn't changed (symbol not updated)
-		if (cache_key === last_cache_key && componentCode) return
+			is_loading = true
+			component_error = undefined
+			compiled_code = _.cloneDeep(updated_code)
+			compiled_data = _.cloneDeep(updated_data)
 
-		last_cache_key = cache_key
-		is_loading = true
-		component_error = undefined
-
-		try {
-			const blockData = data || {}
-			const res = await block_html({ code, data: blockData })
-			// Only set componentCode if we have actual content
-			if (res && res.body) {
-				componentCode = res
+			try {
+				block_html({ code, data: updated_data }).then((res) => {
+					if (res && res.body) {
+						componentCode = res
+					}
+				})
+			} catch (error) {
+				console.error('Sidebar symbol error for', symbol.name, ':', error)
+				component_error = error
+			} finally {
+				is_loading = false
 			}
-		} catch (error) {
-			console.error('Sidebar symbol error for', symbol.name, ':', error)
-			component_error = error
-		} finally {
-			is_loading = false
 		}
-	})
+	)
 
 	let element = $state()
 	$effect(() => {

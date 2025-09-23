@@ -629,19 +629,6 @@
 		}
 	}
 
-	let compiled_code = $state<string>('')
-	// Watch for changes in block code or component data and regenerate
-	watch(
-		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
-		({ html, data }) => {
-			// Generate code even if there's no data (for blocks without fields)
-			if (compiled_code !== html && component_data) {
-				generate_component_code(block)
-				compiled_code = html
-			}
-		}
-	)
-
 	let mutation_observer
 	let iframe_resize_observer = $state()
 
@@ -775,21 +762,36 @@
 		}
 	}
 
+	// Watch for changes in block code or component data and regenerate
+	// Note: this runs in the background when block/section editor is open (TODO: run only when code change saved)
+	let compiled_code = $state<object>({ html: '', css: '', js: '' })
+	watch(
+		() => ({ updated_code: { html: block.html, css: block.css, js: block.js }, updated_data: component_data }),
+		({ updated_code, updated_data }) => {
+			if (!_.isEqual(compiled_code, updated_code) && updated_data) {
+				generate_component_code(block)
+				compiled_code = _.cloneDeep(updated_code)
+			}
+		}
+	)
+
 	// Watch for changes and send to iframe when ready
-	// Only send when this component's data meaningfully changed to avoid
+	// Only send when this component's code & data meaningfully changed to avoid
 	// triggering re-renders of unrelated symbols.
 	let last_sent_data = $state<any>()
+	let last_sent_js = $state<string>('')
 	watch(
-		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
-		({ js, data, ready }) => {
-			if (!(ready && data && js)) return
+		() => ({ updated_js: generated_js, updated_data: component_data, ready: setup_complete && !is_editing }),
+		({ updated_js, updated_data, ready }) => {
+			if (!(ready && updated_data && updated_js)) return
 
-			// Skip if data is deeply equal to the last sent value
-			if (_.isEqual(last_sent_data, data)) return
+			// Skip if updated_data is deeply equal to the last sent value
+			if (_.isEqual(last_sent_data, updated_data) && last_sent_js === updated_js) return
 
 			// Store a snapshot to avoid mutation side-effects
-			last_sent_data = _.cloneDeep(data)
-			send_component_to_iframe(js, data)
+			last_sent_data = _.cloneDeep(updated_data)
+			last_sent_js = updated_js
+			send_component_to_iframe(updated_js, updated_data)
 		}
 	)
 
