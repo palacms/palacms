@@ -578,18 +578,6 @@
 		gap: 0.25rem;
 		align-items: center;
 		font-size: 0.75rem;
-
-		input {
-			display: none;
-		}
-	}
-
-	.container {
-		display: flex;
-		flex-direction: column;
-		overflow-y: auto;
-		padding: 1rem;
-		gap: 0.75rem;
 	}
 
 	.block-list {
