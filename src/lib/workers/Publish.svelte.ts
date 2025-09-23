@@ -128,10 +128,12 @@ export const usePublishSite = (site_id?: string) => {
 					const { css } = await processors.css(postcss || '')
 					return [
 						{
-							html: `<div data-section="${section.id}" id="section-${section.id}" data-symbol="${symbol.id}">${html}</div>`,
+							html,
 							js,
 							css,
-							data: section_content?.[section.id]?.[locale] ?? {}
+							data: section_content?.[section.id]?.[locale] ?? {},
+							wrapper_start: `<div data-section="${section.id}" id="section-${section.id}" data-symbol="${symbol.id}">`,
+							wrapper_end: '</div>'
 						}
 					]
 				})
