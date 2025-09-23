@@ -629,7 +629,7 @@
 		}
 	}
 
-	let compiled_code = $state<string>('')
+	let last_code_signature = $state<string>('')
 	// Watch for changes in block code or component data and regenerate
 	watch(
 		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
@@ -638,10 +638,10 @@
 			if (data === undefined) return
 
 			// Recompile when any source (html/css/js) changes.
-			const signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
-			if (compiled_code !== signature) {
+			const updated_code_signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
+			if (last_code_signature !== updated_code_signature) {
 				generate_component_code(block)
-				compiled_code = signature
+				last_code_signature = updated_code_signature
 			}
 		}
 	)
@@ -784,19 +784,6 @@
 			}
 		}
 	}
-
-	// Watch for changes in block code or component data and regenerate
-	// Note: this runs in the background when block/section editor is open (TODO: run only when code change saved)
-	let compiled_code = $state<object>({ html: '', css: '', js: '' })
-	watch(
-		() => ({ updated_code: { html: block.html, css: block.css, js: block.js }, updated_data: component_data }),
-		({ updated_code, updated_data }) => {
-			if (!_.isEqual(compiled_code, updated_code) && updated_data) {
-				generate_component_code(block)
-				compiled_code = _.cloneDeep(updated_code)
-			}
-		}
-	)
 
 	// Watch for changes and send to iframe when ready
 	// Only send when this component's code & data meaningfully changed to avoid
