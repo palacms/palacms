@@ -1,7 +1,8 @@
 <!doctype html>
-<html>
+<html lang="en">
 	<head>
-		<title>PalaCMS</title>
+		<title>PalaCMS Demo</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<style>
 			body {
 				position: absolute;
@@ -14,11 +15,63 @@
 				box-sizing: border-box;
 				margin: 0;
 				font-family: sans-serif;
+				background-color: #222;
+				color: white;
 			}
 
 			h1,
-			p {
-				margin: 0.5rem 1rem;
+			p,
+			.button {
+				margin: 0.5rem 0;
+			}
+
+			details {
+			  position: relative;
+			}
+
+			details[open]::details-content {
+			  position: absolute;
+				top: 100%;
+				left: 0;
+				width: max-content;
+				max-width: calc(100dvw - 4rem);
+			  background-color: white;
+				color: black;
+				padding: 1rem;
+			}
+
+			details[open]::details-content::before {
+			  content: '';
+				position: absolute;
+				bottom: 100%;
+				left: 0.5rem;
+			  width: 0;
+        height: 0;
+        border-left: 0.5rem solid transparent;
+        border-right: 0.5rem solid transparent;
+        border-bottom: 0.5rem solid white;
+			}
+
+			.button:not([hidden]) {
+				background-color: transparent;
+				border: 1px solid white;
+				color: white;
+				padding: 0.5rem;
+				box-shadow: 2px 2px white;
+				cursor: pointer;
+				display: inline-block;
+				text-decoration: none;
+				font-size: 1rem;
+			}
+
+			.container {
+				padding-inline: 1rem;
+			}
+
+			.group {
+  			display: flex;
+  			flex-wrap: wrap;
+        gap: 1rem;
 			}
 
 			#output {
@@ -39,9 +92,23 @@
 		</style>
 	</head>
 	<body>
-		<h1>PalaCMS</h1>
-		<p>Starting PalaCMS... Wait until it's started and click the link below. Keep this tab open.</p>
-		<p><a href="/" target="_blank">Open PalaCMS</a></p>
+		<div class="container">
+			<h1>PalaCMS Demo</h1>
+			<div class="group">
+  			<details>
+  				<summary class="button"">About</summary>
+  				<ul>
+  				  <li>The demo will run locally on the browser you are using. The data you create will also be saved into the browser local storage.</li>
+  					<li>Once started, PalaCMS will open into a new tab. Keep this tab open while demo is being used.</li>
+  					<li>It will be slower than actual deployment of PalaCMS, so be patient with the demo.</li>
+            <li>Remember that data loss is entirely possible. <b>The demo is only suitable for testing purposes.</b></li>
+            <li>Have fun!</li>
+  				</ul>
+  			</details>
+  			<button type="button" id="start" class="button" hidden>Start PalaCMS</button>
+  			<a id="open" class="button" href="/admin" target="_blank" hidden>Open PalaCMS</a>
+			</div>
+		</div>
 		<pre id="output"></pre>
 		<script src="/main.js"></script>
 	</body>

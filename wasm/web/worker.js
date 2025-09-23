@@ -1,18 +1,26 @@
 importScripts('/fs.js')
 importScripts('/wasm_exec.js')
+
 const go = new Go()
 go.env.PALA_DISABLE_USAGE_STATS = 'true'
+
 WebAssembly.instantiateStreaming(fetch('/palacms.wasm'), go.importObject)
-	.then(async (result) => {
-		self.postMessage({ type: 'ready' })
-		await go.run(result.instance)
-	})
-	.catch((error) => {
-		console.error(error)
-	})
+	.then((result) => go.run(result.instance))
+	.catch((error) => console.error(error))
 
 self.output = (value) => {
 	self.postMessage({ type: 'output', value })
+}
+
+const queue = []
+let handle = (request, callback) => {
+	queue.push({ request, callback })
+}
+self.ON_PALA_READY = (h) => {
+	handle = h
+	for (const { request, callback } of queue) {
+		handle(request, callback)
+	}
 }
 
 self.addEventListener('message', (event) => {
@@ -27,13 +35,11 @@ self.addEventListener('message', (event) => {
 		}
 
 		const { id, request } = event.data
-		if ('PB_REQUEST' in self) {
-			PB_REQUEST(request, (response) => {
-				port.postMessage({ type: 'response', id, response })
-			})
-		} else {
-			port.postMessage({ type: 'response', id, response: { status: 502 } })
-		}
+		handle(request, (response) => {
+			port.postMessage({ type: 'response', id, response })
+		})
 	})
 	port.start()
 })
+
+self.postMessage({ type: 'ready' })

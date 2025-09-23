@@ -31,13 +31,20 @@ func main() {
 	})
 
 	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
-		js.Global().Set("PB_REQUEST", js.FuncOf(func(this js.Value, args []js.Value) any {
-			req := args[0]
-			cb := args[1]
-			go handle(e.Server.Handler, req, cb)
-			return nil
-		}))
-		return e.Next()
+		if err := e.Next(); err != nil {
+			return err
+		}
+
+		js.Global().Get("ON_PALA_READY").Invoke(
+			js.FuncOf(func(this js.Value, args []js.Value) any {
+				req := args[0]
+				cb := args[1]
+				go handle(e.Server.Handler, req, cb)
+				return nil
+			}),
+		)
+
+		return nil
 	})
 
 	if err := setup(pb); err != nil {
