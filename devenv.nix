@@ -24,7 +24,7 @@
   processes = {
     app-dev.exec = "vite --config app.config.js dev";
     common-build.exec = "vite --config common.config.js build --watch";
-    server.exec = "wgo -dir server go run ./server serve --dev";
+    server.exec = "wgo -dir server go run -C server ./cmd serve --dev --dir ../pb_data";
   };
   devcontainer = {
     enable = true;
