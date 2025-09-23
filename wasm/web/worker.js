@@ -2,6 +2,11 @@ importScripts('/fs.js')
 importScripts('/wasm_exec.js')
 
 const go = new Go()
+go.env.PALA_APP_URL = location.origin
+go.env.PALA_SUPERUSER_EMAIL = 'demo@palacms.com'
+go.env.PALA_SUPERUSER_PASSWORD = 'demo1234'
+go.env.PALA_USER_EMAIL = 'demo@palacms.com'
+go.env.PALA_USER_PASSWORD = 'demo1234'
 go.env.PALA_DISABLE_USAGE_STATS = 'true'
 
 WebAssembly.instantiateStreaming(fetch('/palacms.wasm'), go.importObject)
