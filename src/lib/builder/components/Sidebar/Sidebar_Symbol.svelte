@@ -31,18 +31,6 @@
 
 	let renaming = $state(false)
 	let new_name = $state(symbol.name)
-	async function toggle_name_input() {
-		renaming = !renaming
-		// workaround for inability to see cursor when div empty
-		if (new_name === '') {
-			new_name = 'Block'
-		}
-	}
-
-	// Disabled CollectionMapping update to avoid reactive loops
-	// $effect(() => {
-	// 	SiteSymbols.update(symbol.id, { name: new_name })
-	// })
 
 	async function save_rename() {
 		if (!symbol || !new_name.trim()) return
@@ -70,24 +58,20 @@
 	let component_error = $state()
 	let is_loading = $state(true)
 
-	// Regenerate when code or data changes and data is available
-	let compiled_code = $state<object>({ html: '', css: '', js: '' })
-	let compiled_data = $state<any>()
+	// Rebuild preview whenever code or data meaningfully change
+	let last_signature = $state<any>()
 	watch(
-		() => ({ updated_code: { html: symbol.html, css: symbol.css, js: symbol.js }, updated_data: data }),
-		({ updated_code, updated_data }) => {
-			if (!updated_data) return
-			const code_changed = !_.isEqual(compiled_code, updated_code)
-			const data_changed = !_.isEqual(compiled_data, updated_data)
-			if (!code_changed && !data_changed && componentCode) return
+		() => ({ html: symbol.html, css: symbol.css, js: symbol.js, data }),
+		({ html, css, js, data }) => {
+			const signature = { html, css, js, data }
+			if (_.isEqual(last_signature, signature) || !data) return
+			last_signature = _.cloneDeep(signature)
 
 			is_loading = true
 			component_error = undefined
-			compiled_code = _.cloneDeep(updated_code)
-			compiled_data = _.cloneDeep(updated_data)
-
 			try {
-				block_html({ code, data: updated_data }).then((res) => {
+				const blockData = data || {}
+				block_html({ code: { html, css, js }, data: blockData }).then((res) => {
 					if (res && res.body) {
 						componentCode = res
 					}

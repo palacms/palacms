@@ -19,7 +19,7 @@
 	import { current_user } from '$lib/pocketbase/user'
 	import { resolve_page } from '$lib/pages'
 
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 	const path = $derived(pageState.params.page?.split('/'))
 	const page = $derived(site && (path ? resolve_page(site, path) : site.homepage()))
 	const page_type = $derived(page && PageTypes.one(page.page_type))
@@ -119,7 +119,7 @@
 
 {#snippet content()}
 	{#if page && page_type_fields && page_entries}
-		<div class="page-type-fields">
+		<div class="page-type-fields" class:p-2={!has_symbols}>
 			<Content
 				entity={page}
 				fields={page_type_fields}
@@ -173,15 +173,6 @@
 		/* padding-top: 0.5rem; */
 	}
 
-	.container {
-		display: flex;
-		flex-direction: column;
-		overflow-y: auto;
-		padding: 1rem;
-		height: 100%;
-		gap: 1rem;
-	}
-
 	.page-type-fields {
 		flex: 1;
 	}
@@ -198,5 +189,7 @@
 		text-align: right;
 		text-decoration: underline;
 		color: var(--color-gray-4);
+		margin-bottom: 0.5rem;
+		margin-right: 0.5rem;
 	}
 </style>

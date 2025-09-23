@@ -7,7 +7,7 @@
 	import { site_context } from '$lib/builder/stores/context'
 
 	const { field, entry, onchange }: { entity: Entity; field: PageField; entry?: Entry; onchange: FieldValueHandler } = $props()
-	const site = site_context.getOr(null)
+	const { value: site } = site_context.getOr({ value: null })
 	const selectable_pages = $derived.by(() => {
 		const pages = site?.pages() ?? []
 		const filtered = pages.filter((p) => p.page_type === field.config.page_type)

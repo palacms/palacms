@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
-	import { tick, untrack } from 'svelte'
+	import { tick } from 'svelte'
 	import { site_context, page_type_context } from '$lib/builder/stores/context'
 	import { fade } from 'svelte/transition'
 	import { flip } from 'svelte/animate'
@@ -18,14 +18,17 @@
 	import { manager, PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
 	import { self as pb } from '$lib/pocketbase/PocketBase'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { FiniteStateMachine } from 'runed'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
 
 	// Set context so child components can access the page type
-	page_type_context.set(page_type)
+	const context = $state({ value: page_type })
+	page_type_context.set(context)
+	$effect(() => {
+		context.value = page_type
+	})
 
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 	const site_symbols = $derived(site?.symbols() ?? [])
 	const page_type_sections = $derived(page_type?.sections() ?? [])
 	const page_type_symbols = $derived(page_type?.symbols() ?? [])
@@ -36,16 +39,9 @@
 	const footer_sections = $derived(page_type_sections.filter((s) => s.zone === 'footer'))
 
 	// Page type head and foot editors
-	let head = $state('')
-	let foot = $state('')
+	let head = $state(page_type.head || '')
+	let foot = $state(page_type.foot || '')
 	let save_timeout = null
-
-	$effect.pre(() => {
-		if (page_type) {
-			head = page_type.head || ''
-			foot = page_type.foot || ''
-		}
-	})
 
 	async function save_page_type_code() {
 		if (!page_type) return
@@ -466,7 +462,7 @@
 			}
 
 			const entry_map = new Map()
-			
+
 			// Sort entries so parent-less entries come first
 			const sorted_entries = [...symbol_entries].sort((a, b) => {
 				if (!a.parent && b.parent) return -1
@@ -477,7 +473,7 @@
 			// Create entries in order, handling parent relationships
 			for (const entry of sorted_entries) {
 				const parent_section_entry = entry.parent ? entry_map.get(entry.parent) : undefined
-				
+
 				const section_entry = PageTypeSectionEntries.create({
 					section: section_id,
 					field: entry.field,
@@ -511,7 +507,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] h-full max-w-none max-h-[100vh] flex flex-col p-4">
 		<SectionEditor
 			component={editing_section_target}
 			tab={editing_section_tab}

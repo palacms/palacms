@@ -6,7 +6,6 @@
 	import * as _ from 'lodash-es'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
 	import { site_context, hide_dynamic_field_types_context } from '$lib/builder/stores/context'
-	import { page } from '$app/state'
 	import { Sites, SiteFields, SiteEntries, manager } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
 	import { browser } from '$app/environment'
@@ -15,7 +14,7 @@
 
 	let { onClose, has_unsaved_changes = $bindable(false) } = $props()
 
-	const site = site_context.get()
+	const { value: site } = site_context.get()
 	const fields = $derived(site?.fields() ?? [])
 	const entries = $derived(site?.entries() ?? [])
 	const site_data = $derived(useContent(site, { target: 'cms' })?.[$locale] ?? {})

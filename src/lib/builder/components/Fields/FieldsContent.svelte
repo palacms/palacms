@@ -195,7 +195,7 @@
 
 <div class="Fields">
 	{#each (fields || []).filter((f) => !f.parent || f.parent === '').sort((a, b) => a.index - b.index) as field (field.id)}
-		{@const active_tab = selected_tabs[field.id] ?? 'field'}
+		{@const active_tab = selected_tabs[field.id] ?? 'entry'}
 		<div class="entries-item">
 			<!-- TODO: hotkeys for tab switching  -->
 			{#if $current_user?.siteRole === 'developer'}
@@ -203,12 +203,12 @@
 					<button
 						data-test-id="field"
 						class:active={active_tab === 'field'}
-						disabled={active_tab === 'field'}
+						ondblclick={() => set_all_tabs('field')}
 						onclick={() => {
 							if ($mod_key_held) {
 								set_all_tabs('field')
 							} else {
-								select_tab(field.id, 'field')
+								if (active_tab !== 'field') select_tab(field.id, 'field')
 							}
 						}}
 					>
@@ -219,12 +219,12 @@
 						data-test-id="entry"
 						style="border-top: 1px solid var(--color-gray-9);"
 						class:active={active_tab === 'entry'}
-						disabled={active_tab === 'entry'}
+						ondblclick={() => set_all_tabs('entry')}
 						onclick={() => {
 							if ($mod_key_held) {
 								set_all_tabs('entry')
 							} else {
-								select_tab(field.id, 'entry')
+								if (active_tab !== 'entry') select_tab(field.id, 'entry')
 							}
 						}}
 					>
