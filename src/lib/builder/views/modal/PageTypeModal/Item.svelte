@@ -4,8 +4,11 @@
 	import PageForm from './PageTypeForm.svelte'
 	import MenuPopup from '$lib/builder/ui/Dropdown.svelte'
 	import type { PageType } from '$lib/common/models/PageType'
-	import { Sites, PageTypes, manager } from '$lib/pocketbase/collections'
+	import { Sites, PageTypes, Pages, manager } from '$lib/pocketbase/collections'
+	import { self as pb } from '$lib/pocketbase/PocketBase'
 	import { page } from '$app/state'
+	import * as AlertDialog from '$lib/components/ui/alert-dialog'
+	import { Loader } from 'lucide-svelte'
 	import { site_context } from '$lib/builder/stores/context'
 
 	let { active, page_type }: { active: boolean; page_type: PageType } = $props()
@@ -13,6 +16,31 @@
 	const { value: site } = site_context.get()
 
 	let editing_page = $state(false)
+	let is_delete_open = $state(false)
+	let deleting_page_type = $state(false)
+
+	async function delete_page_type() {
+		deleting_page_type = true
+		try {
+			if (!site) return
+
+			// Delete all pages belonging to this page type (no cascade on pages.page_type)
+			const pages = await pb.collection('pages').getFullList({ filter: `page_type = \"${page_type.id}\" && site = \"${site.id}\"` })
+
+			for (const p of pages) {
+				Pages.delete(p.id)
+			}
+
+			// Delete the page type (will cascade to related type records)
+			PageTypes.delete(page_type.id)
+			await manager.commit()
+			is_delete_open = false
+		} catch (error) {
+			console.error('Error deleting page type:', error)
+		} finally {
+			deleting_page_type = false
+		}
+	}
 
 	let creating_page = $state(false)
 	let new_page_url = $state('')
@@ -24,6 +52,9 @@
 		const base_path = page.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 		return `${base_path}/page-type--${page_type.id}`
 	})
+
+	// Load pages that would be deleted when confirming
+	const pages_to_delete = $derived(is_delete_open && site ? (Pages.list({ filter: { page_type: page_type.id, site: site.id }, sort: 'index' }) ?? undefined) : undefined)
 </script>
 
 {#if editing_page}
@@ -62,15 +93,10 @@
 						...(page_type.name !== 'Default'
 							? [
 									{
-										label: 'Delete Type & Instances',
+										label: 'Delete Type & Pages',
 										icon: 'fluent:delete-20-filled',
 										on_click: () => {
-											const confirm = window.confirm(`This will delete ALL pages of this page type. Continue?`)
-											if (confirm) {
-												// TODO: configuring deleting page type & instances
-												// if (!site) return
-												// delete site.data.entities.page_types[page_type.id]
-											}
+											is_delete_open = true
 										}
 									}
 								]
@@ -81,6 +107,54 @@
 		</div>
 	</div>
 {/if}
+
+<AlertDialog.Root bind:open={is_delete_open}>
+	<AlertDialog.Content class="z-[1001]">
+		<AlertDialog.Header>
+			<AlertDialog.Title>Delete page type?</AlertDialog.Title>
+			<AlertDialog.Description>
+				This action permanently deletes <strong>{page_type.name}</strong>
+				and all its pages.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<div class="mt-2 space-y-2">
+			<div class="text-sm text-muted-foreground">Pages to be deleted ({pages_to_delete ? pages_to_delete.length : '…'}):</div>
+			{#if pages_to_delete === undefined}
+				<div class="flex items-center gap-2 text-sm text-muted-foreground">
+					<Loader class="animate-spin h-4 w-4" />
+					Loading pages…
+				</div>
+			{:else if pages_to_delete.length === 0}
+				<div class="text-sm text-muted-foreground">No pages use this type.</div>
+			{:else}
+				<div class="max-h-56 overflow-auto rounded border border-border/50">
+					<ul class="divide-y divide-border/50 text-sm">
+						{#each pages_to_delete as p}
+							<li class="px-3 py-2 flex items-center justify-between gap-2">
+								<span class="truncate">{p.name}</span>
+								{#if p.slug}
+									<code class="text-xs text-muted-foreground">/{p.slug}</code>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+		</div>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+			<AlertDialog.Action onclick={delete_page_type} class="bg-red-600 hover:bg-red-700">
+				{#if deleting_page_type}
+					<div class="animate-spin absolute">
+						<Loader />
+					</div>
+				{:else}
+					Delete {page_type.name}
+				{/if}
+			</AlertDialog.Action>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
 
 {#if creating_page}
 	<div style="border-left: 0.5rem solid #111;">

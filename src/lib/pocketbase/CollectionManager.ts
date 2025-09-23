@@ -20,55 +20,58 @@ export const createCollectionManager = () => {
 	const lists = new OrderedSvelteMap<string, RecordIdList | undefined | null>()
 
 	let commitsInProgress = 0
+	let promise = Promise.resolve()
 
 	return {
 		changes,
 		records,
 		lists,
 		commit: async () => {
-			try {
-				commitsInProgress++
+			commitsInProgress++
+			promise = promise.finally(async () => {
+				try {
+					for (const [id, change] of changes) {
+						// Avoid re-committing a change if commit is done twice in a row
+						if (change.committed) {
+							continue
+						} else {
+							change.committed = true
+						}
 
-				for (const [id, change] of changes) {
-					// Avoid re-committing a change if commit is done twice in a row
-					if (change.committed) {
-						continue
-					} else {
-						change.committed = true
+						switch (change.operation) {
+							case 'create':
+								await change.collection.create(change.data).then((record) => {
+									records.set(id, record)
+								})
+								break
+
+							case 'update':
+								await change.collection.update(id, change.data).then((record) => {
+									records.set(id, record)
+								})
+								break
+
+							case 'delete':
+								await change.collection.delete(id).then(() => {
+									records.set(id, null)
+								})
+								break
+						}
 					}
-
-					switch (change.operation) {
-						case 'create':
-							await change.collection.create(change.data).then((record) => {
-								records.set(id, record)
+				} finally {
+					commitsInProgress--
+					if (commitsInProgress === 0) {
+						// Invalidate all the lists when all the commits are done
+						for (const [id, list] of [...lists]) {
+							lists.set(id, {
+								invalidated: true,
+								ids: [...(list?.ids ?? [])]
 							})
-							break
-
-						case 'update':
-							await change.collection.update(id, change.data).then((record) => {
-								records.set(id, record)
-							})
-							break
-
-						case 'delete':
-							await change.collection.delete(id).then(() => {
-								records.set(id, null)
-							})
-							break
+						}
 					}
 				}
-			} finally {
-				commitsInProgress--
-				if (commitsInProgress === 0) {
-					// Invalidate all the lists when all the commits are done
-					for (const [id, list] of [...lists]) {
-						lists.set(id, {
-							invalidated: true,
-							ids: [...(list?.ids ?? [])]
-						})
-					}
-				}
-			}
+			})
+			return promise
 		},
 		discard: () => {
 			for (const [id, change] of [...changes]) {

@@ -675,7 +675,8 @@
 	.field-options {
 		display: flex;
 		gap: 0.5rem;
-		margin-top: 1rem; /* line up with inputs */
+		position: relative; /* line up with inputs */
+		top: 13px;
 
 		button {
 			font-size: 15px;

@@ -14,24 +14,22 @@ import (
 var commonScript string
 
 func RegisterValidation(pb *pocketbase.PocketBase) error {
-	vm := goja.New()
-	if _, err := vm.RunString("exports = {};"); err != nil {
-		return err
-	}
-	if _, err := vm.RunString(commonScript); err != nil {
-		return err
-	}
-	models := vm.GlobalObject().
-		Get("exports").ToObject(vm).
-		Get("models").ToObject(vm)
-
-	// Workaround Zod errors with file schema
-	if _, err := vm.RunString("class File {};"); err != nil {
+	prog, err := goja.Compile("validation.js", "globalThis.exports = {};class File {};"+commonScript, true)
+	if err != nil {
 		return err
 	}
 
 	pb.OnRecordValidate().BindFunc(func(event *core.RecordEvent) error {
 		var err error
+
+		// Evaluate models
+		vm := goja.New()
+		if _, err := vm.RunProgram(prog); err != nil {
+			return err
+		}
+		models := vm.GlobalObject().
+			Get("exports").ToObject(vm).
+			Get("models").ToObject(vm)
 
 		// Select model for validation
 		collection := event.Record.Collection()
