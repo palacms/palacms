@@ -44,6 +44,15 @@
 	const { value: site } = site_context.getOr({ value: null })
 	const page_types = $derived(site?.page_types() ?? [])
 
+	// Workaround for derived being lazy:
+	// Ensure page types list begins loading as soon as the editor renders,
+	// so switching to Page/Page List has data available.
+	$effect(() => {
+		// Accessing the link in an effect triggers the CollectionMapping list loader.
+		// We intentionally ignore the return; we just want to kick off loading.
+		site?.page_types()
+	})
+
 	let visible_field_types = $derived.by(() => {
 		let list = $fieldTypes
 		if (hide_dynamic_field_types_context.getOr(false)) {
