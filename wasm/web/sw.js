@@ -1,6 +1,6 @@
 skipWaiting()
 
-const listeners = new Map()
+const resolvers = new Map()
 let nextId = 1
 let port
 
@@ -10,9 +10,11 @@ self.addEventListener('message', (event) => {
 		port.addEventListener('message', (event) => {
 			const { type, id, response } = event.data
 			if (type === 'response') {
-				const listener = listeners.get(id)
-				listener(response)
-				listeners.delete(id)
+				let { body } = response
+				if (body.length === 0) body = null
+				const resolve = resolvers.get(id)
+				resolve(new Response(body, response))
+				resolvers.delete(id)
 			}
 		})
 		port.start()
@@ -43,7 +45,7 @@ self.addEventListener('fetch', (event) => {
 					body: new Uint8Array(buffer)
 				}
 
-				listeners.set(id, (response) => resolve(new Response(response.body, response)))
+				resolvers.set(id, resolve)
 				port.postMessage({ type: 'request', id, request })
 			})
 		})
