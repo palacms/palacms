@@ -2,10 +2,12 @@ skipWaiting()
 
 const resolvers = new Map()
 let nextId = 1
+let serverId
 let port
 
 self.addEventListener('message', (event) => {
 	if (event.data.type === 'init') {
+		serverId = event.source.id
 		;[port] = event.ports
 		port.addEventListener('message', (event) => {
 			const { type, id, response } = event.data
@@ -35,16 +37,27 @@ self.addEventListener('fetch', (event) => {
 	}
 
 	event.respondWith(
-		event.request.arrayBuffer().then((buffer) => {
-			return new Promise((resolve) => {
-				const id = nextId++
-				const request = {
-					method: event.request.method,
-					url: event.request.url,
-					headers: Array.from(event.request.headers),
-					body: new Uint8Array(buffer)
-				}
+		Promise.resolve().then(async () => {
+			const serverWindow = await self.clients.get(serverId)
+			if (!serverWindow) {
+				port.close()
+				port = undefined
 
+				if (event.clientId) {
+					return new Response(null, { status: 503 })
+				} else {
+					return fetch(event.request)
+				}
+			}
+
+			const id = nextId++
+			const request = {
+				method: event.request.method,
+				url: event.request.url,
+				headers: Array.from(event.request.headers),
+				body: new Uint8Array(await event.request.arrayBuffer())
+			}
+			return new Promise((resolve) => {
 				resolvers.set(id, resolve)
 				port.postMessage({ type: 'request', id, request })
 			})

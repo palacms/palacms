@@ -1,7 +1,18 @@
+const output = document.querySelector('#output')
+const print = (value) => {
+	const isScrolledDown = output.scrollTop + output.clientHeight === output.scrollHeight
+	const line = document.createElement('span')
+	line.textContent = value + '\n'
+	output.appendChild(line)
+	if (isScrolledDown) {
+		output.scrollTop = output.scrollHeight - output.clientHeight
+	}
+}
+
 const startServer = async () =>
 	new Promise((resolve) => {
+		print('Loading PalaCMS...')
 		const worker = new Worker('/worker.js')
-		const output = document.querySelector('#output')
 
 		const init = (sw) => {
 			const channel = new MessageChannel()
@@ -11,6 +22,7 @@ const startServer = async () =>
 				sw.postMessage({ type: 'close' })
 				worker.terminate()
 			})
+			fetch('/api/palacms/info').then(() => resolve())
 		}
 
 		worker.addEventListener('message', (event) => {
@@ -21,16 +33,9 @@ const startServer = async () =>
 						init(registration.active)
 					}
 					registration.addEventListener('updatefound', () => init(registration.installing))
-					resolve()
 				})
 			} else if (type === 'output') {
-				const isScrolledDown = output.scrollTop + output.clientHeight === output.scrollHeight
-				const line = document.createElement('span')
-				line.textContent = value + '\n'
-				output.appendChild(line)
-				if (isScrolledDown) {
-					output.scrollTop = output.scrollHeight - output.clientHeight
-				}
+				print(value)
 			}
 		})
 	})
@@ -43,10 +48,17 @@ if (window.name === 'server') {
 	document.querySelector('#start').hidden = false
 }
 
+let opened = false
+document.querySelector('#open').addEventListener('click', () => {
+	opened = true
+})
+
 document.querySelector('#start').addEventListener('click', () => {
 	window.name = 'server'
 	startServer().then(() => {
-		window.open(location.href, '_blank')
+		if (!opened) {
+			window.open(location.href, '_blank')
+		}
 		history.replaceState(null, '', '/')
 	})
 	document.querySelector('#info').open = false
