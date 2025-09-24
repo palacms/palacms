@@ -8,9 +8,10 @@
 	import { resolve_page } from '$lib/pages'
 	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { fade, fly } from 'svelte/transition'
+	import { fly } from 'svelte/transition'
 	import { flip } from 'svelte/animate'
 	import { quintOut } from 'svelte/easing'
+	import { watch } from 'runed'
 	import type { Page } from '$lib/common/models/Page'
 
 	let hover_position = $state(null)
@@ -21,13 +22,15 @@
 	const current_path = $derived(pageState.params.page?.split('/'))
 	const active_page = $derived(current_path ? resolve_page(site, current_path) : site.homepage())
 
-	const all_pages = $derived(site?.pages() ?? [])
-	const home_page = $derived(site?.homepage())
+	const homepage = $derived(site.homepage())
+	const all_pages = $derived(site.pages() ?? [])
+	const root_pages = $derived(homepage?.children() || [])
 
 	// WORKAROUND: For some reason Svelte does not track all_pages if it's not a dependency for an effect.
-	$effect(() => {
-		all_pages
-	})
+	// maybe putting site in context fixes this?
+	// $effect(() => {
+	// 	all_pages
+	// })
 
 	let creating_page = $state(false)
 	let building_page = $state(false)
@@ -37,42 +40,45 @@
 	let new_page_page_type_sections = $derived(new_page_page_type?.sections())
 	let new_page_page_type_section_entries = $derived(new_page_page_type_sections?.every((section) => section.entries()) && new_page_page_type_sections?.flatMap((section) => section.entries() ?? []))
 
-	$effect(() => {
-		if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries) {
-			return
-		}
-
-		building_page = true
-
-		for (const pts of new_page_page_type_sections) {
-			// Skip header and footer sections - these are handled at the site level
-			if (pts.zone === 'header' || pts.zone === 'footer') {
-				continue
+	// Copy page sections to new page
+	watch(
+		() => ({ new_page, new_page_page_type_sections, new_page_page_type_section_entries }),
+		({ new_page, new_page_page_type_sections, new_page_page_type_section_entries }) => {
+			if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries) {
+				return
 			}
-			// Create the page section
-			const page_section = PageSections.create({
-				page: new_page.id,
-				symbol: pts.symbol,
-				index: pts.index
-			})
+			building_page = true
+			for (const pts of new_page_page_type_sections) {
+				// Skip header and footer sections - these are handled at the site level
+				if (pts.zone === 'header' || pts.zone === 'footer') {
+					continue
+				}
 
-			// Find and copy only root-level entries (parent = null/empty)
-			const page_type_section_entries = new_page_page_type_section_entries.filter((e) => !e.parent).filter((e) => e.section === pts.id)
-			for (const ptse of page_type_section_entries) {
-				PageSectionEntries.create({
-					section: page_section.id,
-					field: ptse.field,
-					locale: ptse.locale,
-					value: ptse.value,
-					index: ptse.index
+				// Create the body page section
+				const page_section = PageSections.create({
+					page: new_page.id,
+					symbol: pts.symbol,
+					index: pts.index
 				})
-			}
-		}
 
-		new_page = undefined
-		manager.commit()
-		building_page = false
-	})
+				// Find and copy only root-level entries (parent = null/empty) (TODO: copy children, account for dependencies)
+				const page_type_section_entries = new_page_page_type_section_entries.filter((e) => !e.parent).filter((e) => e.section === pts.id)
+				for (const ptse of page_type_section_entries) {
+					PageSectionEntries.create({
+						section: page_section.id,
+						field: ptse.field,
+						locale: ptse.locale,
+						value: ptse.value,
+						index: ptse.index
+					})
+				}
+			}
+
+			new_page = undefined
+			manager.commit()
+			building_page = false
+		}
+	)
 
 	/**
 	 * Create a page and copy all page type sections to it
@@ -83,7 +89,7 @@
 		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent).sort((a, b) => a.index - b.index)
 
 		// Append to the end of the sibling list
-		const startIndex = page_data.parent === home_page?.id ? 1 : 0
+		const startIndex = page_data.parent === homepage?.id ? 1 : 0
 		const lastIndex = sibling_pages.length > 0 ? Math.max(...sibling_pages.map((p) => p.index)) : startIndex - 1
 		const new_index = lastIndex + 1
 
@@ -98,7 +104,7 @@
 <Dialog.Header title="Pages" />
 {#if active_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)] page-list">
-		{#each all_pages.sort((a, b) => a.index - b.index) as page, i (page.id)}
+		{#each [homepage, ...root_pages].sort((a, b) => a.index - b.index) as page, i (page.id)}
 			<li class="page-item-wrapper" in:fly={{ y: 20, duration: 200, delay: i * 50 }} animate:flip={{ duration: 300, easing: quintOut }}>
 				<Item {page} {page_slug} active_page_id={active_page?.id} oncreate={create_page_with_sections} bind:hover_position />
 				<div class="drop-indicator-inline" class:active={hover_position === `${page.id}-bottom`}><div></div></div>
@@ -119,13 +125,13 @@
 			<PageForm
 				oncreate={async (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => {
 					creating_page = false
-					const url_taken = all_pages.some((page) => page?.slug === new_page.slug && page.parent === home_page.id)
+					const url_taken = all_pages.some((page) => page?.slug === new_page.slug && page.parent === homepage.id)
 					if (url_taken) {
 						alert(`That URL is already in use`)
 					} else {
 						building_page = true
 						building_page_name = new_page.name
-						await create_page_with_sections({ ...new_page, parent: home_page.id, site: site.id })
+						await create_page_with_sections({ ...new_page, parent: homepage.id, site: site.id })
 					}
 				}}
 			/>
