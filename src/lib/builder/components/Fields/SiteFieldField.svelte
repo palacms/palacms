@@ -2,9 +2,8 @@
 	import { createEventDispatcher } from 'svelte'
 	import { site_context } from '$lib/builder/stores/context'
 	import UI from '../../ui/index.js'
-	import { Sites } from '$lib/pocketbase/collections'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
 	import { watch } from 'runed'
+	import { fieldTypes } from '../../stores/app'
 
 	const { value: site } = site_context.getOr({ value: null })
 	let { field } = $props()
@@ -25,11 +24,15 @@
 	let field_list = $derived.by(() => {
 		return siteFields
 			.filter((sf) => !sf.parent)
-			.map((sf) => ({
-				id: sf.id,
-				label: sf.label || sf.key,
-				value: sf.id
-			}))
+			.map((sf) => {
+				const ft = $fieldTypes.find((t) => t.id === sf.type)
+				return {
+					id: sf.id,
+					label: sf.label || sf.key,
+					value: sf.id,
+					icon: ft?.icon
+				}
+			})
 	})
 
 	// auto-select first option (wait for field_list to populate)
@@ -69,7 +72,7 @@
 				? field_list.map((f) => ({
 						label: f.label,
 						value: f.id,
-						icon: undefined
+						icon: f.icon
 					}))
 				: []}
 		/>

@@ -3,9 +3,8 @@
 	import { site_context } from '$lib/builder/stores/context'
 	import type { PageFieldField } from '$lib/common/models/fields/PageFieldField.js'
 	import UI from '../../ui/index.js'
-	import { Sites } from '$lib/pocketbase/collections'
-	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.js'
 	import { watch } from 'runed'
+	import { fieldTypes } from '../../stores/app'
 
 	const { value: site } = site_context.getOr({ value: null })
 	const { field }: { field: PageFieldField } = $props()
@@ -32,11 +31,15 @@
 	})
 
 	const field_list = $derived.by(() => {
-		return allFields.map((f) => ({
-			id: f.id,
-			label: f.label || f.key,
-			value: f.id
-		}))
+		return allFields.map((f) => {
+			const ft = $fieldTypes.find((t) => t.id === f.type)
+			return {
+				id: f.id,
+				label: f.label || f.key,
+				value: f.id,
+				icon: ft?.icon
+			}
+		})
 	})
 
 	// auto-select first option (wait for field_list to populate)
@@ -79,7 +82,7 @@
 				? field_list.map((f) => ({
 						label: f.label,
 						value: f.id,
-						icon: undefined
+						icon: f.icon
 					}))
 				: []}
 		/>
