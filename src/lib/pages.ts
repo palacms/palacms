@@ -2,14 +2,22 @@ import type { ObjectOf } from './pocketbase/CollectionMapping.svelte'
 import { Pages, Sites } from './pocketbase/collections'
 
 /**
- * Resove page from path
+ * Resolve page from path
  *
- * This function should be called reactively (eg. inside $deferred).
+ * This function should be called reactively (e.g. inside `$deferred`). While
+ * a new page is being fetched, it returns the last resolved page for the same
+ * site. This avoids flashing empty content or cross-site stale pages during
+ * route transitions and ensures we never return a page from a different site.
+ *
+ * Internally, a small per-site cache (keyed by `site.id`) stores the most
+ * recently resolved page so that switching paths within the same site can show
+ * the previous page until the new one loads.
  *
  * @param site Site the pages should belong in
- * @param path Path segements
- * @returns Resolved page
+ * @param path Path segments
+ * @returns Resolved page, or the last known page for the same site while fetching
  */
+const last_page_by_site = new Map<string, ObjectOf<typeof Pages> | undefined>()
 export const resolve_page = (site: ObjectOf<typeof Sites>, path: string[]) => {
 	if (!site || !path) {
 		return
@@ -17,7 +25,7 @@ export const resolve_page = (site: ObjectOf<typeof Sites>, path: string[]) => {
 
 	let page = site.homepage()
 	if (!page) {
-		return
+		return last_page_by_site.get(site.id)
 	}
 
 	for (const slug of path) {
@@ -29,10 +37,11 @@ export const resolve_page = (site: ObjectOf<typeof Sites>, path: string[]) => {
 			}
 		})?.[0]
 		if (!page) {
-			return
+			return last_page_by_site.get(site.id)
 		}
 	}
 
+	last_page_by_site.set(site.id, page)
 	return page
 }
 
