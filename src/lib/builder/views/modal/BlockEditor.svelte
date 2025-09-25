@@ -31,9 +31,11 @@
 	import { page } from '$app/state'
 	import { browser } from '$app/environment'
 	import _ from 'lodash-es'
-	import { site_context } from '$lib/builder/stores/context'
-	import { site_html, page_html } from '$lib/builder/stores/app/page.js'
+	import { site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
+	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { useContent } from '$lib/Content.svelte'
+
+	hide_page_field_field_type_context.set(false)
 
 	let {
 		block: existing_block,
@@ -156,7 +158,6 @@
 </script>
 
 <Dialog.Header
-	class="mb-2"
 	title={block.name || 'Block'}
 	button={{
 		...header.button,
@@ -171,7 +172,7 @@
 
 <main lang={$locale}>
 	<PaneGroup direction={$orientation} class="flex">
-		<Pane defaultSize={50}>
+		<Pane defaultSize={50} class="p-1">
 			{#if tab === 'code'}
 				<FullCodeEditor
 					bind:html
@@ -199,7 +200,7 @@
 						const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 						const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
 
-						return FieldCollection.create({
+						await FieldCollection.create({
 							type: 'text',
 							key: '',
 							label: '',
@@ -242,7 +243,6 @@
 		display: flex; /* to help w/ positioning child items in code view */
 		background: var(--primo-color-black);
 		color: var(--color-gray-2);
-		padding: 0 0.5rem;
 		flex: 1;
 		overflow: hidden;
 

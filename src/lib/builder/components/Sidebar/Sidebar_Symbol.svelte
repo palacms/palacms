@@ -16,6 +16,11 @@
 	import { manager, Sites, SiteSymbols } from '$lib/pocketbase/collections'
 	import { useExportSiteSymbol } from '$lib/workers/ExportSymbol.svelte'
 	import { useContent } from '$lib/Content.svelte'
+	import { Badge } from '$lib/components/ui/badge'
+	import * as Tooltip from '$lib/components/ui/tooltip'
+	import { page_context, page_type_context } from '$lib/builder/stores/context'
+	import { PageTypes, PageTypeFields } from '$lib/pocketbase/collections'
+	import { Unlink } from 'lucide-svelte'
 
 	const dispatch = createEventDispatcher()
 
@@ -24,8 +29,9 @@
 		controls_enabled = true,
 		show_toggle = false,
 		toggled = false,
-		append = ''
-	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; append?: string } = $props()
+		append = '',
+		active_page_type_id = null
+	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; append?: string; active_page_type_id?: string | null } = $props()
 
 	let name_el = $state()
 
@@ -53,6 +59,42 @@
 	})
 	const _data = $derived(useContent(symbol, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
+
+	// Foreign Page Field chip: detect when this block references Page Fields
+	// from a different page type than the active one (page or page type context)
+	const { value: page_ctx } = page_context.getOr({ value: null })
+	const { value: page_type_ctx } = page_type_context.getOr({ value: null })
+
+	const active_page_type = $derived.by(() => {
+		if (active_page_type_id) return PageTypes.one(active_page_type_id)
+		if (page_type_ctx) return page_type_ctx
+		if (page_ctx) return PageTypes.one(page_ctx.page_type)
+		return null
+	})
+
+	const symbol_fields = $derived(symbol?.fields?.() ?? [])
+	const foreign_page_types = $derived.by(() => {
+		if (!active_page_type) return []
+		const ids = new Set<string>()
+		for (const f of symbol_fields) {
+			if (f.type !== 'page-field') continue
+			const target = f.config?.field ? PageTypeFields.one(f.config.field) : null
+			if (!target) continue
+			if (target.page_type && target.page_type !== active_page_type.id) {
+				ids.add(target.page_type)
+			}
+		}
+		return Array.from(ids)
+	})
+	const foreign_chip_title = $derived.by(() => {
+		if (!foreign_page_types.length) return ''
+		const names = foreign_page_types
+			.map((id) => PageTypes.one(id))
+			.filter(Boolean)
+			.map((pt) => pt.name)
+			.join(', ')
+		return names ? `References Page Fields from ${names}.` : 'Uses Page Field(s) from another page type'
+	})
 
 	let componentCode = $state()
 	let component_error = $state()
@@ -159,6 +201,23 @@
 	<header>
 		<div class="name">
 			<h3>{symbol.name}</h3>
+			{#if foreign_page_types.length > 0}
+				<Tooltip.Provider>
+					<Tooltip.Root>
+						<Tooltip.Trigger>
+							<Badge variant={toggled ? 'destructive' : 'secondary'} class="ml-2">
+								{#if toggled}
+									<Unlink class="w-3 h-3" />
+									<span class="ml-1">Foreign Page Field</span>
+								{:else}
+									<Unlink class="w-3 h-3" />
+								{/if}
+							</Badge>
+						</Tooltip.Trigger>
+						<Tooltip.Content side="top" align="start">{foreign_chip_title}</Tooltip.Content>
+					</Tooltip.Root>
+				</Tooltip.Provider>
+			{/if}
 			{#if controls_enabled}
 				<!-- TODO: add popover w/ symbol info -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -175,7 +234,7 @@
 		{#if controls_enabled}
 			<div class="symbol-options">
 				{#if show_toggle}
-					<Toggle label="Toggle Symbol for Page Type" disabled={component_error} hideLabel={true} {toggled} small={true} on:toggle />
+					<Toggle label="Toggle Symbol for Page Type" disabled={!!component_error} hideLabel={true} {toggled} small={true} on:toggle />
 				{/if}
 				<MenuPopup
 					icon="carbon:overflow-menu-vertical"

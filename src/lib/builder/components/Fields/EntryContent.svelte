@@ -10,6 +10,8 @@
 	import { EyeOff } from 'lucide-svelte'
 	import { current_user } from '$lib/pocketbase/user'
 	import { locale } from '../../stores/app/misc'
+	import { page_context, page_type_context } from '$lib/builder/stores/context'
+	import { PageTypes, PageTypeFields } from '$lib/pocketbase/collections'
 
 	let {
 		entity,
@@ -52,6 +54,26 @@
 	const _data = $derived(useContent(entity, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
 
+	// Page Field relevance: hide Entry UI for content editors if the selected page field
+	// does not belong to the active page type's field list.
+	const { value: page_ctx } = page_context.getOr({ value: null })
+	const { value: page_type_ctx } = page_type_context.getOr({ value: null })
+
+	const active_page_type = $derived.by(() => {
+		if (page_type_ctx) return page_type_ctx
+		if (page_ctx) return PageTypes.one(page_ctx.page_type)
+		return null
+	})
+
+	const selected_page_field = $derived.by(() => (field.type === 'page-field' && field.config?.field ? PageTypeFields.one(field.config.field) : null))
+	const selected_page_type_page_type = $derived(selected_page_field ? PageTypes.one(selected_page_field.page_type) : null)
+	const is_page_field_irrelevant = $derived.by(() => {
+		if (field.type !== 'page-field') return false
+		if (!selected_page_field) return false
+		if (!active_page_type) return false
+		return selected_page_field.page_type !== active_page_type.id
+	})
+
 	const is_visible = $derived.by(() => {
 		// No condition set → visible
 		if (!field.config?.condition) return true
@@ -75,6 +97,13 @@
 {#if !Field_Component}
 	<!-- TODO: Improve the error message -->
 	<span>Field type for the field is not found!</span>
+{:else if field.type === 'page-field' && is_page_field_irrelevant}
+	{#if $current_user?.siteRole === 'developer'}
+		<div class="hidden-field">
+			<EyeOff size="14" />
+			<span>This Page Field isn’t available on this page type and is hidden from content editors.</span>
+		</div>
+	{/if}
 {:else if is_visible}
 	{@const [entry] = useEntries(entity, field, parent) ?? []}
 	{@const title = ['repeater', 'group'].includes(field.type) ? field.label : null}
@@ -85,7 +114,7 @@
 				<Icon icon="gg:website" />
 				<span>Site Field</span>
 			{:else if field.type === 'page-field'}
-				<Icon icon="iconoir:page" />
+				<Icon icon={selected_page_type_page_type?.icon || 'iconoir:page'} />
 				<span>Page Field</span>
 			{/if}
 		</div>

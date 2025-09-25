@@ -132,6 +132,13 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			if (!fieldEntries) return
 
 			// Handle page-field fields specially - get content from the page entity
+			// Fallback behavior: If the referenced page field doesn't exist on the
+			// current page type (or the value hasn't loaded yet), we degrade
+			// gracefully by assigning a type-appropriate empty value via
+			// get_empty_value(pageField). This prevents render errors and matches
+			// the editor behavior where irrelevant Page Fields are hidden from
+			// content editors. The fallback is applied consistently in all
+			// assignment branches below using `?? get_empty_value(pageField)`.
 			if (field.type === 'page-field' && field.key) {
 				const locale = 'en'
 				if (!content[locale]) content[locale] = {}
@@ -163,7 +170,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
 					if (!data) return
 
-					content[locale]![field.key] = data[locale]?.[pageField.key]
+					content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 				} else if ('page_type' in entity && 'symbol' in entity) {
 					// This is page type section, get the page type data
 					const pageType = PageTypes.one(entity.page_type)
@@ -181,7 +188,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					data = getContent({ entity: pageType, fields: pageTypeFields, entries: pageTypeEntries })
 					if (!data) return
 
-					content[locale]![field.key] = data[locale]?.[pageField.key]
+					content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 				} else if ('slug' in entity) {
 					// This a page, cannot self-referense
 					continue
@@ -210,7 +217,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 						data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
 						if (!data) return
 
-						content[locale]![field.key] = data[locale]?.[pageField.key]
+						content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 					} else if (pageType) {
 						// Use the current page type
 						const pageTypeFields = pageType.fields()
@@ -224,7 +231,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 						data = getContent({ entity: pageType, fields: pageTypeFields, entries: pageTypeEntries })
 						if (!data) return
 
-						content[locale]![field.key] = data[locale]?.[pageField.key]
+						content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 					} else if (site) {
 						// Use the home page
 						const page = site.homepage()
@@ -246,7 +253,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 						data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
 						if (!data) return
 
-						content[locale]![field.key] = data[locale]?.[pageField.key]
+						content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 					} else {
 						// No context
 						continue
