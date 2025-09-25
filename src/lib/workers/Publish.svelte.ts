@@ -108,12 +108,10 @@ export const usePublishSite = (site_id?: string) => {
 		const page_type = page_types?.find((page_type) => page_type.id === page.page_type)
 		const page_sections = data?.page_sections.filter((section) => section.page === page.id)
 		const page_type_sections = data?.page_type_sections.filter((section) => section.page_type === page_type?.id)
-		const page_type_symbols = data?.page_type_symbols.filter((symbol) => symbol.page_type === page_type?.id)
 
 		const header_sections = page_type_sections?.filter((section) => section.zone === 'header')
 		const footer_sections = page_type_sections?.filter((section) => section.zone === 'footer')
-		const page_type_body_sections = page_type_sections?.filter((section) => section.zone === 'body')
-		const body_sections = page_type_symbols?.length === 0 || page_sections?.length === 0 ? page_type_body_sections : page_sections
+		const body_sections = page_sections
 
 		const sections = [...(header_sections ?? []), ...(body_sections ?? []), ...(footer_sections ?? [])].filter(deduplicate('id'))
 
