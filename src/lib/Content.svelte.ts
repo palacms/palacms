@@ -126,6 +126,8 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			.filter((field) => (parentField ? field.parent === parentField.id : !field.parent))
 			// Deduplicate
 			.filter((field1, index, array) => array.findIndex((field2) => field2.id === field1.id) === index)
+			// Remove fields without a key
+			.filter(field => !!field.key)
 
 		for (const field of filteredFields) {
 			const fieldEntries = resolveEntries({ entity, field, entries, parentEntry })
@@ -146,7 +148,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!field.config?.field) continue
 				const pageField = PageTypeFields.one(field.config.field)
 				if (pageField === null) continue
-				if (!pageField) return
+				if (!pageField || !pageField.key) return
 
 				let data: ReturnType<typeof getContent> | null = null
 				if ('page' in entity && 'symbol' in entity) {
@@ -269,7 +271,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!field.config?.field) continue
 				const siteField = SiteFields.one(field.config.field)
 				if (siteField === null) continue
-				if (!siteField) return
+				if (!siteField || !siteField.key) return
 
 				const site = Sites.one(siteField.site)
 				if (site === null) continue

@@ -69,7 +69,7 @@
 		create_field: (data?: Partial<Field>) => void
 		oninput: FieldValueHandler
 		onchange: (details: { id: string; data: Partial<Field> }) => void
-		ondelete: (field_id: string) => void
+		ondelete: (field: Field) => void
 		ondelete_entry: (entry_id: string) => void
 	} = $props()
 
@@ -150,7 +150,7 @@
 		for (const field of fields) {
 			if (field.parent === field_id) {
 				delete_field_related_records(field.id)
-				ondelete(field.id)
+				ondelete(field)
 			}
 		}
 
@@ -182,9 +182,9 @@
 		onchange(details)
 	}
 
-	function handle_delete_field(field_id: string) {
-		delete_field_related_records(field_id)
-		ondelete(field_id)
+	function handle_delete_field(field: Field) {
+		delete_field_related_records(field.id)
+		ondelete(field)
 	}
 
 	function handle_delete_entry(entry_id: string) {
