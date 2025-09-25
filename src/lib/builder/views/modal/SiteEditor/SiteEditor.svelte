@@ -100,7 +100,7 @@
 							const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 							const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
 
-							return SiteFields.create({
+							await SiteFields.create({
 								type: 'text',
 								key: '',
 								label: '',

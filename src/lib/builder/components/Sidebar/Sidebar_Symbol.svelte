@@ -13,7 +13,7 @@
 	import { watch } from 'runed'
 	import { block_html } from '$lib/builder/code_generators'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { manager, Sites, SiteSymbols } from '$lib/pocketbase/collections'
+	import { manager, SiteSymbols } from '$lib/pocketbase/collections'
 	import { useExportSiteSymbol } from '$lib/workers/ExportSymbol.svelte'
 	import { useContent } from '$lib/Content.svelte'
 	import { Badge } from '$lib/components/ui/badge'

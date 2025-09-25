@@ -184,7 +184,6 @@
 </script>
 
 <Dialog.Header
-	class="mb-2"
 	title={symbol?.name || 'Block'}
 	button={{
 		label: header.button.label || 'Save',
@@ -201,7 +200,7 @@
 
 <main lang={$locale}>
 	<PaneGroup direction={$orientation} class="flex gap-1">
-		<Pane defaultSize={50} class="flex flex-col">
+		<Pane defaultSize={50} class="flex flex-col pt-1 pl-1">
 			{#if tab === 'code'}
 				<FullCodeEditor
 					bind:html
@@ -246,8 +245,6 @@
 							has_unsaved_changes = true
 							newly_created_fields.add(newField.id)
 						}
-
-						return newField
 					}}
 					oninput={(values) => {
 						if ('page_type' in component) {
@@ -296,7 +293,6 @@
 		display: flex; /* to help w/ positioning child items in code view */
 		background: var(--primo-color-black);
 		color: var(--color-gray-2);
-		padding: 0 0.5rem;
 		flex: 1;
 		overflow: hidden;
 

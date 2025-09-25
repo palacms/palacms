@@ -108,7 +108,8 @@
 					}
 				)
 			},
-			onDrag({ self, source }) {
+			onDrag({ self }) {
+				// Dragging - adjust indicator according to drag position
 				const edge = extractClosestEdge(self.data)
 				if (edge === 'bottom') {
 					// Set hover position to show indicator below this item
@@ -135,6 +136,7 @@
 				hover_position = null
 			},
 			onDrop({ self, source }) {
+				// Dropped - adjust index of moved page and siblings pages
 				const page_dragged_over = self.data.page
 				const page_being_dragged = source.data.page
 				const closestEdgeOfTarget = extractClosestEdge(self.data)
@@ -274,9 +276,9 @@
 		</div>
 		<div class="options">
 			{#if has_children}
-				<button class="add-child-btn" onclick={() => (creating_page = true)} aria-label="Add child page">
+				<button class="add-child-btn" onclick={() => (creating_page = true)} aria-label="Create Subpage">
 					<Icon icon="akar-icons:plus" />
-					<span>Add Child ({children.length})</span>
+					<span>Create Subpage ({children.length})</span>
 				</button>
 			{/if}
 			{#if !parent}
@@ -290,7 +292,7 @@
 					...(!has_children && !creating_page
 						? [
 								{
-									label: `Create Child Page`,
+									label: `Create Subpage`,
 									icon: 'akar-icons:plus',
 									on_click: () => {
 										creating_page = true

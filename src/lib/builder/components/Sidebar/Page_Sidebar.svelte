@@ -4,13 +4,13 @@
 	import { dragging_symbol } from '$lib/builder/stores/app/misc'
 	import Sidebar_Symbol from './Sidebar_Symbol.svelte'
 	import Content from '../Content.svelte'
-	import { browser } from '$app/environment'
+	import { Button } from '$lib/components/ui/button'
 	import { goto } from '$app/navigation'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import { site_html } from '$lib/builder/stores/app/page'
 	import * as Tabs from '$lib/components/ui/tabs'
-	import { Cuboid, SquarePen } from 'lucide-svelte'
+	import { Cuboid, SquarePen, ExternalLink } from 'lucide-svelte'
 	import { page as pageState } from '$app/state'
 	import { PageTypes, Sites, Pages, PageEntries, manager } from '$lib/pocketbase/collections'
 	import { SiteSymbols } from '$lib/pocketbase/collections'
@@ -95,7 +95,7 @@
 		{#if $site_html !== null}
 			{#each available_symbols ?? [] as symbol (symbol.id)}
 				<div use:drag_target={symbol}>
-					<Sidebar_Symbol {symbol} controls_enabled={false} append={$site_html} />
+					<Sidebar_Symbol {symbol} controls_enabled={false} append={$site_html} active_page_type_id={page_type?.id} toggled={true} />
 				</div>
 			{/each}
 		{:else}
@@ -105,15 +105,17 @@
 		{/if}
 	</div>
 	{#if $current_user?.siteRole === 'developer'}
-		<button
+		<Button
+			class="mt-4"
+			size="sm"
+			variant="outline"
 			onclick={() => {
 				const base_path = pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 				goto(`${base_path}/page-type--${page_type?.id}?tab=blocks`)
 			}}
-			class="footer-link"
 		>
-			Manage Blocks
-		</button>
+			Manage Blocks <ExternalLink class="w-3" />
+		</Button>
 	{/if}
 {/snippet}
 
@@ -144,15 +146,18 @@
 		</div>
 	{/if}
 	{#if $current_user?.siteRole === 'developer'}
-		<button
+		<Button
+			class="mt-4"
+			size="sm"
+			variant="outline"
 			onclick={() => {
 				const base_path = pageState.url.pathname.startsWith('/admin/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 				goto(`${base_path}/page-type--${page_type?.id}?tab=fields`)
 			}}
-			class="footer-link"
 		>
+			<SquarePen class="w-3" />
 			Manage Fields
-		</button>
+		</Button>
 	{/if}
 {/snippet}
 
@@ -182,14 +187,5 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-	}
-
-	button.footer-link {
-		font-size: 0.625rem;
-		text-align: right;
-		text-decoration: underline;
-		color: var(--color-gray-4);
-		margin-bottom: 0.5rem;
-		margin-right: 0.5rem;
 	}
 </style>
