@@ -41,44 +41,42 @@
 	let new_page_page_type_section_entries = $derived(new_page_page_type_sections?.every((section) => section.entries()) && new_page_page_type_sections?.flatMap((section) => section.entries() ?? []))
 
 	// Copy page sections to new page
-	watch(
-		() => ({ new_page, new_page_page_type_sections, new_page_page_type_section_entries }),
-		({ new_page, new_page_page_type_sections, new_page_page_type_section_entries }) => {
-			if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries) {
-				return
-			}
-			building_page = true
-			for (const pts of new_page_page_type_sections) {
-				// Skip header and footer sections - these are handled at the site level
-				if (pts.zone === 'header' || pts.zone === 'footer') {
-					continue
-				}
-
-				// Create the body page section
-				const page_section = PageSections.create({
-					page: new_page.id,
-					symbol: pts.symbol,
-					index: pts.index
-				})
-
-				// Find and copy only root-level entries (parent = null/empty) (TODO: copy children, account for dependencies)
-				const page_type_section_entries = new_page_page_type_section_entries.filter((e) => !e.parent).filter((e) => e.section === pts.id)
-				for (const ptse of page_type_section_entries) {
-					PageSectionEntries.create({
-						section: page_section.id,
-						field: ptse.field,
-						locale: ptse.locale,
-						value: ptse.value,
-						index: ptse.index
-					})
-				}
-			}
-
-			new_page = undefined
-			manager.commit()
-			building_page = false
+	$effect(() => {
+		if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries) {
+			return
 		}
-	)
+
+		building_page = true
+
+		for (const pts of new_page_page_type_sections) {
+			// Skip header and footer sections - these are handled at the site level
+			if (pts.zone === 'header' || pts.zone === 'footer') {
+				continue
+			}
+			// Create the page section
+			const page_section = PageSections.create({
+				page: new_page.id,
+				symbol: pts.symbol,
+				index: pts.index
+			})
+
+			// Find and copy only root-level entries (parent = null/empty)
+			const page_type_section_entries = new_page_page_type_section_entries.filter((e) => !e.parent).filter((e) => e.section === pts.id)
+			for (const ptse of page_type_section_entries) {
+				PageSectionEntries.create({
+					section: page_section.id,
+					field: ptse.field,
+					locale: ptse.locale,
+					value: ptse.value,
+					index: ptse.index
+				})
+			}
+		}
+
+		new_page = undefined
+		manager.commit()
+		building_page = false
+	})
 
 	/**
 	 * Create a page and copy all page type sections to it
