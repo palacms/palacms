@@ -5,16 +5,18 @@
 	interface Props<T> {
 		items: T[] | undefined
 		loading?: boolean
+		class?: string
+		columnCount?: null | number
 		skeletonCount?: number
 		getKey?: (item: T) => string | number
 		children: Snippet<[T]>
 	}
 
-	let { items, loading = false, skeletonCount = 8, getKey = (item: any) => item?.id ?? item?.key ?? item, children }: Props<T> = $props()
+	let { items, loading = false, class: className = '', columnCount = null, skeletonCount = 8, getKey = (item: any) => item?.id ?? item?.key ?? item, children }: Props<T> = $props()
 
 	// Dynamically determine number of columns based on screen width
 	let window_width = $state(typeof window !== 'undefined' ? window.innerWidth : 1200)
-	
+
 	$effect(() => {
 		const handle_resize = () => {
 			window_width = window.innerWidth
@@ -23,28 +25,16 @@
 		return () => window.removeEventListener('resize', handle_resize)
 	})
 
-	const columns = $derived(
-		window_width < 600 ? 1 :
-		window_width < 700 ? 2 :
-		window_width < 1200 ? 3 : 4
-	)
+	const columns = $derived(columnCount ?? (window_width < 600 ? 1 : window_width < 700 ? 2 : window_width < 1200 ? 3 : 4))
 
 	// Generate random ratios for skeleton cards
-	const skeleton_ratios = $derived(
-		Array.from({ length: columns }, () => 
-			Array.from({ length: Math.ceil(skeletonCount / columns) }, () => 0.5 + Math.random())
-		)
-	)
+	const skeleton_ratios = $derived(Array.from({ length: columns }, () => Array.from({ length: Math.ceil(skeletonCount / columns) }, () => 0.5 + Math.random())))
 
 	// Split items into columns for masonry layout
-	const columnized_items = $derived(
-		items ? Array.from({ length: columns }, (_, i) => 
-			items.filter((_, index) => index % columns === i)
-		) : []
-	)
+	const columnized_items = $derived(items ? Array.from({ length: columns }, (_, i) => items.filter((_, index) => index % columns === i)) : [])
 </script>
 
-<div class="masonry">
+<div class="masonry {className}" style:grid-template-columns="repeat({columns}, 1fr)">
 	{#if loading || items === undefined}
 		{#each skeleton_ratios as column_ratios}
 			<ul>
@@ -72,19 +62,6 @@
 	.masonry {
 		display: grid;
 		gap: 1rem;
-		grid-template-columns: 1fr;
-
-		@media (min-width: 600px) {
-			grid-template-columns: 1fr 1fr;
-		}
-
-		@media (min-width: 700px) {
-			grid-template-columns: 1fr 1fr 1fr;
-		}
-
-		@media (min-width: 1200px) {
-			grid-template-columns: 1fr 1fr 1fr 1fr;
-		}
 	}
 
 	ul {

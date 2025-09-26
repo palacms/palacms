@@ -1,12 +1,26 @@
-<script>
+<script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar'
 	import { Separator } from '$lib/components/ui/separator'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { LayoutTemplate } from 'lucide-svelte'
 	import MarketplaceStarterButton from '$lib/components/MarketplaceStarterButton.svelte'
+	import { page } from '$app/state'
+	import { MarketplaceSiteGroups, MarketplaceSites } from '$lib/pocketbase/collections'
+	import { Skeleton } from '$lib/components/ui/skeleton'
+	import { goto } from '$app/navigation'
 
-	// TODO (just fetch from endpoing?)
-	const starters = []
+	const group_id = $derived(page.url.searchParams.get('group') ?? undefined)
+	const starters = $derived(group_id ? (MarketplaceSites.list({ filter: { group: group_id }, sort: 'index' }) ?? undefined) : undefined)
+
+	// Auto-select first group if none is selected
+	$effect(() => {
+		const groups = MarketplaceSiteGroups.list({ sort: 'index' }) ?? []
+		if (!group_id && groups.length > 0) {
+			const url = new URL(page.url)
+			url.searchParams.set('group', groups[0].id)
+			goto(url, { replaceState: true })
+		}
+	})
 </script>
 
 <header class="flex h-14 shrink-0 items-center gap-2">
@@ -17,47 +31,21 @@
 	</div>
 </header>
 <div class="flex flex-1 flex-col gap-4 px-4 pb-4">
-	{#if starters?.length}
-		<div class="sites-container">
-			<ul class="sites">
-				{#each starters as site (site.id)}
-					<li>
-						<MarketplaceStarterButton site={site.data} preview={site.preview} />
-					</li>
-				{/each}
-			</ul>
-		</div>
-	{:else}
-		<EmptyState icon={LayoutTemplate} title="No Starters to display" description="Starters are starting points for your sites. When you create one it'll show up here." />
-	{/if}
+	{#key group_id}
+		{#if starters?.length || starters === undefined}
+			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+				{#if starters === undefined}
+					{#each Array.from({ length: 8 }) as _}
+						<Skeleton class="aspect-video w-full" />
+					{/each}
+				{:else}
+					{#each starters as site (site.id)}
+						<MarketplaceStarterButton {site} />
+					{/each}
+				{/if}
+			</div>
+		{:else}
+			<EmptyState class="h-[50vh]" icon={LayoutTemplate} title="No Starters to display" description="Starters are starting points for your sites. When you create one it'll show up here." />
+		{/if}
+	{/key}
 </div>
-
-<style lang="postcss">
-	.sites-container {
-		display: grid;
-		gap: 1rem;
-
-		ul.sites {
-			display: grid;
-			gap: 1rem;
-		}
-	}
-
-	@media (min-width: 600px) {
-		ul.sites {
-			grid-template-columns: 1fr 1fr;
-		}
-	}
-
-	@media (min-width: 900px) {
-		ul.sites {
-			grid-template-columns: 1fr 1fr 1fr;
-		}
-	}
-
-	@media (min-width: 1200px) {
-		ul.sites {
-			grid-template-columns: 1fr 1fr 1fr 1fr;
-		}
-	}
-</style>
