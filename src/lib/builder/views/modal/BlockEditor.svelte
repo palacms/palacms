@@ -222,8 +222,8 @@
 					onchange={({ id, data }) => {
 						FieldCollection.update(id, data)
 					}}
-					ondelete={(field_id) => {
-						FieldCollection.delete(field_id)
+					ondelete={(field) => {
+						FieldCollection.delete(field.id)
 					}}
 					ondelete_entry={(entry_id) => {
 						EntryCollection.delete(entry_id)

@@ -268,8 +268,8 @@
 					onchange={({ id, data }) => {
 						SiteSymbolFields.update(id, data)
 					}}
-					ondelete={(field_id) => {
-						SiteSymbolFields.delete(field_id)
+					ondelete={(field) => {
+						SiteSymbolFields.delete(field.id)
 					}}
 					ondelete_entry={(entry_id) => {
 						if ('page_type' in component) {

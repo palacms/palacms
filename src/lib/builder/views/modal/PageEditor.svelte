@@ -86,8 +86,8 @@
 					onchange={({ id, data }) => {
 						PageTypeFields.update(id, data)
 					}}
-					ondelete={(field_id) => {
-						PageTypeFields.delete(field_id)
+					ondelete={(field) => {
+						PageTypeFields.delete(field.id)
 					}}
 					ondelete_entry={(entry_id) => {
 						PageTypeEntries.delete(entry_id)

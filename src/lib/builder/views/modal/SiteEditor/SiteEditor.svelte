@@ -122,8 +122,8 @@
 						onchange={({ id, data }) => {
 							SiteFields.update(id, data)
 						}}
-						ondelete={(field_id) => {
-							SiteFields.delete(field_id)
+						ondelete={(field) => {
+							SiteFields.delete(field.id)
 						}}
 						ondelete_entry={(entry_id) => {
 							SiteEntries.delete(entry_id)
