@@ -100,7 +100,7 @@
 							const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 							const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
 
-							await SiteFields.create({
+							SiteFields.create({
 								type: 'text',
 								key: '',
 								label: '',
@@ -122,8 +122,8 @@
 						onchange={({ id, data }) => {
 							SiteFields.update(id, data)
 						}}
-						ondelete={(field_id) => {
-							SiteFields.delete(field_id)
+						ondelete={(field) => {
+							SiteFields.delete(field.id)
 						}}
 						ondelete_entry={(entry_id) => {
 							SiteEntries.delete(entry_id)

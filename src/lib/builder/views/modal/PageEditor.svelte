@@ -64,7 +64,7 @@
 						const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 						const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
 
-						await PageTypeFields.create({
+						PageTypeFields.create({
 							type: 'text',
 							key: '',
 							label: '',
@@ -86,8 +86,8 @@
 					onchange={({ id, data }) => {
 						PageTypeFields.update(id, data)
 					}}
-					ondelete={(field_id) => {
-						PageTypeFields.delete(field_id)
+					ondelete={(field) => {
+						PageTypeFields.delete(field.id)
 					}}
 					ondelete_entry={(entry_id) => {
 						PageTypeEntries.delete(entry_id)

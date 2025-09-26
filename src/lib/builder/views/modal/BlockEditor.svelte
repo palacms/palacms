@@ -200,7 +200,7 @@
 						const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 						const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
 
-						await FieldCollection.create({
+						FieldCollection.create({
 							type: 'text',
 							key: '',
 							label: '',
@@ -222,8 +222,8 @@
 					onchange={({ id, data }) => {
 						FieldCollection.update(id, data)
 					}}
-					ondelete={(field_id) => {
-						FieldCollection.delete(field_id)
+					ondelete={(field) => {
+						FieldCollection.delete(field.id)
 					}}
 					ondelete_entry={(entry_id) => {
 						EntryCollection.delete(entry_id)
