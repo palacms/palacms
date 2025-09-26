@@ -147,7 +147,7 @@
 	{/if}
 	{#if $current_user?.siteRole === 'developer'}
 		<Button
-			class="mt-4"
+			class="mt-2"
 			size="sm"
 			variant="outline"
 			onclick={() => {
@@ -155,8 +155,8 @@
 				goto(`${base_path}/page-type--${page_type?.id}?tab=fields`)
 			}}
 		>
-			<SquarePen class="w-3" />
 			Manage Fields
+			<ExternalLink class="w-3" />
 		</Button>
 	{/if}
 {/snippet}

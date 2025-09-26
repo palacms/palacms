@@ -216,7 +216,7 @@
 					</button>
 					<button
 						data-test-id="entry"
-						style="border-top: 1px solid var(--color-gray-9);"
+						class="border-t border-[var(--color-gray-9)]"
 						class:active={active_tab === 'entry'}
 						ondblclick={() => set_all_tabs('entry')}
 						onclick={() => {
@@ -264,9 +264,7 @@
 	{/each}
 	{#if $current_user?.siteRole === 'developer'}
 		<button class="field-button" onclick={() => create_field()}>
-			<div class="icon">
-				<Icon icon="fa-solid:plus" />
-			</div>
+			<Icon icon="fa-solid:plus" />
 			<span>Create Field</span>
 		</button>
 	{/if}

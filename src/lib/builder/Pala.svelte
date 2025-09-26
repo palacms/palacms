@@ -189,7 +189,7 @@
 	.grab-handle {
 		color: #222;
 		padding-block: 3px;
-		background: var(--pala-primary-color);
+		background: var(--color-gray-6);
 		z-index: 9;
 		border-radius: 1px;
 		font-size: 10px;

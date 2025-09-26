@@ -180,21 +180,24 @@
 			{/each}
 		</div>
 	{:else}
-		<EmptyState icon={Globe} title="No Sites to display" description="It looks like you haven't created any websites yet." />
+		<EmptyState class="h-[50vh]" icon={Globe} title="No Sites to display" description="It looks like you haven't created any websites yet." />
 	{/if}
 </div>
 
 {#snippet SiteButton(site: Site)}
-	<div class="space-y-3 relative w-full bg-gray-900">
+	<div class="space-y-3 relative w-full bg-[#111]">
 		<div class="rounded-tl rounded-tr overflow-hidden">
 			<a data-sveltekit-prefetch href={`/admin/sites/${site.id}`}>
 				<SitePreview {site} />
 			</a>
 		</div>
-		<div class="absolute -bottom-2 rounded-bl rounded-br w-full p-3 z-20 bg-gray-900 truncate flex items-center justify-between">
-			<a data-sveltekit-prefetch href={`/admin/sites/${site.id}`} class="text-sm font-medium leading-none">{site.name}</a>
+		<div class="absolute -bottom-2 rounded-bl rounded-br w-full p-3 z-20 bg-[#111] truncate flex items-center justify-between">
+			<div class="flex flex-col gap-1" style="max-width: calc(100% - 2rem)">
+				<a data-sveltekit-prefetch href={`/admin/sites/${site.id}`} class="text-sm font-medium leading-none truncate">{site.name}</a>
+				<p class="text-xs text-muted-foreground leading-tight truncate">{site.host}</p>
+			</div>
 			<DropdownMenu.Root>
-				<DropdownMenu.Trigger>
+				<DropdownMenu.Trigger class="p-2 hover:bg-[#222] rounded-md">
 					<EllipsisVertical size={14} />
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content>
@@ -370,7 +373,7 @@
 		</div>
 
 		<Dialog.Footer class="mt-6">
-			<Button type="button" onclick={() => (is_create_site_instructions_open = false)}>Got it</Button>
+			<Button type="button" onclick={() => (is_create_site_instructions_open = false)}>Okay</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

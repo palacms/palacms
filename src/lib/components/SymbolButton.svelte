@@ -42,13 +42,15 @@
 				console.error('Failed to generate symbol preview:', error)
 			})
 	})
+
+	const showing_footer = $derived(symbol?.name || children)
 </script>
 
 <div class="relative w-full bg-gray-900 rounded-bl rounded-br">
-	<button {onclick} class="w-full rounded-tl rounded-tr overflow-hidden">
+	<button {onclick} class="w-full rounded-tl rounded-tr overflow-hidden" class:rounded={!showing_footer}>
 		<IFrame componentCode={generated_code} />
 	</button>
-	{#if symbol?.name || children}
+	{#if showing_footer}
 		<div class="w-full p-3 pt-2 bg-gray-900 truncate flex items-center justify-between">
 			{#if symbol?.name}
 				<div class="text-xs leading-none truncate" style="width: calc(100% - 2rem)">{symbol?.name}</div>

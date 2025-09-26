@@ -160,7 +160,7 @@
 			&:hover {
 				background-color: var(--pala-primary-color);
 				transition: 0.2s;
-				color: #121212;
+				color: white;
 			}
 
 			&:focus {
