@@ -40,19 +40,12 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 				let { head_props } = props;
 				${field_keys.map((field) => `let ${field[0]} = head_props['${field[0]}'];`).join(`\n`)}
 			</script>
-			${components.map((component, i) => `<Component_${i} {...component_${i}_props} /> \n`).join('')}
+			${components.map((component, i) => (component.wrapper_start ?? '') + `<Component_${i} {...component_${i}_props} />` + (component.wrapper_end ?? '')).join('\n')}
 		`
 	}
 
 	const Component = (component) => {
 		let { html, css, js, data } = component
-
-		// Move <svelte:window> outside the encompassing <div> to prevent 'can't nest' error
-		if (html.includes('<svelte:window')) {
-			let [svelteWindowTag] = html.match(/<svelte:window(.*?)\/>/)
-			html = html.replace(svelteWindowTag, '')
-			html = html + svelteWindowTag
-		}
 
 		const field_keys = Object.keys(data).filter((key) => !!key)
 

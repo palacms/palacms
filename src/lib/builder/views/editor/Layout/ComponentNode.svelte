@@ -87,6 +87,10 @@
 	// Store editor instances by markdown ID so we can access them later
 	let markdown_editors = new Map()
 
+	// Keep markdown locked when blur is caused by clicking editor UI buttons
+	let suppress_blur_unlock = $state(false)
+	let suppress_timer: any
+
 	let error = $state('')
 
 	let generated_js = $state('')
@@ -114,6 +118,7 @@
 
 	let scrolling = false
 	let is_editing = $state(false)
+	$inspect({ is_editing })
 
 	const markdown_classes = {}
 	let field_save_timeout
@@ -280,8 +285,10 @@
 							update_formatting_state()
 						},
 						onBlur: async ({ event }) => {
-							// Don't call handle_unlock for markdown - let it stay locked
-							dispatch('unlock')
+							// Only unlock when blur wasn't caused by clicking editor UI
+							if (!suppress_blur_unlock) {
+								handle_unlock()
+							}
 							// Final save on blur
 							clearTimeout(field_save_timeout)
 							const json = editor.getJSON()
@@ -622,7 +629,7 @@
 		}
 	}
 
-	let compiled_code = $state<string>('')
+	let last_code_signature = $state<string>('')
 	// Watch for changes in block code or component data and regenerate
 	watch(
 		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
@@ -631,10 +638,10 @@
 			if (data === undefined) return
 
 			// Recompile when any source (html/css/js) changes.
-			const signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
-			if (compiled_code !== signature) {
+			const updated_code_signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
+			if (last_code_signature !== updated_code_signature) {
 				generate_component_code(block)
-				compiled_code = signature
+				last_code_signature = updated_code_signature
 			}
 		}
 	)
@@ -769,7 +776,6 @@
 			doc.addEventListener('keyup', update_menu_positions)
 
 			setup_complete = true
-
 			// Every time setup is completed, we send the component to the IFrame.
 			// This happens also when the ComponentNode is moved in DOM due to IFrame resetting.
 			if (component_data && generated_js) {
@@ -780,20 +786,22 @@
 	}
 
 	// Watch for changes and send to iframe when ready
-	// Only send when this component's data meaningfully changed to avoid
+	// Only send when this component's code & data meaningfully changed to avoid
 	// triggering re-renders of unrelated symbols.
 	let last_sent_data = $state<any>()
+	let last_sent_js = $state<string>('')
 	watch(
-		() => ({ js: generated_js, data: component_data, ready: setup_complete && !is_editing }),
-		({ js, data, ready }) => {
-			if (!(ready && data && js)) return
+		() => ({ updated_js: generated_js, updated_data: component_data, ready: setup_complete && !is_editing }),
+		({ updated_js, updated_data, ready }) => {
+			if (!(ready && updated_data && updated_js)) return
 
-			// Skip if data is deeply equal to the last sent value
-			if (_.isEqual(last_sent_data, data)) return
+			// Skip if updated_data is deeply equal to the last sent value
+			if (_.isEqual(last_sent_data, updated_data) && last_sent_js === updated_js) return
 
 			// Store a snapshot to avoid mutation side-effects
-			last_sent_data = _.cloneDeep(data)
-			send_component_to_iframe(js, data)
+			last_sent_data = _.cloneDeep(updated_data)
+			last_sent_js = updated_js
+			send_component_to_iframe(updated_js, updated_data)
 		}
 	)
 
@@ -1122,7 +1130,17 @@
 </Dialog.Root>
 
 {#if image_editor_is_visible}
-	<button style:pointer-events={scrolling ? 'none' : 'all'} in:fade={{ duration: 100 }} class="image-editor" bind:this={image_editor}>
+	<button
+		style:pointer-events={scrolling ? 'none' : 'all'}
+		in:fade={{ duration: 100 }}
+		class="image-editor"
+		bind:this={image_editor}
+		onmousedown={() => {
+			suppress_blur_unlock = true
+			clearTimeout(suppress_timer)
+			suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
+		}}
+	>
 		<Icon icon="uil:image-upload" />
 	</button>
 {/if}
@@ -1159,7 +1177,17 @@
   </pre>
 {/if}
 
-<div class="menu floating-menu primo-reset" bind:this={floating_menu} style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="menu floating-menu primo-reset"
+	bind:this={floating_menu}
+	style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}"
+	onmousedown={() => {
+		suppress_blur_unlock = true
+		clearTimeout(suppress_timer)
+		suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
+	}}
+>
 	{#if active_editor}
 		<MarkdownButton
 			icon="fa-solid:heading"
@@ -1217,7 +1245,17 @@
 		/>
 	{/if}
 </div>
-<div class="menu bubble-menu primo-reset" bind:this={bubble_menu} style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="menu bubble-menu primo-reset"
+	bind:this={bubble_menu}
+	style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}"
+	onmousedown={() => {
+		suppress_blur_unlock = true
+		clearTimeout(suppress_timer)
+		suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
+	}}
+>
 	{#if active_editor}
 		<MarkdownButton
 			icon="fa-solid:link"

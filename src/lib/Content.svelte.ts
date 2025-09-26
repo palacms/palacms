@@ -126,12 +126,21 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			.filter((field) => (parentField ? field.parent === parentField.id : !field.parent))
 			// Deduplicate
 			.filter((field1, index, array) => array.findIndex((field2) => field2.id === field1.id) === index)
+			// Remove fields without a key
+			.filter((field) => !!field.key)
 
 		for (const field of filteredFields) {
 			const fieldEntries = resolveEntries({ entity, field, entries, parentEntry })
 			if (!fieldEntries) return
 
 			// Handle page-field fields specially - get content from the page entity
+			// Fallback behavior: If the referenced page field doesn't exist on the
+			// current page type (or the value hasn't loaded yet), we degrade
+			// gracefully by assigning a type-appropriate empty value via
+			// get_empty_value(pageField). This prevents render errors and matches
+			// the editor behavior where irrelevant Page Fields are hidden from
+			// content editors. The fallback is applied consistently in all
+			// assignment branches below using `?? get_empty_value(pageField)`.
 			if (field.type === 'page-field' && field.key) {
 				const locale = 'en'
 				if (!content[locale]) content[locale] = {}
@@ -140,6 +149,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const pageField = PageTypeFields.one(field.config.field)
 				if (pageField === null) continue
 				if (!pageField) return
+				if (!pageField.key) continue
 
 				let data: ReturnType<typeof getContent> | null = null
 				if ('page' in entity && 'symbol' in entity) {
@@ -163,7 +173,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
 					if (!data) return
 
-					content[locale]![field.key] = data[locale]?.[pageField.key]
+					content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 				} else if ('page_type' in entity && 'symbol' in entity) {
 					// This is page type section, get the page type data
 					const pageType = PageTypes.one(entity.page_type)
@@ -181,7 +191,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					data = getContent({ entity: pageType, fields: pageTypeFields, entries: pageTypeEntries })
 					if (!data) return
 
-					content[locale]![field.key] = data[locale]?.[pageField.key]
+					content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 				} else if ('slug' in entity) {
 					// This a page, cannot self-referense
 					continue
@@ -210,7 +220,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 						data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
 						if (!data) return
 
-						content[locale]![field.key] = data[locale]?.[pageField.key]
+						content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 					} else if (pageType) {
 						// Use the current page type
 						const pageTypeFields = pageType.fields()
@@ -224,7 +234,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 						data = getContent({ entity: pageType, fields: pageTypeFields, entries: pageTypeEntries })
 						if (!data) return
 
-						content[locale]![field.key] = data[locale]?.[pageField.key]
+						content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 					} else if (site) {
 						// Use the home page
 						const page = site.homepage()
@@ -246,7 +256,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 						data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
 						if (!data) return
 
-						content[locale]![field.key] = data[locale]?.[pageField.key]
+						content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
 					} else {
 						// No context
 						continue
@@ -263,6 +273,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const siteField = SiteFields.one(field.config.field)
 				if (siteField === null) continue
 				if (!siteField) return
+				if (!siteField.key) continue
 
 				const site = Sites.one(siteField.site)
 				if (site === null) continue
@@ -430,15 +441,17 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!entry) continue
 				if (!content[entry.locale]) content[entry.locale] = {}
 
+				// If a page is referenced, try to resolve it; otherwise fall back to the raw URL
 				const page = entry.value.page ? Pages.one(entry.value.page) : null
-				if (page === null) continue
-				if (page === undefined) return
+				// If the referenced page hasn't loaded yet, skip this field for now instead of aborting
+				if (page === undefined) continue
 
 				const url = page ? build_live_page_url(page)?.pathname : entry.value.url
-				if (url === undefined) return
+				// If we still don't have a URL (e.g. unresolved page and no URL), set empty string rather than aborting
+				const safe_url = url ?? ''
 
-				const label = entry.value.label
-				content[entry.locale]![field.key] = { url, label }
+				const label = entry.value.label ?? ''
+				content[entry.locale]![field.key] = { url: safe_url, label }
 			}
 
 			// If field has a key but no entries, fill with empty value

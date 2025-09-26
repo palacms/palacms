@@ -11,6 +11,7 @@
 	import Sidebar_Symbol from './Sidebar_Symbol.svelte'
 	import Fields from '$lib/builder/components/Fields/FieldsContent.svelte'
 	import { flip } from 'svelte/animate'
+	import { toast } from 'svelte-sonner'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import * as Tabs from '$lib/components/ui/tabs'
@@ -25,7 +26,7 @@
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user.js'
 	import { useImportSiteSymbol } from '$lib/workers/ImportSymbol.svelte.ts'
-	import { site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
+	import { page_type_context, site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
 
@@ -36,6 +37,13 @@
 	const entries = $derived(page_type?.entries() ?? [])
 	const page_type_symbols = $derived(page_type?.symbols() ?? [])
 	const site_symbols = $derived(site?.symbols() ?? [])
+
+	// Set context so child components can access the page type (ie page-field field in sidebar symbol)
+	const context = $state({ value: page_type })
+	page_type_context.set(context)
+	$effect(() => {
+		context.value = page_type
+	})
 
 	hide_page_field_field_type_context.set(true)
 
@@ -389,6 +397,7 @@
 								<Sidebar_Symbol
 									{symbol}
 									append={$site_html}
+									active_page_type_id={page_type?.id}
 									show_toggle={true}
 									{toggled}
 									on:toggle={({ detail }) => {
@@ -423,7 +432,7 @@
 						{/each}
 					</div>
 				{:else}
-					<div style="display: flex;justify-content: center;font-size: 2rem;color:var(--color-gray-6)">
+					<div class="flex justify-center text-3xl text-[var(--color-gray-6)]">
 						<UI.Spinner variant="loop" />
 					</div>
 				{/if}
@@ -456,8 +465,7 @@
 							// Get the highest index for fields at this level
 							const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 							const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
-
-							return PageTypeFields.create({
+							PageTypeFields.create({
 								type: 'text',
 								key: '',
 								label: '',
@@ -483,14 +491,15 @@
 
 							const field = fields.find((field) => field.id === id)
 							if (field?.key) {
+								console.log('commiting ONCHANGE - maybe it commits without a key?', field?.key)
 								clearTimeout(commit_task)
 								commit_task = setTimeout(() => manager.commit(), 500)
 							}
 						}}
-						ondelete={(field_id) => {
-							PageTypeFields.delete(field_id)
-							clearTimeout(commit_task)
-							commit_task = setTimeout(() => manager.commit(), 500)
+						ondelete={async (field) => {
+							PageTypeFields.delete(field.id)
+							toast.success(`Deleted ${field.type} field${field.label ? `: ${field.label}` : ``}`)
+							await manager.commit()
 						}}
 						ondelete_entry={(entry_id) => {
 							PageTypeEntries.delete(entry_id)
@@ -578,18 +587,6 @@
 		gap: 0.25rem;
 		align-items: center;
 		font-size: 0.75rem;
-
-		input {
-			display: none;
-		}
-	}
-
-	.container {
-		display: flex;
-		flex-direction: column;
-		overflow-y: auto;
-		padding: 1rem;
-		gap: 0.75rem;
 	}
 
 	.block-list {

@@ -38,7 +38,7 @@ export async function html({ component, head, buildStatic = true, css = 'externa
 
 	let res
 	try {
-		const has_js = compile_page ? component.some((s) => s.js) : !!component.js
+		const has_js = compile_page ? component.some((s) => !!s.js) : !!component.js
 		res = await rollup_worker.postMessage({
 			component,
 			head,

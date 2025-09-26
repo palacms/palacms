@@ -12,8 +12,7 @@
 	import ComponentPreview, { has_error } from '$lib/builder/components/ComponentPreview.svelte'
 	import Fields, { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
 	import { locale } from '$lib/builder/stores/app/misc.js'
-	import hotkey_events from '$lib/builder/stores/app/hotkey_events.js'
-	import { PressedKeys } from 'runed'
+	import { watch } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import {
@@ -32,9 +31,11 @@
 	import { page } from '$app/state'
 	import { browser } from '$app/environment'
 	import _ from 'lodash-es'
-	import { site_context } from '$lib/builder/stores/context'
-	import { site_html, page_html } from '$lib/builder/stores/app/page.js'
+	import { site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
+	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { useContent } from '$lib/Content.svelte'
+
+	hide_page_field_field_type_context.set(false)
 
 	let {
 		block: existing_block,
@@ -93,13 +94,10 @@
 	let loading = $state(false)
 
 	// Set up hotkey listeners for modal
-	const modalKeys = new PressedKeys()
-
-	// Toggle between code and content tabs
-	onModKey(modalKeys, 'e', toggle_tab)
+	onModKey('e', toggle_tab)
 
 	// Save component
-	onModKey(modalKeys, 's', save_component)
+	onModKey('s', save_component)
 
 	function toggle_tab() {
 		tab = tab === 'code' ? 'content' : 'code'
@@ -109,6 +107,10 @@
 		if (!$has_error) {
 			loading = true
 			await manager.commit()
+			// Reset baselines after successful save
+			initial_code = { html, css, js }
+			initial_data = _.cloneDeep(component_data)
+			has_unsaved_changes = false
 			loading = false
 			header.button.onclick(block)
 		}
@@ -119,26 +121,28 @@
 	let js = $state(block.js)
 
 	// Store initial data for comparison
-	const initial_code = { html: block.html, css: block.css, js: block.js }
-	const initial_data = _.cloneDeep(component_data)
+	let initial_code = $state({ html: block.html, css: block.css, js: block.js })
+	let initial_data = $state(_.cloneDeep(component_data))
 
-	// Compare current state to initial data
-	$effect(() => {
-		const code_changed = html !== initial_code.html || css !== initial_code.css || js !== initial_code.js
-		const data_changed = !_.isEqual(initial_data, component_data)
-		has_unsaved_changes = code_changed || data_changed
-	})
+	// Compare current state to initial data (explicit watch)
+	watch(
+		() => [html, css, js, component_data],
+		() => {
+			const code_changed = html !== initial_code.html || css !== initial_code.css || js !== initial_code.js
+			const data_changed = !_.isEqual(initial_data, component_data)
+			has_unsaved_changes = code_changed || data_changed
+		}
+	)
 
-	// Add beforeunload listener to warn about unsaved changes
+	// Add beforeunload listener via effect (lifecycle)
 	$effect(() => {
 		if (!browser) return
+		if (!has_unsaved_changes) return
 
 		const handleBeforeUnload = (e) => {
-			if (has_unsaved_changes) {
-				e.preventDefault()
-				e.returnValue = ''
-				return ''
-			}
+			e.preventDefault()
+			e.returnValue = ''
+			return ''
 		}
 
 		window.addEventListener('beforeunload', handleBeforeUnload)
@@ -154,7 +158,6 @@
 </script>
 
 <Dialog.Header
-	class="mb-2"
 	title={block.name || 'Block'}
 	button={{
 		...header.button,
@@ -169,7 +172,7 @@
 
 <main lang={$locale}>
 	<PaneGroup direction={$orientation} class="flex">
-		<Pane defaultSize={50}>
+		<Pane defaultSize={50} class="p-1">
 			{#if tab === 'code'}
 				<FullCodeEditor
 					bind:html
@@ -197,7 +200,7 @@
 						const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 						const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
 
-						return FieldCollection.create({
+						FieldCollection.create({
 							type: 'text',
 							key: '',
 							label: '',
@@ -219,8 +222,8 @@
 					onchange={({ id, data }) => {
 						FieldCollection.update(id, data)
 					}}
-					ondelete={(field_id) => {
-						FieldCollection.delete(field_id)
+					ondelete={(field) => {
+						FieldCollection.delete(field.id)
 					}}
 					ondelete_entry={(entry_id) => {
 						EntryCollection.delete(entry_id)
@@ -240,7 +243,6 @@
 		display: flex; /* to help w/ positioning child items in code view */
 		background: var(--primo-color-black);
 		color: var(--color-gray-2);
-		padding: 0 0.5rem;
 		flex: 1;
 		overflow: hidden;
 

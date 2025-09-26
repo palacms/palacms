@@ -37,12 +37,21 @@
 		create_field?: (data?: Partial<Field>) => void
 		onchange: (details: { id: string; data: Partial<Field> }) => void
 		onduplicate: (id: string) => void
-		ondelete: (id: string) => void
+		ondelete: (field: Field) => void
 		onmove: (id: string, direction: 'up' | 'down') => void
 	} = $props()
 
 	const { value: site } = site_context.getOr({ value: null })
 	const page_types = $derived(site?.page_types() ?? [])
+
+	// Workaround for derived being lazy:
+	// Ensure page types list begins loading as soon as the editor renders,
+	// so switching to Page/Page List has data available.
+	$effect(() => {
+		// Accessing the link in an effect triggers the CollectionMapping list loader.
+		// We intentionally ignore the return; we just want to kick off loading.
+		site?.page_types()
+	})
 
 	let visible_field_types = $derived.by(() => {
 		let list = $fieldTypes
@@ -262,16 +271,16 @@
 
 					// config updates handled via onchange
 
-					// Optionally auto-fill label (and key) if label is empty
+					// Optionally auto-fill label (and key) if label is empty & not reference field type (since they autofill the label/key themselves)
 					let data: any = { type: field_type_id, config: defaultConfig }
-					const hasLabel = !!(field.label && field.label.trim().length > 0)
-					if (!hasLabel) {
+					const has_label = !!(field.label && field.label.trim().length > 0)
+					if (!has_label && !['page-field', 'site-field'].includes(field_type_id)) {
 						const ft = visible_field_types.find((ft) => ft.id === field_type_id)
-						let suggestedLabel = ft?.label || field_type_id.charAt(0).toUpperCase() + field_type_id.slice(1).replace(/-/g, ' ')
-						suggestedLabel = make_unique_label(suggestedLabel)
-						data.label = suggestedLabel
+						let suggested_label = ft?.label || field_type_id.charAt(0).toUpperCase() + field_type_id.slice(1).replace(/-/g, ' ')
+						suggested_label = make_unique_label(suggested_label)
+						data.label = suggested_label
 						if (!key_edited && (!field.key || field.key.trim() === '')) {
-							data.key = validate_field_key(suggestedLabel)
+							data.key = validate_field_key(suggested_label)
 						}
 					}
 
@@ -289,7 +298,7 @@
 							<button onclick={() => onduplicate(field.id)}>
 								<Icon icon="bxs:duplicate" />
 							</button>
-							<button class="delete" onclick={() => ondelete(field.id)}>
+							<button class="delete" onclick={() => ondelete(field)}>
 								<Icon icon="ic:outline-delete" />
 							</button>
 						</div>
@@ -326,7 +335,7 @@
 									label: 'Delete',
 									icon: 'ic:outline-delete',
 									is_danger: true,
-									on_click: () => ondelete(field.id)
+									on_click: () => ondelete(field)
 								}
 							]}
 							placement="bottom-end"
@@ -365,7 +374,7 @@
 								<button onclick={() => onduplicate(field.id)}>
 									<Icon icon="bxs:duplicate" />
 								</button>
-								<button class="delete" onclick={() => ondelete(field.id)}>
+								<button class="delete" onclick={() => ondelete(field)}>
 									<Icon icon="ic:outline-delete" />
 								</button>
 							</div>
@@ -402,7 +411,7 @@
 										label: 'Delete',
 										icon: 'ic:outline-delete',
 										is_danger: true,
-										on_click: () => ondelete(field.id)
+										on_click: () => ondelete(field)
 									}
 								]}
 								placement="bottom-end"
@@ -499,7 +508,7 @@
 								<button onclick={() => onduplicate(field.id)}>
 									<Icon icon="bxs:duplicate" />
 								</button>
-								<button class="delete" onclick={() => ondelete(field.id)}>
+								<button class="delete" onclick={() => ondelete(field)}>
 									<Icon icon="ic:outline-delete" />
 								</button>
 							</div>
@@ -536,7 +545,7 @@
 										label: 'Delete',
 										icon: 'ic:outline-delete',
 										is_danger: true,
-										on_click: () => ondelete(field.id)
+										on_click: () => ondelete(field)
 									}
 								]}
 								placement="bottom-end"

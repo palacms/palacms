@@ -1,8 +1,8 @@
 <script>
 	import Icon from '@iconify/svelte'
 	import { page } from '$app/state'
-	import { PressedKeys } from 'runed'
-	import { onModKey, isModKeyPressed } from '$lib/builder/utils/keyboard'
+	import { onModKey } from '$lib/builder/utils/keyboard'
+	import { mod_key_held } from '$lib/builder/stores/app/misc'
 
 	let { stage = $bindable(), publish_fn, loading, site_host, onClose } = $props()
 
@@ -22,11 +22,8 @@
 
 	stage = stage || 'INITIAL'
 
-	// Set up hotkey listener for Cmd+P to confirm publish
-	const modalKeys = new PressedKeys()
-	const modKeyHeld = $derived(isModKeyPressed(modalKeys))
-	
-	onModKey(modalKeys, 'p', () => {
+	// Set up hotkey listener for Cmd/Ctrl+P to confirm publish
+	onModKey('p', () => {
 		if (stage === 'INITIAL' && !loading) {
 			handle_publish()
 		}
@@ -50,9 +47,9 @@
 					<span>Cancel</span>
 				</button>
 				<button class="primo-button primary" onclick={handle_publish} disabled={loading}>
-					<Icon icon={loading ? 'line-md:loading-twotone-loop' : 'entypo:publish'} class={modKeyHeld && !loading ? 'invisible' : ''} />
-					<span class:invisible={modKeyHeld && !loading}>{loading ? 'Publishing...' : 'Publish Changes'}</span>
-					{#if modKeyHeld && !loading}
+					<Icon icon={loading ? 'line-md:loading-twotone-loop' : 'entypo:publish'} class={$mod_key_held && !loading ? 'invisible' : ''} />
+					<span class:invisible={$mod_key_held && !loading}>{loading ? 'Publishing...' : 'Publish Changes'}</span>
+					{#if $mod_key_held && !loading}
 						<span class="key-hint">⌘P</span>
 					{/if}
 				</button>
@@ -164,13 +161,13 @@
 		cursor: not-allowed;
 	}
 	.primo-button.primary {
-		background: var(--weave-primary-color, #4F46E5);
-		border-color: var(--weave-primary-color, #4F46E5);
+		background: var(--weave-primary-color, #4f46e5);
+		border-color: var(--weave-primary-color, #4f46e5);
 		position: relative;
 	}
 	.primo-button.primary:hover {
-		background: var(--weave-primary-color-dark, #4338CA);
-		border-color: var(--weave-primary-color-dark, #4338CA);
+		background: var(--weave-primary-color-dark, #4338ca);
+		border-color: var(--weave-primary-color-dark, #4338ca);
 	}
 	.key-hint {
 		position: absolute;

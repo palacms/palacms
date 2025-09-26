@@ -15,8 +15,8 @@
 	import { beforeNavigate } from '$app/navigation'
 	import { Pages, Sites, SiteSymbols, PageSections, PageTypes, PageSectionEntries, manager } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import hotkey_events from '$lib/builder/stores/app/hotkey_events'
 	import { page_context } from '$lib/builder/stores/context'
+	import { onModKey } from '$lib/builder/utils/keyboard'
 
 	let { page }: { page: ObjectOf<typeof Pages> } = $props()
 
@@ -266,8 +266,8 @@
 		editing_section_tab = tab
 	}
 
-	// Listen for Command-E hotkey to open section editor
-	hotkey_events.on('e', () => {
+	// Listen for Command-E hotkey to open section editor when hovered
+	onModKey('e', () => {
 		if (hovered_section && showing_block_toolbar) {
 			lock_block(hovered_section.id)
 			editing_section = true

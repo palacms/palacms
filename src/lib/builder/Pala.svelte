@@ -2,13 +2,11 @@
 	import { onDestroy, type Snippet } from 'svelte'
 	import * as _ from 'lodash-es'
 	import Icon, { loadIcons } from '@iconify/svelte'
-	import { browser } from '$app/environment'
 	import IconButton from './ui/IconButton.svelte'
 	import Toolbar from './views/editor/Toolbar.svelte'
 	import { PressedKeys } from 'runed'
-	import { onModKey, isModKeyPressed } from './utils/keyboard'
-	import hotkey_events from './stores/app/hotkey_events'
-	import { onMobile, mod_key_held } from './stores/app/misc'
+	import { isModKeyPressed } from './utils/keyboard'
+	import { onMobile, mod_key_held, locale } from './stores/app/misc'
 	import Page_Sidebar from './components/Sidebar/Page_Sidebar.svelte'
 	import PageType_Sidebar from './components/Sidebar/PageType_Sidebar.svelte'
 	import { PaneGroup, Pane, PaneResizer } from 'paneforge'
@@ -19,7 +17,6 @@
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { site_context } from './stores/context'
 	import { useContent } from '$lib/Content.svelte'
-	import { locale } from './stores/app/misc'
 
 	let {
 		site,
@@ -91,48 +88,6 @@
 	$effect(() => {
 		$mod_key_held = isModKeyPressed(keys)
 	})
-
-	// Set up hotkey listeners
-	if (browser) {
-		// Tab switching
-		onModKey(keys, '1', () => {
-			hotkey_events.dispatch('tab-switch', 1)
-		})
-		onModKey(keys, '2', () => {
-			hotkey_events.dispatch('tab-switch', 2)
-		})
-		onModKey(keys, '3', () => {
-			hotkey_events.dispatch('tab-switch', 3)
-		})
-
-		// Escape
-		keys.onKeys(['escape'], () => {
-			hotkey_events.dispatch('escape')
-		})
-
-		// Save
-		onModKey(keys, 's', () => {
-			hotkey_events.dispatch('save')
-		})
-
-		// Navigation
-		onModKey(keys, 'arrowup', () => {
-			hotkey_events.dispatch('up')
-		})
-		onModKey(keys, 'arrowdown', () => {
-			hotkey_events.dispatch('down')
-		})
-
-		// Edit mode
-		onModKey(keys, 'e', () => {
-			hotkey_events.dispatch('e')
-		})
-
-		// Publish
-		onModKey(keys, 'p', () => {
-			hotkey_events.dispatch('publish')
-		})
-	}
 
 	let sidebar_pane = $state<ReturnType<typeof Pane>>()
 

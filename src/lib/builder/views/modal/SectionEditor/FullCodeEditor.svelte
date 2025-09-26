@@ -1,38 +1,10 @@
-<script module>
-	import { writable } from 'svelte/store'
-	
-	// Global pane size stores that persist across component instances
-	// Keyed by storage_key to maintain separate states for different editors
-	const pane_states = new Map()
-	
-	function get_pane_stores(storage_key) {
-		if (!storage_key) {
-			// Return default stores for editors without a storage key
-			return {
-				left_pane_size: writable(33),
-				center_pane_size: writable(33),
-				right_pane_size: writable(33)
-			}
-		}
-		
-		if (!pane_states.has(storage_key)) {
-			pane_states.set(storage_key, {
-				left_pane_size: writable(33),
-				center_pane_size: writable(33),
-				right_pane_size: writable(33)
-			})
-		}
-		
-		return pane_states.get(storage_key)
-	}
-</script>
-
 <script>
 	import Icon from '@iconify/svelte'
 	import { createEventDispatcher, onMount } from 'svelte'
 	import { PaneGroup, Pane, PaneResizer } from 'paneforge'
 	import CodeMirror from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
-	import { get, set } from 'idb-keyval'
+	import { mod_key_held } from '$lib/builder/stores/app/misc'
+	import { writable } from 'svelte/store'
 
 	const dispatch = createEventDispatcher()
 
@@ -47,16 +19,19 @@
 
 	/** @type {Props} */
 	let { data = {}, completions, html = $bindable(''), css = $bindable(''), js = $bindable(''), storage_key, onmod_e = () => {}, onmod_r = () => {}, oninput = () => {} } = $props()
-	
-	// Get the appropriate pane stores for this editor instance
-	const { left_pane_size, center_pane_size, right_pane_size } = get_pane_stores(storage_key)
-	
+
+	// Local pane sizes (Paneforge persists via autoSaveId)
+	const left_pane_size = writable(48)
+	const center_pane_size = writable(48)
+	const right_pane_size = writable(4)
+
 	// Set up keyboard shortcuts for tab switching
 	// Use a simple global keydown listener for when CodeMirror isn't focused
+	// (tried using onModKey but it's wonkey here idk why)
 	function handleGlobalKeydown(e) {
 		// Check if CodeMirror has focus by checking if the active element is within a .cm-editor
 		const isCodeMirrorFocused = document.activeElement?.closest('.cm-editor')
-		
+
 		// Only handle shortcuts when CodeMirror is NOT focused (CodeMirror handles its own)
 		if (!isCodeMirrorFocused && (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
 			if (e.key === '1') {
@@ -71,11 +46,11 @@
 			}
 		}
 	}
-	
+
 	// Add the global listener on mount
 	$effect(() => {
 		window.addEventListener('keydown', handleGlobalKeydown)
-		
+
 		return () => {
 			window.removeEventListener('keydown', handleGlobalKeydown)
 		}
@@ -92,28 +67,9 @@
 	})
 
 	let programmaticResize = false
-	let initial_load_complete = $state(false)
 
-	// Storage key for this editor's pane state
-	const idb_key = storage_key ? `fullcodeeditor-panes-${storage_key}` : null
-
-	// Load saved pane sizes (will be merged with the main onMount below)
-
-	// Save pane sizes when they change
-	async function save_pane_sizes() {
-		if (!idb_key || programmaticResize || !initial_load_complete) return
-
-		try {
-			const sizes = {
-				left: $left_pane_size,
-				center: $center_pane_size,
-				right: $right_pane_size
-			}
-			await set(idb_key, sizes)
-		} catch (error) {
-			console.warn('Failed to save pane sizes:', error)
-		}
-	}
+	// Save pane sizes when they change (Paneforge handles persistence)
+	async function save_pane_sizes() {}
 
 	function toggleTab(tab) {
 		const paneSizes = [$left_pane_size, $center_pane_size, $right_pane_size]
@@ -227,116 +183,15 @@
 		}
 	}
 
-	// Load saved sizes from IndexedDB once, or initialize based on content
-	onMount(async () => {
-		// Check if we've already loaded sizes for this storage_key in this session
-		const current_left = $left_pane_size
-		const current_center = $center_pane_size
-		const current_right = $right_pane_size
-		
-		// If stores already have non-default values, the state is already loaded
-		if (current_left !== 33 || current_center !== 33 || current_right !== 33) {
-			initial_load_complete = true
-			return
-		}
-		
-		// First, try to load saved pane sizes from IndexedDB if we have a storage key
-		if (idb_key) {
-			try {
-				const saved_sizes = await get(idb_key)
-				if (saved_sizes) {
-					$left_pane_size = saved_sizes.left || 33
-					$center_pane_size = saved_sizes.center || 33
-					$right_pane_size = saved_sizes.right || 33
-					// Mark initial load as complete and skip empty tab logic
-					initial_load_complete = true
-					return
-				}
-			} catch (error) {
-				console.warn('Failed to load pane sizes:', error)
-			}
-		}
-
-		programmaticResize = true
-
-		// Count tabs with content
-		const hasContent = {
-			html: !!html,
-			css: !!css,
-			js: !!js
-		}
-		const activeCount = (hasContent.html ? 1 : 0) + (hasContent.css ? 1 : 0) + (hasContent.js ? 1 : 0)
-
-		// Only adjust if there are empty tabs
-		if (activeCount < 3 && activeCount > 0) {
-			const collapsedWidth = 4
-			const totalCollapsedWidth = collapsedWidth * (3 - activeCount)
-			const activeWidth = (100 - totalCollapsedWidth) / activeCount
-
-			// Set each pane size based on content
-			$left_pane_size = hasContent.html ? activeWidth : collapsedWidth
-			$center_pane_size = hasContent.css ? activeWidth : collapsedWidth
-			$right_pane_size = hasContent.js ? activeWidth : collapsedWidth
-
-			// Ensure pane components resize properly
-			requestAnimationFrame(() => {
-				if (html_pane_component) {
-					html_pane_component.resize($left_pane_size)
-				}
-				if (css_pane_component) {
-					css_pane_component.resize($center_pane_size)
-				}
-				if (js_pane_component) {
-					js_pane_component.resize($right_pane_size)
-				}
-
-				setTimeout(() => {
-					programmaticResize = false
-					save_pane_sizes()
-				}, 100)
-			})
-		} else {
-			// All tabs have content or no tabs have content, use default sizes
-			programmaticResize = false
-		}
-
-		// Mark initial load as complete to enable saving
-		initial_load_complete = true
-	})
-
-	let showing_local_key_hint = $state(false)
-	
-	// Show/hide keyboard hint when mod key is pressed
-	function handleModKeyPress(e) {
-		if (e.metaKey || e.ctrlKey) {
-			showing_local_key_hint = true
-		}
-	}
-	
-	function handleModKeyRelease(e) {
-		if (!e.metaKey && !e.ctrlKey) {
-			showing_local_key_hint = false
-		}
-	}
-	
-	$effect(() => {
-		window.addEventListener('keydown', handleModKeyPress)
-		window.addEventListener('keyup', handleModKeyRelease)
-		
-		return () => {
-			window.removeEventListener('keydown', handleModKeyPress)
-			window.removeEventListener('keyup', handleModKeyRelease)
-		}
-	})
+	// No programmatic sizing on mount; Paneforge restores from autoSaveId
 </script>
 
-<PaneGroup direction="horizontal" class="flex h-full" autoSaveId="page-view">
+<PaneGroup direction="horizontal" class="flex h-full" autoSaveId={storage_key ? `fullcode:${storage_key}` : 'fullcode:default'}>
 	<Pane
 		bind:this={html_pane_component}
 		minSize={4}
 		collapsible={true}
 		collapsedSize={4}
-		defaultSize={$left_pane_size}
 		onResize={(size) => {
 			// Only update if user is dragging, not programmatic changes
 			if (!programmaticResize) {
@@ -353,7 +208,7 @@
 					toggleTab(0)
 				}}
 			>
-				{#if showing_local_key_hint}
+				{#if $mod_key_held}
 					<span class="vertical">&#8984; 1</span>
 				{:else}
 					<span>HTML</span>
@@ -392,7 +247,6 @@
 		minSize={4}
 		collapsible={true}
 		collapsedSize={4}
-		defaultSize={$center_pane_size}
 		style="position: relative;"
 		onResize={(size) => {
 			// Only update if user is dragging, not programmatic changes
@@ -410,7 +264,7 @@
 					toggleTab(1)
 				}}
 			>
-				{#if showing_local_key_hint}
+				{#if $mod_key_held}
 					<span class="vertical">&#8984; 2</span>
 				{:else}
 					<span>CSS</span>
@@ -447,7 +301,6 @@
 		collapsible={true}
 		collapsedSize={4}
 		bind:this={js_pane_component}
-		defaultSize={$right_pane_size}
 		style="position: relative;"
 		onResize={(size) => {
 			// Only update if user is dragging, not programmatic changes
@@ -465,7 +318,7 @@
 					toggleTab(2)
 				}}
 			>
-				{#if showing_local_key_hint}
+				{#if $mod_key_held}
 					<span class="vertical">&#8984; 3</span>
 				{:else}
 					<span>JS</span>

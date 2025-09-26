@@ -8,9 +8,10 @@
 	import { resolve_page } from '$lib/pages'
 	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { fade, fly } from 'svelte/transition'
+	import { fly } from 'svelte/transition'
 	import { flip } from 'svelte/animate'
 	import { quintOut } from 'svelte/easing'
+	import { watch } from 'runed'
 	import type { Page } from '$lib/common/models/Page'
 
 	let hover_position = $state(null)
@@ -19,16 +20,17 @@
 	const { value: site } = site_context.get()
 	const page_slug = $derived(pageState.params.page)
 	const current_path = $derived(pageState.params.page?.split('/'))
-	const active_page = $derived(site && current_path && resolve_page(site, current_path))
-	const is_page_type_route = $derived(!!pageState.params.page_type)
-	const all_pages = $derived(site?.pages() ?? [])
-	const home_page = $derived(site?.homepage())
-	const child_pages = $derived(home_page?.children() ?? [])
+	const active_page = $derived(current_path ? resolve_page(site, current_path) : site.homepage())
+
+	const homepage = $derived(site.homepage())
+	const all_pages = $derived(site.pages() ?? [])
+	const root_pages = $derived(homepage?.children() || [])
 
 	// WORKAROUND: For some reason Svelte does not track all_pages if it's not a dependency for an effect.
-	$effect(() => {
-		all_pages
-	})
+	// maybe putting site in context fixes this?
+	// $effect(() => {
+	// 	all_pages
+	// })
 
 	let creating_page = $state(false)
 	let building_page = $state(false)
@@ -38,6 +40,7 @@
 	let new_page_page_type_sections = $derived(new_page_page_type?.sections())
 	let new_page_page_type_section_entries = $derived(new_page_page_type_sections?.every((section) => section.entries()) && new_page_page_type_sections?.flatMap((section) => section.entries() ?? []))
 
+	// Copy page sections to new page
 	$effect(() => {
 		if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries) {
 			return
@@ -84,7 +87,7 @@
 		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent).sort((a, b) => a.index - b.index)
 
 		// Append to the end of the sibling list
-		const startIndex = page_data.parent === home_page?.id ? 1 : 0
+		const startIndex = page_data.parent === homepage?.id ? 1 : 0
 		const lastIndex = sibling_pages.length > 0 ? Math.max(...sibling_pages.map((p) => p.index)) : startIndex - 1
 		const new_index = lastIndex + 1
 
@@ -97,16 +100,12 @@
 </script>
 
 <Dialog.Header title="Pages" />
-{#if home_page}
+{#if active_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)] page-list">
-		<li class="page-item-wrapper">
-			<Item page={home_page} active={!page_slug && !is_page_type_route} {page_slug} active_page_id={active_page?.id} oncreate={create_page_with_sections} bind:hover_position />
-			<div class="drop-indicator-inline" class:active={hover_position === 'home-bottom'}><div></div></div>
-		</li>
-		{#each child_pages.sort((a, b) => a.index - b.index) as child_page, i (child_page.id)}
+		{#each [homepage, ...root_pages].sort((a, b) => a.index - b.index) as page, i (page.id)}
 			<li class="page-item-wrapper" in:fly={{ y: 20, duration: 200, delay: i * 50 }} animate:flip={{ duration: 300, easing: quintOut }}>
-				<Item page={child_page} active={active_page?.id === child_page.id} {page_slug} active_page_id={active_page?.id} oncreate={create_page_with_sections} bind:hover_position />
-				<div class="drop-indicator-inline" class:active={hover_position === `${child_page.id}-bottom`}><div></div></div>
+				<Item {page} {page_slug} active_page_id={active_page?.id} oncreate={create_page_with_sections} bind:hover_position />
+				<div class="drop-indicator-inline" class:active={hover_position === `${page.id}-bottom`}><div></div></div>
 			</li>
 		{/each}
 		{#if building_page}
@@ -124,13 +123,13 @@
 			<PageForm
 				oncreate={async (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => {
 					creating_page = false
-					const url_taken = all_pages.some((page) => page?.slug === new_page.slug && page.parent === home_page.id)
+					const url_taken = all_pages.some((page) => page?.slug === new_page.slug && page.parent === homepage.id)
 					if (url_taken) {
 						alert(`That URL is already in use`)
 					} else {
 						building_page = true
 						building_page_name = new_page.name
-						await create_page_with_sections({ ...new_page, parent: home_page.id, site: site.id })
+						await create_page_with_sections({ ...new_page, parent: homepage.id, site: site.id })
 					}
 				}}
 			/>

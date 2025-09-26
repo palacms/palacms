@@ -12,9 +12,8 @@
 	import ComponentPreview, { refresh_preview, has_error } from '$lib/builder/components/ComponentPreview.svelte'
 	import Fields, { setFieldEntries } from '../../../components/Fields/FieldsContent.svelte'
 	import { locale } from '../../../stores/app/misc.js'
-	import hotkey_events from '../../../stores/app/hotkey_events.js'
 	import { site_html } from '$lib/builder/stores/app/page.js'
-	import { PressedKeys } from 'runed'
+	import { watch } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { browser } from '$app/environment'
 	import { PageSectionEntries, PageSections, PageEntries, PageTypeSectionEntries, SiteSymbolFields, SiteSymbols, SiteSymbolEntries, SiteEntries, manager, Sites } from '$lib/pocketbase/collections'
@@ -54,8 +53,8 @@
 	const data = $derived(useContent(component, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
 
-	const initial_code = { html: symbol?.html, css: symbol?.css, js: symbol?.js }
-	const initial_data = _.cloneDeep(component_data)
+	const initial_code = $state({ html: symbol?.html, css: symbol?.css, js: symbol?.js })
+	const initial_data = $state(_.cloneDeep(component_data))
 	let loading = $state(false)
 	let newly_created_fields = new Set()
 
@@ -95,26 +94,11 @@
 			: []
 	)
 
-	// Set up hotkey listeners for modal
-	const modalKeys = new PressedKeys()
-
-	// Toggle between code and content tabs
-	onModKey(modalKeys, 'e', toggle_tab)
+	// Set up hotkey listeners for modal (global fallback)
+	onModKey('e', toggle_tab)
 
 	// Save component
-	onModKey(modalKeys, 's', save_component)
-
-	// Also keep listening to global hotkey events for compatibility
-	$effect.pre(() => {
-		const unsubscribe_e = hotkey_events.on('e', toggle_tab)
-		const unsubscribe_save = hotkey_events.on('save', save_component)
-
-		// Cleanup on unmount
-		return () => {
-			unsubscribe_e()
-			unsubscribe_save()
-		}
-	})
+	onModKey('s', save_component)
 
 	function toggle_tab() {
 		if ($current_user?.siteRole !== 'developer') {
@@ -166,23 +150,25 @@
 	let css = $state(symbol?.css ?? '')
 	let js = $state(symbol?.js ?? '')
 
-	// Compare current state to initial data
-	$effect(() => {
-		const code_changed = html !== initial_code.html || css !== initial_code.css || js !== initial_code.js
-		const data_changed = !_.isEqual(initial_data, component_data)
-		has_unsaved_changes = code_changed || data_changed
-	})
+	// Compare current state to initial data (explicit watch)
+	watch(
+		() => [html, css, js, component_data],
+		() => {
+			const code_changed = html !== initial_code.html || css !== initial_code.css || js !== initial_code.js
+			const data_changed = !_.isEqual(initial_data, component_data)
+			has_unsaved_changes = code_changed || data_changed
+		}
+	)
 
-	// Add beforeunload listener to warn about unsaved changes
+	// Add beforeunload listener via effect (lifecycle)
 	$effect(() => {
 		if (!browser) return
+		if (!has_unsaved_changes) return
 
 		const handleBeforeUnload = (e) => {
-			if (has_unsaved_changes) {
-				e.preventDefault()
-				e.returnValue = ''
-				return ''
-			}
+			e.preventDefault()
+			e.returnValue = ''
+			return ''
 		}
 
 		window.addEventListener('beforeunload', handleBeforeUnload)
@@ -198,7 +184,6 @@
 </script>
 
 <Dialog.Header
-	class="mb-2"
 	title={symbol?.name || 'Block'}
 	button={{
 		label: header.button.label || 'Save',
@@ -215,7 +200,7 @@
 
 <main lang={$locale}>
 	<PaneGroup direction={$orientation} class="flex gap-1">
-		<Pane defaultSize={50} class="flex flex-col">
+		<Pane defaultSize={50} class="flex flex-col pt-1 pl-1">
 			{#if tab === 'code'}
 				<FullCodeEditor
 					bind:html
@@ -257,10 +242,9 @@
 
 						// Track this as a newly created field
 						if (newField) {
+							has_unsaved_changes = true
 							newly_created_fields.add(newField.id)
 						}
-
-						return newField
 					}}
 					oninput={(values) => {
 						if ('page_type' in component) {
@@ -284,8 +268,8 @@
 					onchange={({ id, data }) => {
 						SiteSymbolFields.update(id, data)
 					}}
-					ondelete={(field_id) => {
-						SiteSymbolFields.delete(field_id)
+					ondelete={(field) => {
+						SiteSymbolFields.delete(field.id)
 					}}
 					ondelete_entry={(entry_id) => {
 						if ('page_type' in component) {
@@ -309,7 +293,6 @@
 		display: flex; /* to help w/ positioning child items in code view */
 		background: var(--primo-color-black);
 		color: var(--color-gray-2);
-		padding: 0 0.5rem;
 		flex: 1;
 		overflow: hidden;
 
