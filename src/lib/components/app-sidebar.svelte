@@ -12,7 +12,7 @@
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js'
 	import { self } from '$lib/pocketbase/PocketBase'
 	import type { Component } from 'svelte'
-	import { LibrarySymbolGroups, MarketplaceSymbolGroups, manager, SiteGroups } from '$lib/pocketbase/collections'
+	import { LibrarySymbolGroups, MarketplaceSymbolGroups, MarketplaceSiteGroups, manager, SiteGroups } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
 
 	const sidebar = useSidebar()
@@ -302,14 +302,37 @@
 				<Sidebar.Menu>
 					<!-- Starters -->
 					<Sidebar.MenuItem>
-						<Sidebar.MenuButton class="font-medium" isActive={$page.url.pathname === '/admin/dashboard/marketplace/starters'}>
-							{#snippet child({ props })}
-								<a href="/admin/dashboard/marketplace/starters" {...props}>
-									<LayoutTemplate />
-									<span>Starters</span>
-								</a>
-							{/snippet}
-						</Sidebar.MenuButton>
+						<Collapsible.Root title="Starters" open={true} class="group/collapsible">
+							<Sidebar.Group class="p-0">
+								<Sidebar.GroupLabel class="group/label text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-sm">
+									{#snippet child({ props })}
+										<Collapsible.Trigger {...props}>
+											<LayoutTemplate />
+											<span class="pl-2">Starters</span>
+											<ChevronRight class="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+										</Collapsible.Trigger>
+									{/snippet}
+								</Sidebar.GroupLabel>
+								<Collapsible.Content>
+									<Sidebar.GroupContent>
+										<Sidebar.Menu>
+											{#each MarketplaceSiteGroups.list({ sort: 'index' }) ?? [] as group}
+												{@const url = `/admin/dashboard/marketplace/starters?group=${group.id}`}
+												<Sidebar.MenuItem>
+													<Sidebar.MenuButton isActive={$page.url.pathname + $page.url.search === url}>
+														{#snippet child({ props })}
+															<a href={url} {...props}>
+																<span>{group.name}</span>
+															</a>
+														{/snippet}
+													</Sidebar.MenuButton>
+												</Sidebar.MenuItem>
+											{/each}
+										</Sidebar.Menu>
+									</Sidebar.GroupContent>
+								</Collapsible.Content>
+							</Sidebar.Group>
+						</Collapsible.Root>
 					</Sidebar.MenuItem>
 					<!-- Blocks -->
 					<Sidebar.MenuItem>
