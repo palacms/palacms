@@ -200,7 +200,7 @@
 						const siblingFields = (fields ?? []).filter((f) => (data?.parent ? f.parent === data.parent : !f.parent))
 						const nextIndex = Math.max(...siblingFields.map((f) => f.index || 0), -1) + 1
 
-						await FieldCollection.create({
+						FieldCollection.create({
 							type: 'text',
 							key: '',
 							label: '',
