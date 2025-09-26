@@ -175,7 +175,7 @@
 
 			&.active div {
 				opacity: 1;
-				background: var(--weave-primary-color);
+				background: var(--pala-primary-color);
 				height: 3px;
 				animation: pulse 0.6s ease-in-out infinite;
 			}
@@ -205,8 +205,8 @@
 		color: var(--color-gray-3);
 
 		&:hover {
-			border-color: var(--weave-primary-color);
-			color: var(--weave-primary-color);
+			border-color: var(--pala-primary-color);
+			color: var(--pala-primary-color);
 		}
 	}
 

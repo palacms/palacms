@@ -362,7 +362,7 @@
 		}
 
 		&:focus {
-			border-color: var(--weave-primary-color);
+			border-color: var(--pala-primary-color);
 		}
 		&:focus-visible {
 			outline: 0;

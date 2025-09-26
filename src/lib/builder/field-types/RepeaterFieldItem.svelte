@@ -185,11 +185,11 @@
 		padding-block: 0.5rem;
 
 		&.hovering-above {
-			border-top-color: var(--weave-primary-color);
+			border-top-color: var(--pala-primary-color);
 		}
 
 		&.hovering-below {
-			border-bottom-color: var(--weave-primary-color);
+			border-bottom-color: var(--pala-primary-color);
 		}
 	}
 
@@ -253,14 +253,14 @@
 					/* outline: 0; */
 				}
 				&:hover {
-					color: var(--weave-primary-color);
+					color: var(--pala-primary-color);
 				}
 				&:last-child {
 					margin-left: 0.5rem;
 					color: var(--color-gray-5);
 
 					&:hover {
-						color: var(--weave-primary-color);
+						color: var(--pala-primary-color);
 					}
 				}
 			}

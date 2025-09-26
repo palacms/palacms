@@ -42,11 +42,11 @@
 		background: transparent;
 
 		&.outlined {
-			border: 2px solid var(--weave-primary-color);
+			border: 2px solid var(--pala-primary-color);
 		}
 
 		&:hover {
-			background: var(--weave-primary-color);
+			background: var(--pala-primary-color);
 		}
 	}
 </style>

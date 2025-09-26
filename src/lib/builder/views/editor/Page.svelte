@@ -851,15 +851,15 @@
 		padding: 1rem;
 
 		&:hover ._container {
-			border-color: var(--weave-primary-color);
+			border-color: var(--pala-primary-color);
 			background: var(--color-gray-2);
-			color: var(--weave-primary-color);
+			color: var(--pala-primary-color);
 		}
 
 		&.dragging-over ._container {
-			border-color: var(--weave-primary-color);
+			border-color: var(--pala-primary-color);
 			background: rgba(248, 68, 73, 0.1);
-			color: var(--weave-primary-color);
+			color: var(--pala-primary-color);
 			transform: scale(1.02);
 		}
 
@@ -907,7 +907,7 @@
 		justify-content: center;
 		z-index: 5;
 		--Spinner-font-size: 3rem;
-		--Spinner-color: var(--weave-primary-color);
+		--Spinner-color: var(--pala-primary-color);
 		--Spinner-color-opaque: rgba(248, 68, 73, 0.2);
 	}
 	main#Page {

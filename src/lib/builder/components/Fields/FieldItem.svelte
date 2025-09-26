@@ -700,7 +700,7 @@
 			}
 
 			&:focus-visible {
-				border-color: var(--weave-primary-color);
+				border-color: var(--pala-primary-color);
 				outline: 0;
 			}
 		}
@@ -743,7 +743,7 @@
 		}
 
 		&:focus-visible {
-			border-color: var(--weave-primary-color);
+			border-color: var(--pala-primary-color);
 			outline: 0;
 		}
 	}

@@ -61,7 +61,7 @@
 		font-size: 14px;
 
 		&:hover {
-			border-color: var(--weave-primary-color);
+			border-color: var(--pala-primary-color);
 		}
 
 		&.with-icon {

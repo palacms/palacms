@@ -196,8 +196,8 @@
 			<div class="button-group">
 				{#if $mod_key_held}
 					<div class="page-hotkeys">
-						<div style:color={going_up ? 'var(--weave-primary-color)' : 'inherit'} style:opacity={can_navigate_up ? 1 : 0.3}>&#8984; ↑</div>
-						<div style:color={going_down ? 'var(--weave-primary-color)' : 'inherit'} style:opacity={can_navigate_down ? 1 : 0.3}>&#8984; ↓</div>
+						<div style:color={going_up ? 'var(--pala-primary-color)' : 'inherit'} style:opacity={can_navigate_up ? 1 : 0.3}>&#8984; ↑</div>
+						<div style:color={going_down ? 'var(--pala-primary-color)' : 'inherit'} style:opacity={can_navigate_down ? 1 : 0.3}>&#8984; ↓</div>
 					</div>
 				{:else}
 					<div class="flex rounded" style="border: 1px solid #222" bind:this={page_dropdown_anchor}>
