@@ -11,7 +11,6 @@
 	import { fly } from 'svelte/transition'
 	import { flip } from 'svelte/animate'
 	import { quintOut } from 'svelte/easing'
-	import { watch } from 'runed'
 	import type { Page } from '$lib/common/models/Page'
 
 	let hover_position = $state(null)
@@ -104,7 +103,7 @@
 	<ul class="grid p-2 bg-[var(--primo-color-black)] page-list">
 		{#each [homepage, ...root_pages].sort((a, b) => a.index - b.index) as page, i (page.id)}
 			<li class="page-item-wrapper" in:fly={{ y: 20, duration: 200, delay: i * 50 }} animate:flip={{ duration: 300, easing: quintOut }}>
-				<Item {page} {page_slug} active_page_id={active_page?.id} oncreate={create_page_with_sections} bind:hover_position />
+				<Item {page} {page_slug} active_page_id={!pageState.params.page_type ? active_page.id : null} oncreate={create_page_with_sections} bind:hover_position />
 				<div class="drop-indicator-inline" class:active={hover_position === `${page.id}-bottom`}><div></div></div>
 			</li>
 		{/each}

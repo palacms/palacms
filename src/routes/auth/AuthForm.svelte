@@ -163,10 +163,6 @@
 				color: white;
 			}
 
-			&:focus {
-				background-color: var(--pala-primary-color-dark);
-			}
-
 			@keyframes icon-spin {
 				0% {
 					transform: rotate(0deg);
