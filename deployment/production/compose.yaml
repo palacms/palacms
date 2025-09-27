@@ -2,7 +2,7 @@ name: palacms-production
 
 services:
   palacms:
-    image: ghcr.io/palacms/palacms:v3.0.0-beta.12
+    image: ${DOCKER_IMAGE}
     restart: always
     volumes:
       - palacms-data:/app/pb_data
