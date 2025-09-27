@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Loader, Globe, Store, Check, Library as LibraryIcon, SquarePen, Cuboid } from 'lucide-svelte'
+	import { Loader, Globe, Store, Check, Library as LibraryIcon, SquarePen, Cuboid, ExternalLink, LayoutPanelTop } from 'lucide-svelte'
 	import SitePreview from '$lib/components/SitePreview.svelte'
 	import * as Tabs from '$lib/components/ui/tabs'
 	import { Input } from '$lib/components/ui/input/index.js'
@@ -797,9 +797,24 @@
 
 			<!-- Right: preview takes 2/5 -->
 			<div class="col-span-5 md:col-span-2">
-				<div class="rounded-md bg-muted/20 h-full">
+				<div class="rounded-md bg-muted/20 h-full flex flex-col">
 					{#if selected_starter_site}
-						<SitePreview style="height: 100%" site={selected_starter_site} src={selected_starter_source === 'marketplace' ? `https://palacms.com/?_site=${selected_starter_site.id}` : undefined} />
+						{@const preview_url = selected_starter_source === 'marketplace' ? `https://preview.palacms.site/?_site=${selected_starter_site?.id}` : `/?_site=${selected_starter_site?.id}`}
+						<div class="flex-1 min-h-0">
+							<SitePreview style="height: 100%" site={selected_starter_site} src={selected_starter_site ? preview_url : ''} />
+						</div>
+						{#if preview_url}
+							<div class="px-3 py-2 text-xs text-right text-muted-foreground">
+								<a href={preview_url} target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 hover:text-foreground hover:underline">
+									<span>Open live preview</span>
+									<ExternalLink class="h-3 w-3" aria-hidden="true" />
+								</a>
+							</div>
+						{/if}
+					{:else}
+						<div class="flex-1 flex flex-col items-center justify-center gap-2 px-6 py-8 text-center">
+							<p class="text-xs text-muted-foreground/80 max-w-[14rem]">Choose a starter site on the left to see a live preview here.</p>
+						</div>
 					{/if}
 				</div>
 			</div>
@@ -916,7 +931,7 @@
 					{/if}
 				</div>
 				{#if selected_blocks.length > 0}
-					<div class="grid gap-3 sm:grid-cols-1 overflow-scroll mt-4 pb-2" bind:this={selected_blocks_container}>
+					<div class="grid gap-3 sm:grid-cols-1 overflow-scroll mt-4 pb-3" bind:this={selected_blocks_container}>
 						{#each selected_blocks as block (block?.id)}
 							{#if block}
 								<div class="relative">
@@ -927,7 +942,7 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="text-sm text-muted-foreground p-6 text-center">Nothing Selected Yet — Add optional blocks in addition to those in the starter.</div>
+					<div class="text-sm text-muted-foreground p-6 text-center">Nothing added yet — select additional blocks to include in your starter.</div>
 				{/if}
 			</div>
 		</Tabs.Root>
@@ -955,7 +970,7 @@
 	<button onclick={() => select_starter(id, source)} class="group relative w-full aspect-[.69] rounded-lg border bg-background overflow-hidden text-left">
 		<div class="relative h-full">
 			<!-- Ensure preview reserves the same height as the card to avoid tall grid rows -->
-			<SitePreview {site} src={source === 'marketplace' ? `https://palacms.com/?_site=${id}` : undefined} />
+			<SitePreview {site} src={source === 'marketplace' ? `https://preview.palacms.site/?_site=${id}` : undefined} />
 			{#if selected_starter_id === id}
 				<div class="pointer-events-none absolute inset-0 bg-[#000000AA] flex items-center justify-center">
 					<Check class="text-primary" />
