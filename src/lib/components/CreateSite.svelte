@@ -695,7 +695,7 @@
 							{:else if active_starters_group_sites}
 								<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
 									{#each active_starters_group_sites as site}
-										{@render StarterButton(site.id, site.name, site)}
+										{@render StarterButton(site)}
 									{/each}
 								</div>
 							{/if}
@@ -731,7 +731,7 @@
 							{/each}
 						{:else}
 							{#each marketplace_starter_sites as site (site.id)}
-								{@render StarterButton(site.id, site.name, site, 'marketplace')}
+								{@render StarterButton(site, 'marketplace')}
 							{/each}
 							{#if (marketplace_starter_sites?.length ?? 0) === 0}
 								<div class="text-sm text-muted-foreground p-6 text-center">No starters in this group.</div>
@@ -745,7 +745,7 @@
 			<div class="col-span-5 md:col-span-2">
 				<div class="rounded-md bg-muted/20 h-full flex flex-col">
 					{#if selected_starter_site}
-						{@const preview_url = selected_starter_source === 'marketplace' ? `https://preview.palacms.site/?_site=${selected_starter_site?.id}` : `/?_site=${selected_starter_site?.id}`}
+						{@const preview_url = selected_starter_source === 'marketplace' ? `https://${selected_starter_site?.host}` : `/?_site=${selected_starter_site?.id}`}
 						<div class="flex-1 min-h-0">
 							<SitePreview style="height: 100%" site={selected_starter_site} src={selected_starter_site ? preview_url : ''} />
 						</div>
@@ -789,19 +789,19 @@
 	</div>
 </div>
 
-{#snippet StarterButton(id: string, name: string, site?: Site, source: 'local' | 'marketplace' = 'local')}
-	<button onclick={() => select_starter(id, source)} class="group relative w-full aspect-[.69] rounded-lg border bg-background overflow-hidden text-left">
+{#snippet StarterButton(site: Site, source: 'local' | 'marketplace' = 'local')}
+	<button onclick={() => select_starter(site.id, source)} class="group relative w-full aspect-[.69] rounded-lg border bg-background overflow-hidden text-left">
 		<div class="relative h-full">
 			<!-- Ensure preview reserves the same height as the card to avoid tall grid rows -->
-			<SitePreview {site} src={source === 'marketplace' ? `https://preview.palacms.site/?_site=${id}` : undefined} />
-			{#if selected_starter_id === id}
+			<SitePreview {site} src={source === 'marketplace' ? `https://${site.host}` : undefined} />
+			{#if selected_starter_id === site.id}
 				<div class="pointer-events-none absolute inset-0 bg-[#000000AA] flex items-center justify-center">
 					<Check class="text-primary" />
 				</div>
 			{/if}
 		</div>
 		<div class="absolute bottom-0 w-full p-3 z-20 bg-[#000] border-t">
-			<div class="text-sm leading-none truncate">{name}</div>
+			<div class="text-sm leading-none truncate">{site.name}</div>
 		</div>
 	</button>
 {/snippet}
