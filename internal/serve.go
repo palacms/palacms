@@ -19,9 +19,7 @@ func ServeSites(pb *pocketbase.PocketBase) error {
 
 		serveEvent.Router.GET("/{path...}", func(requestEvent *core.RequestEvent) error {
 			// Resolve site ID (explicit param) or from referrer URL for host mapping.
-			// Special headers are applied ONLY when the explicit "?_site" param is present on this request.
-			paramSiteId := requestEvent.Request.URL.Query().Get("_site")
-			siteId := paramSiteId
+			siteId := requestEvent.Request.URL.Query().Get("_site")
 			referer := requestEvent.Request.Header.Get("Referer")
 			if siteId == "" && referer != "" {
 				refererUrl, err := url.Parse(referer)
@@ -74,15 +72,6 @@ func ServeSites(pb *pocketbase.PocketBase) error {
 				return err
 			}
 			defer reader.Close()
-
-			// If explicitly requested via ?_site, relax frame embedding for preview iframes.
-			if paramSiteId != "" {
-				// Prefer modern CSP over X-Frame-Options.
-				// Allow any ancestor for iframe previews. This route is only used for explicit preview access.
-				requestEvent.Response.Header().Set("Content-Security-Policy", "frame-ancestors *")
-				// Ensure no restrictive X-Frame-Options leaks from proxies/middleware.
-				requestEvent.Response.Header().Del("X-Frame-Options")
-			}
 
 			http.ServeContent(
 				requestEvent.Response,
