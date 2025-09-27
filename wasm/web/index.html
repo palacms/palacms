@@ -54,31 +54,31 @@
 			}
 
 			.button:not([hidden]) {
-        color: #cecece;
-        font-weight: 500;
-        display: flex;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
-        padding: .65rem;
-        border: 1.5px solid #70809e;
-        border-radius: .25rem;
-        cursor: pointer;
-        user-select: none;
-        text-decoration: none;
-        background-color: transparent;
-        font-size: 1rem;
-      }
+                color: #cecece;
+                font-weight: 500;
+                display: flex;
+                flex-direction: row;
+                justify-content: center;
+                align-items: center;
+                padding: .65rem;
+                border: 1.5px solid #70809e;
+                border-radius: .25rem;
+                cursor: pointer;
+                user-select: none;
+                text-decoration: none;
+                background-color: transparent;
+                font-size: 1rem;
+            }
 
-			.button:focus {
-        background-color: var(--weave-primary-color-dark);
-      }
+     			.button:focus {
+                background-color: var(--weave-primary-color-dark);
+            }
 
-      .button:hover {
-        background-color: #70809e;
-        transition: .2s;
-        color: #121212;
-      }
+            .button:hover {
+                background-color: #70809e;
+                transition: .2s;
+                color: #121212;
+            }
 
 			.container {
 				padding-inline: 1rem;
@@ -111,7 +111,7 @@
 		<div class="container">
 			<h1><img alt="palacms" src="/logo.svg" style="height: 1em;"></h1>
 			<div class="group">
-				<details id="info" open>
+				<details id="info">
 					<summary class="button"">About</summary>
 					<ul>
 						<li>The demo will run locally on the browser you are using. The data you create will also be saved into the browser local storage.</li>
@@ -127,8 +127,10 @@
 						<li>Have fun!</li>
 					</ul>
 				</details>
-				<button type="button" id="start" class="button" hidden>Start PalaCMS</button>
-				<a id="open" class="button" href="/admin" target="_blank" hidden>Open PalaCMS</a>
+				<button type="button" id="start" class="button" hidden>Start</button>
+				<button type="button" id="reset" class="button" hidden>Reset</button>
+				<a id="open" class="button" href="/admin" target="_blank" hidden>Open</a>
+				<div id="loader" hidden></div>
 			</div>
 		</div>
 		<pre id="output"></pre>

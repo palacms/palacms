@@ -10,7 +10,10 @@ go.env.PALA_USER_PASSWORD = 'demo1234'
 go.env.PALA_DISABLE_USAGE_STATS = 'true'
 
 WebAssembly.instantiateStreaming(fetch('/palacms.wasm'), go.importObject)
-	.then((result) => go.run(result.instance))
+	.then((result) => {
+		postMessage({ type: 'ready' })
+		go.run(result.instance)
+	})
 	.catch((error) => console.error(error))
 
 self.output = (value) => {
@@ -46,5 +49,3 @@ self.addEventListener('message', (event) => {
 	})
 	port.start()
 })
-
-self.postMessage({ type: 'ready' })

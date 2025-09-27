@@ -1,9 +1,11 @@
-skipWaiting()
-
 const resolvers = new Map()
 let nextId = 1
 let serverId
 let port
+
+self.addEventListener('install', () => {
+	self.skipWaiting()
+})
 
 self.addEventListener('message', (event) => {
 	if (event.data.type === 'init') {
@@ -22,12 +24,13 @@ self.addEventListener('message', (event) => {
 		port.start()
 	} else if (event.data.type === 'close') {
 		port.close()
+		serverId = undefined
 		port = undefined
 	}
 })
 
 self.addEventListener('fetch', (event) => {
-	if (!port) {
+	if (!serverId || !port) {
 		return
 	}
 
@@ -38,9 +41,10 @@ self.addEventListener('fetch', (event) => {
 
 	event.respondWith(
 		Promise.resolve().then(async () => {
-			const serverWindow = await self.clients.get(serverId)
-			if (!serverWindow) {
+			const server = await self.clients.get(serverId)
+			if (!server) {
 				port.close()
+				serverId = undefined
 				port = undefined
 
 				if (event.clientId) {
