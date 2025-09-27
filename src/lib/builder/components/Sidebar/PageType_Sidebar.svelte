@@ -18,7 +18,7 @@
 	import { Cuboid, SquarePen, Loader } from 'lucide-svelte'
 	import { page } from '$app/state'
 	import { PageTypes, SiteSymbols, SiteSymbolFields, SiteSymbolEntries, PageTypeSymbols, PageTypeFields, PageTypeEntries, manager } from '$lib/pocketbase/collections'
-	import { self as pb } from '$lib/pocketbase/PocketBase'
+	import { self as pb, marketplace } from '$lib/pocketbase/PocketBase'
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { dragging_symbol } from '$lib/builder/stores/app/misc'
 	import DropZone from '$lib/components/DropZone.svelte'
@@ -227,90 +227,84 @@
 		<BlockPicker
 			{site}
 			onsave={async (blocks) => {
-				// Copy library symbols to site symbols
-				for (const library_symbol of blocks) {
+				for (const { source, symbol: source_symbol } of blocks) {
 					try {
-						// Create site symbol from library symbol
 						const site_symbol = SiteSymbols.create({
-							name: library_symbol.name,
-							html: library_symbol.html,
-							css: library_symbol.css,
-							js: library_symbol.js,
+							name: source_symbol.name,
+							html: source_symbol.html,
+							css: source_symbol.css,
+							js: source_symbol.js,
 							site: site.id
 						})
 
-						// Get library fields using pb directly to avoid effect context issues
-						const library_fields = await pb.collection('library_symbol_fields').getFullList({
-							filter: `symbol = "${library_symbol.id}"`,
+						const server = source === 'library' ? pb : marketplace
+
+						const source_fields = await server.collection('library_symbol_fields').getFullList({
+							filter: `symbol = "${source_symbol.id}"`,
 							sort: 'index'
 						})
 
-						if (library_fields?.length > 0) {
+						if (source_fields?.length > 0) {
 							const field_map = new Map()
 
-							// Create fields in order, handling parent relationships
-							const sorted_fields = [...library_fields].sort((a, b) => {
-								// Fields without parents come first
+							const sorted_fields = [...source_fields].sort((a, b) => {
 								if (!a.parent && b.parent) return -1
 								if (a.parent && !b.parent) return 1
 								return (a.index || 0) - (b.index || 0)
 							})
 
-							for (const library_field of sorted_fields) {
-								const parent_site_field = library_field.parent ? field_map.get(library_field.parent) : undefined
+							for (const source_field of sorted_fields) {
+								const parent_site_field = source_field.parent ? field_map.get(source_field.parent) : undefined
 
 								const site_field = SiteSymbolFields.create({
-									key: library_field.key,
-									label: library_field.label,
-									type: library_field.type,
-									config: library_field.config,
-									index: library_field.index,
+									key: source_field.key,
+									label: source_field.label,
+									type: source_field.type,
+									config: source_field.config,
+									index: source_field.index,
 									symbol: site_symbol.id,
 									parent: parent_site_field?.id || undefined
 								})
-								field_map.set(library_field.id, site_field)
+								field_map.set(source_field.id, site_field)
 							}
 
-							// Get library entries using pb directly
-							const field_ids = library_fields.map((f) => f.id)
-							const library_entries =
+							const field_ids = source_fields.map((f) => f.id)
+							const source_entries =
 								field_ids.length > 0
-									? await pb.collection('library_symbol_entries').getFullList({
+									? await server.collection('library_symbol_entries').getFullList({
 											filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
 											sort: 'index'
 										})
 									: []
 
-							if (library_entries?.length > 0) {
+							if (source_entries?.length > 0) {
 								const entry_map = new Map()
 
-								// Create entries in order, handling parent relationships
-								const sorted_entries = [...library_entries].sort((a, b) => {
-									// Entries without parents come first
+								const sorted_entries = [...source_entries].sort((a, b) => {
 									if (!a.parent && b.parent) return -1
 									if (a.parent && !b.parent) return 1
 									return (a.index || 0) - (b.index || 0)
 								})
 
-								for (const library_entry of sorted_entries) {
-									const site_field = field_map.get(library_entry.field)
-									const parent_site_entry = library_entry.parent ? entry_map.get(library_entry.parent) : undefined
+								for (const source_entry of sorted_entries) {
+									const site_field = field_map.get(source_entry.field)
+									const parent_site_entry = source_entry.parent ? entry_map.get(source_entry.parent) : undefined
 
 									if (site_field) {
 										const site_entry = SiteSymbolEntries.create({
 											field: site_field.id,
-											value: library_entry.value,
-											index: library_entry.index,
-											locale: library_entry.locale,
+											value: source_entry.value,
+											index: source_entry.index,
+											locale: source_entry.locale,
 											parent: parent_site_entry?.id || undefined
 										})
-										entry_map.set(library_entry.id, site_entry)
+										entry_map.set(source_entry.id, site_entry)
 									}
 								}
 							}
 						}
 					} catch (error) {
-						console.error('Error copying library symbol:', error)
+						console.error('Error copying symbol:', error)
 					}
 				}
 
@@ -396,7 +390,7 @@
 							<div class="block" animate:flip={{ duration: 200 }} use:drag_target={symbol}>
 								<Sidebar_Symbol
 									{symbol}
-									append={$site_html}
+									head={$site_html}
 									active_page_type_id={page_type?.id}
 									show_toggle={true}
 									{toggled}
@@ -432,7 +426,7 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="flex justify-center text-3xl text-[var(--color-gray-6)]">
+					<div class="flex justify-center text-3xl color-[var(--color-gray-6)] pt-4">
 						<UI.Spinner variant="loop" />
 					</div>
 				{/if}

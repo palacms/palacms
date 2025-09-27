@@ -17,13 +17,19 @@ services:
       - traefik.http.routers.production-palacms-http.rule=Host(`palacms.com`) || Host(`marketplace.palacms.com`) || HostRegexp(`^.+\.palacms.site$`)
 
       - traefik.http.routers.production-palacms-https.entrypoints=https
-      - traefik.http.routers.production-palacms-https.rule=Host(`palacms.com`) || HostRegexp(`^.+\.palacms.site$`)
+      - traefik.http.routers.production-palacms-https.rule=Host(`palacms.com`)
       - traefik.http.routers.production-palacms-https.service=production-palacms
       - traefik.http.routers.production-palacms-https.tls=true
       - traefik.http.routers.production-palacms-https.tls.certresolver=palacms
-      - traefik.http.routers.production-palacms-https.tls.domains[0].main=palacms.com
-      - traefik.http.routers.production-palacms-https.tls.domains[1].main=palacms.site
-      - traefik.http.routers.production-palacms-https.tls.domains[1].sans=*.palacms.site
+
+      - traefik.http.routers.starter-palacms-https.entrypoints=https
+      - traefik.http.routers.starter-palacms-https.rule=HostRegexp(`^.+\.palacms.site$`)
+      - traefik.http.routers.starter-palacms-https.service=production-palacms
+      - traefik.http.routers.starter-palacms-https.tls=true
+      - traefik.http.routers.starter-palacms-https.tls.certresolver=palacms
+      - traefik.http.routers.starter-palacms-https.tls.domains[0].main=palacms.site
+      - traefik.http.routers.starter-palacms-https.tls.domains[0].sans=*.palacms.site
+      - traefik.http.routers.starter-palacms-https.middlewares=starter-palacms-csp
 
       - traefik.http.routers.marketplace-palacms-https.entrypoints=https
       - traefik.http.routers.marketplace-palacms-https.rule=Host(`marketplace.palacms.com`)
@@ -43,6 +49,7 @@ services:
       - traefik.http.middlewares.marketplace-palacms-cors.headers.accesscontrolallowmethods=*
       - traefik.http.middlewares.marketplace-palacms-cors.headers.accesscontrolallowheaders=*
       - traefik.http.middlewares.marketplace-palacms-cors.headers.accesscontrolalloworiginlist=*
+      - traefik.http.middlewares.starter-palacms-csp.headers.contentsecuritypolicy=frame-ancestors *;
 
 volumes:
   palacms-data:

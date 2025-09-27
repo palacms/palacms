@@ -125,7 +125,7 @@
 		line-height: 1.5;
 		a {
 			text-decoration: underline;
-			color: #70809e;
+			color: var(--pala-primary-color);
 		}
 		a:hover {
 			color: white;
@@ -161,13 +161,13 @@
 		cursor: not-allowed;
 	}
 	.primo-button.primary {
-		background: var(--weave-primary-color, #4f46e5);
-		border-color: var(--weave-primary-color, #4f46e5);
+		background: var(--pala-primary-color, #4f46e5);
+		border-color: var(--pala-primary-color, #4f46e5);
 		position: relative;
 	}
 	.primo-button.primary:hover {
-		background: var(--weave-primary-color-dark, #4338ca);
-		border-color: var(--weave-primary-color-dark, #4338ca);
+		background: var(--pala-primary-color-dark, #4338ca);
+		border-color: var(--pala-primary-color-dark, #4338ca);
 	}
 	.key-hint {
 		position: absolute;
@@ -183,12 +183,12 @@
 		border-color: #333;
 	}
 	.primo-button.primary {
-		border: 1px solid #70809e;
+		border: 1px solid var(--pala-primary-color);
 		background: transparent;
 	}
 	.primo-button.primary:hover {
-		background: #70809e;
-		border-color: #70809e;
+		background: var(--pala-primary-color);
+		border-color: var(--pala-primary-color);
 	}
 	:global(form > label) {
 		flex: 1;

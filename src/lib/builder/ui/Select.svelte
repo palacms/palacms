@@ -274,7 +274,7 @@
 		transition: 0.1s;
 
 		&.highlighted {
-			color: var(--weave-primary-color);
+			color: var(--pala-primary-color);
 		}
 
 		p {

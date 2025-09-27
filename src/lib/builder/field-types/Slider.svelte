@@ -45,7 +45,7 @@
 	}
 
 	input {
-		outline-color: var(--weave-primary-color);
+		outline-color: var(--pala-primary-color);
 		background: var(--primo-color-black);
 		padding: 0.5rem;
 		border-bottom: 2px solid rgb(245, 245, 245);

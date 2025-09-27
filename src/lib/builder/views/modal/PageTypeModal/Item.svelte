@@ -198,8 +198,8 @@
 		border-bottom-left-radius: 0; */
 
 		&.active a {
-			color: var(--weave-primary-color);
-			/* outline: 1px solid var(--weave-primary-color); */
+			color: var(--pala-primary-color);
+			/* outline: 1px solid var(--pala-primary-color); */
 		}
 
 		.options {

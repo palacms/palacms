@@ -29,9 +29,9 @@
 		controls_enabled = true,
 		show_toggle = false,
 		toggled = false,
-		append = '',
+		head = '',
 		active_page_type_id = null
-	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; append?: string; active_page_type_id?: string | null } = $props()
+	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; head?: string; active_page_type_id?: string | null } = $props()
 
 	let name_el = $state()
 
@@ -285,7 +285,7 @@
 			</div>
 		{:else if componentCode}
 			<div class="symbol">
-				<IFrame bind:height {append} {componentCode} />
+				<IFrame bind:height {head} {componentCode} />
 			</div>
 		{/if}
 	</div>

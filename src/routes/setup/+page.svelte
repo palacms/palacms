@@ -281,10 +281,10 @@
 			}
 
 			&.active {
-				color: #70809e;
+				color: #ff6b35;
 
 				span {
-					background-color: #70809e;
+					background-color: #ff6b35;
 					color: white;
 				}
 			}
@@ -331,7 +331,7 @@
 
 			&:focus {
 				outline: none;
-				border-color: #70809e;
+				border-color: #ff6b35;
 			}
 		}
 
@@ -343,13 +343,13 @@
 			justify-content: center;
 			align-items: center;
 			padding: 0.65rem;
-			border: 1.5px solid #70809e;
+			border: 1.5px solid #ff6b35;
 			border-radius: 0.25rem;
 			position: relative;
 			transition: 0.2s;
 
 			&:not(:disabled):hover {
-				background-color: #70809e;
+				background-color: #ff6b35;
 				color: #121212;
 			}
 
@@ -411,7 +411,7 @@
 				font-size: 14px;
 
 				strong {
-					color: #70809e;
+					color: #ff6b35;
 					margin-right: 0.5rem;
 				}
 			}
@@ -443,7 +443,7 @@
 			font-size: 0.75rem;
 			display: inline-block;
 			margin-top: 1rem;
-			color: #70809e;
+			color: #ff6b35;
 			text-decoration: underline;
 
 			&:hover {
@@ -459,13 +459,13 @@
 			justify-content: center;
 			align-items: center;
 			padding: 0.65rem 2rem;
-			border: 1.5px solid #70809e;
+			border: 1.5px solid #ff6b35;
 			border-radius: 0.25rem;
 			margin: 0 auto;
 			min-width: 200px;
 
 			&:hover {
-				background-color: #70809e;
+				background-color: #ff6b35;
 				transition: 0.2s;
 				color: #121212;
 			}

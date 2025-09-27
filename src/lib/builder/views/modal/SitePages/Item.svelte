@@ -520,10 +520,10 @@
 		&.active {
 			/* background: #222; */
 			border-bottom-right-radius: 0;
-			/* outline: 1px solid var(--weave-primary-color); */
+			/* outline: 1px solid var(--pala-primary-color); */
 
 			a {
-				color: var(--weave-primary-color);
+				color: var(--pala-primary-color);
 			}
 		}
 
@@ -583,7 +583,7 @@
 					overflow: hidden;
 					text-overflow: ellipsis;
 					width: 100%;
-					color: var(--weave-primary-color);
+					color: var(--pala-primary-color);
 
 					span {
 						color: var(--color-gray-5);
@@ -601,7 +601,7 @@
 				font-size: 1.5rem;
 
 				&:hover {
-					color: var(--weave-primary-color);
+					color: var(--pala-primary-color);
 				}
 
 				&.active {
@@ -627,7 +627,7 @@
 
 				&:hover {
 					background: var(--color-gray-8);
-					color: var(--weave-primary-color);
+					color: var(--pala-primary-color);
 				}
 
 				span {

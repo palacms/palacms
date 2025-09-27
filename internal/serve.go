@@ -18,7 +18,7 @@ func ServeSites(pb *pocketbase.PocketBase) error {
 		}
 
 		serveEvent.Router.GET("/{path...}", func(requestEvent *core.RequestEvent) error {
-			// Resolve site ID from current URL or referrer URL
+			// Resolve site ID (explicit param) or from referrer URL for host mapping.
 			siteId := requestEvent.Request.URL.Query().Get("_site")
 			referer := requestEvent.Request.Header.Get("Referer")
 			if siteId == "" && referer != "" {

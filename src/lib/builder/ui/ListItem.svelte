@@ -96,7 +96,7 @@
 		&.active {
 			background: #222;
 			border-bottom-right-radius: 0;
-			/* outline: 1px solid var(--weave-primary-color); */
+			/* outline: 1px solid var(--pala-primary-color); */
 		}
 
 		.left {
@@ -124,7 +124,7 @@
 				font-size: 1.5rem;
 
 				&:hover {
-					color: var(--weave-primary-color);
+					color: var(--pala-primary-color);
 				}
 			}
 		}

@@ -119,11 +119,11 @@
 		box-shadow: var(--primo-ring-thin);
 		color: var(--primo-color-white);
 		transition: 0.1s;
-		/* border: 1.5px solid var(--weave-primary-color); */
+		/* border: 1.5px solid var(--pala-primary-color); */
 		/* border-radius: 0.25rem; */
 
 		&:hover {
-			background: var(--weave-primary-color);
+			background: var(--pala-primary-color);
 			color: white;
 		}
 	}
@@ -162,7 +162,7 @@
 		&:active {
 			background: #404040;
 			/* box-shadow: var(--primo-ring); */
-			/* background: var(--weave-primary-color); */
+			/* background: var(--pala-primary-color); */
 			/* color: var(--color-gray-8); */
 		}
 	}

@@ -1,5 +1,4 @@
 <script>
-	import axios from 'axios'
 	import { toast } from 'svelte-sonner'
 	import SitePreview from '$lib/components/SitePreview.svelte'
 	import { CircleCheck, CirclePlus, Loader } from 'lucide-svelte'
@@ -67,7 +66,7 @@
 <div class="space-y-3 relative w-full bg-gray-900">
 	<div class="rounded-tl rounded-tr overflow-hidden">
 		<button class="w-full hover:opacity-75 transition-all" onclick={add_to_library} aria-hidden="true">
-			<SitePreview {site} />
+			<SitePreview {site} style="--thumbnail-height: 56.25%" src={`https://palacms.com/?_site=${site.id}`} />
 		</button>
 	</div>
 	<div class="absolute -bottom-2 rounded-bl rounded-br w-full p-3 z-20 bg-gray-900 truncate flex items-center justify-between">
