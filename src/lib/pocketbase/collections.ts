@@ -165,7 +165,7 @@ export const Sites = createCollectionMapping('sites', Site, manager, {
 			return SiteRoleAssignments.from(this.collection.instance).list({ filter: { site: this.id } })
 		},
 		symbols() {
-			return SiteSymbols.from(this.collection.instance).list({ filter: { site: this.id } })
+			return SiteSymbols.from(this.collection.instance).list({ filter: { site: this.id }, sort: '-created' })
 		},
 		fields() {
 			return SiteFields.from(this.collection.instance).list({ filter: { site: this.id } })

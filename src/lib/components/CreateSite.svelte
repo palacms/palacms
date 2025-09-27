@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Loader, Globe, Store, Check, Library as LibraryIcon, SquarePen, Cuboid, ExternalLink, LayoutPanelTop } from 'lucide-svelte'
+	import { Loader, Globe, Store, Check, SquarePen, Cuboid, ExternalLink } from 'lucide-svelte'
 	import SitePreview from '$lib/components/SitePreview.svelte'
 	import * as Tabs from '$lib/components/ui/tabs'
 	import { Input } from '$lib/components/ui/input/index.js'
@@ -17,9 +17,7 @@
 		SiteUploads,
 		manager,
 		LibrarySymbols,
-		LibrarySymbolGroups,
 		MarketplaceSymbols,
-		MarketplaceSymbolGroups,
 		MarketplaceSiteGroups,
 		MarketplaceSites,
 		PageTypes,
@@ -35,13 +33,11 @@
 	import { page as pageState } from '$app/state'
 	import Button from './ui/button/button.svelte'
 	import { useCloneSite } from '$lib/workers/CloneSite.svelte'
-	import SymbolButton from '$lib/components/SymbolButton.svelte'
-	import Masonry from '$lib/components/Masonry.svelte'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js'
 	import { self as pb, marketplace } from '$lib/pocketbase/PocketBase'
 	import { watch } from 'runed'
-	import { tick } from 'svelte'
+	import BlockPickerPanel from '$lib/components/BlockPickerPanel.svelte'
 
 	/*
   Create Site Wizard
@@ -60,7 +56,6 @@
 	// Keep undefined until loaded so we can show skeletons
 	const starter_sites = $derived(Sites.list({ sort: 'index' }) ?? undefined)
 	// Starter groups sidebar state
-	let blocks_tab = $state('library')
 	let active_starters_group_id = $state(all_site_groups?.[0]?.id ?? '')
 	// When groups load/update, pick first available if none selected.
 	watch(
@@ -73,8 +68,6 @@
 	)
 
 	const active_starters_group_sites = $derived(starter_sites ? (active_starters_group_id ? starter_sites.filter((s) => s.group === active_starters_group_id) : starter_sites) : undefined)
-	const library_symbol_groups = $derived(LibrarySymbolGroups.list({ sort: 'index' }) ?? [])
-	const marketplace_symbol_groups = $derived(MarketplaceSymbolGroups.list({ sort: 'index' }) ?? [])
 
 	// Marketplace (Starters) - site groups and sites
 	const marketplace_site_groups = $derived(MarketplaceSiteGroups.list({ sort: 'index' }) ?? [])
@@ -95,37 +88,6 @@
 			: (MarketplaceSites.list({ sort: 'index' }) ?? undefined)
 	)
 
-	// Keep separate selection for Library vs Marketplace groups
-	let active_library_blocks_group_id = $state(library_symbol_groups?.find((g) => g.name === 'Featured')?.id ?? library_symbol_groups?.[0]?.id ?? '')
-	let active_marketplace_blocks_group_id = $state(marketplace_symbol_groups?.find((g) => g.name === 'Featured')?.id ?? marketplace_symbol_groups?.[0]?.id ?? '')
-
-	// When groups load/update, pick first available if none selected.
-	watch(
-		() => (library_symbol_groups ?? []).map((g) => g.id),
-		(ids) => {
-			if (!active_library_blocks_group_id && ids.length > 0) {
-				const groups = library_symbol_groups ?? []
-				active_library_blocks_group_id = groups.find((g) => g.name === 'Featured')?.id ?? ids[0]
-			}
-		}
-	)
-	watch(
-		() => (marketplace_symbol_groups ?? []).map((g) => g.id),
-		(ids) => {
-			if (!active_marketplace_blocks_group_id && ids.length > 0) {
-				const groups = marketplace_symbol_groups ?? []
-				active_marketplace_blocks_group_id = groups.find((g) => g.name === 'Featured')?.id ?? ids[0]
-			}
-		}
-	)
-
-	const active_library_blocks_group = $derived(active_library_blocks_group_id ? LibrarySymbolGroups.one(active_library_blocks_group_id) : undefined)
-	// Undefined while loading so Masonry can render skeletons
-	const active_library_blocks_group_symbols = $derived(active_library_blocks_group?.symbols() ?? undefined)
-
-	const active_marketplace_blocks_group = $derived(active_marketplace_blocks_group_id ? MarketplaceSymbolGroups.one(active_marketplace_blocks_group_id) : undefined)
-	const active_marketplace_blocks_group_symbols = $derived(active_marketplace_blocks_group?.symbols() ?? undefined)
-
 	let site_name = $state(``)
 
 	// Eagerly compute and load derived data when this component mounts
@@ -133,12 +95,8 @@
 		void all_site_groups
 		void starter_sites
 		void active_starters_group_sites
-		void library_symbol_groups
-		void marketplace_symbol_groups
 		void marketplace_site_groups
 		void marketplace_starter_sites
-		void active_library_blocks_group_symbols
-		void active_marketplace_blocks_group_symbols
 	})
 
 	// Stepper action: advance through steps; create on final step.
@@ -178,18 +136,6 @@
 	// Optional blocks selection; keep resolved symbol pointers only.
 	let selected_block_ids = $state<{ id: string; source: 'library' | 'marketplace' }[]>([])
 	const selected_blocks = $derived(selected_block_ids.map(({ id, source }) => (source === 'library' ? LibrarySymbols.one(id) : MarketplaceSymbols.one(id))).filter(Boolean) || [])
-	let selected_blocks_container: HTMLDivElement | undefined = $state()
-
-	async function toggle_block(id: string, source: 'library' | 'marketplace' | undefined = undefined) {
-		if (selected_block_ids.find((b) => b.id === id)) {
-			selected_block_ids = selected_block_ids.filter((b) => b.id !== id)
-		} else if (source) {
-			selected_block_ids = [...selected_block_ids, { id, source }]
-			// Wait for the UI to render the new block, then scroll fully to the bottom
-			await tick()
-			selected_blocks_container?.scrollTo({ top: selected_blocks_container.scrollHeight, behavior: 'smooth' })
-		}
-	}
 
 	// Copy selected blocks into a new site:
 	// - Create site_symbol, then fields (parent-first), then entries (parent-first)
@@ -822,130 +768,7 @@
 	{/if}
 
 	{#if step === 'blocks'}
-		<Tabs.Root bind:value={blocks_tab} class="h-[75vh] min-h-[30rem] w-full grid grid-cols-5 gap-4 flex-1 rounded-lg border bg-[#111] p-3 shadow-sm overflow-hidden">
-			<!-- Left: Groups + Masonry -->
-			<div class="col-span-5 md:col-span-4 flex flex-col overflow-hidden">
-				<Tabs.List
-					class="rounded-9px bg-dark-10 shadow-mini-inset dark:bg-background grid w-full h-11 grid-cols-2 gap-1 p-1 text-sm font-semibold leading-[0.01em] dark:border dark:border-neutral-600/30"
-				>
-					<Tabs.Trigger value="library" class="data-[state=active]:shadow-mini dark:data-[state=active]:bg-muted h-8 rounded-[4px] bg-transparent py-2 data-[state=active]:bg-white flex gap-2">
-						<LibraryIcon class="h-4 w-4" />
-						<span>Library</span>
-					</Tabs.Trigger>
-					<Tabs.Trigger value="marketplace" class="data-[state=active]:shadow-mini dark:data-[state=active]:bg-muted h-8 rounded-[4px] bg-transparent py-2 data-[state=active]:bg-white flex gap-2">
-						<Store class="h-4 w-4" />
-						<span>Marketplace</span>
-					</Tabs.Trigger>
-				</Tabs.List>
-				<Tabs.Content value="library" class="grid grid-cols-4 flex-1 overflow-hidden">
-					{#if library_symbol_groups.length === 0}
-						<EmptyState
-							class="col-span-4"
-							icon={LibraryIcon}
-							title="Your Library is empty"
-							description="Curate and create blocks in your Library. Add blocks from the Marketplace or create your own to reuse across sites."
-							button={{
-								label: 'Open Marketplace',
-								icon: Store,
-								onclick: () => (blocks_tab = 'marketplace')
-							}}
-						/>
-					{:else}
-						<!-- Groups sidebar -->
-						<div class="h-full md:border-r col-span-1 overflow-auto">
-							<div class="p-2 text-xs text-muted-foreground">Groups</div>
-							<ul class="p-2 pt-0 flex flex-col gap-1">
-								{#each library_symbol_groups ?? [] as group (group.id)}
-									<button
-										class="w-full text-left px-2 py-1 rounded-md hover:bg-accent hover:text-accent-foreground {active_library_blocks_group_id === group.id ? 'bg-accent text-accent-foreground' : ''}"
-										onclick={() => (active_library_blocks_group_id = group.id)}
-									>
-										{group.name}
-									</button>
-								{/each}
-							</ul>
-						</div>
-						<!-- Library Blocks masonry -->
-						<Masonry columnCount={2} class="col-span-3 p-3 pr-0 overflow-auto" items={active_library_blocks_group_symbols} loading={active_library_blocks_group_symbols === undefined}>
-							{#snippet children(symbol)}
-								<div class="relative">
-									<SymbolButton {symbol} onclick={() => toggle_block(symbol.id, 'library')} />
-									{#if selected_block_ids.find((b) => b.id === symbol.id)}
-										<div class="pointer-events-none absolute inset-0 bg-[#000000AA] flex items-center justify-center">
-											<Check class="text-primary" />
-										</div>
-									{/if}
-								</div>
-							{/snippet}
-						</Masonry>
-					{/if}
-				</Tabs.Content>
-
-				<!-- Marketplace-->
-				<Tabs.Content value="marketplace" class="grid grid-cols-4 flex-1 overflow-hidden">
-					<!-- Groups sidebar -->
-					<div class="h-full md:border-r col-span-1 overflow-scroll">
-						<div class="p-2 text-xs text-muted-foreground">Groups</div>
-						<ul class="p-2 pt-0 flex flex-col gap-1">
-							{#each marketplace_symbol_groups ?? [] as group (group.id)}
-								<li>
-									<button
-										class="w-full text-left px-2 py-1 rounded-md hover:bg-accent hover:text-accent-foreground {active_marketplace_blocks_group_id === group.id
-											? 'bg-accent text-accent-foreground'
-											: ''}"
-										onclick={() => (active_marketplace_blocks_group_id = group.id)}
-									>
-										{group.name}
-									</button>
-								</li>
-							{/each}
-						</ul>
-					</div>
-					<!-- Marketplace Blocks masonry -->
-					<Masonry columnCount={2} class="col-span-3 p-3 pr-0 overflow-scroll" items={active_marketplace_blocks_group_symbols} loading={active_marketplace_blocks_group_symbols === undefined}>
-						{#snippet children(symbol)}
-							<div class="relative">
-								<SymbolButton {symbol} onclick={() => toggle_block(symbol.id, 'marketplace')} />
-								{#if selected_block_ids.find((b) => b.id === symbol.id)}
-									<div class="pointer-events-none absolute inset-0 bg-[#000000AA] flex items-center justify-center">
-										<Check class="text-primary" />
-									</div>
-								{/if}
-							</div>
-						{/snippet}
-					</Masonry>
-				</Tabs.Content>
-			</div>
-
-			<!-- Right: Selected Blocks -->
-			<div class="col-span-5 md:col-span-1 rounded-lg border h-full px-3 flex flex-col overflow-hidden">
-				<div class="py-2 text-xs border-b text-muted-foreground flex items-center justify-between">
-					<div>
-						<span>Selected Blocks</span>
-						{#if selected_blocks.length > 0}
-							<span class="text-xs text-muted-foreground">({selected_blocks.length})</span>
-						{/if}
-					</div>
-					{#if selected_block_ids.length > 0}
-						<button class="text-xs underline" onclick={() => (selected_block_ids = [])}>Clear</button>
-					{/if}
-				</div>
-				{#if selected_blocks.length > 0}
-					<div class="grid gap-3 sm:grid-cols-1 overflow-scroll mt-4 pb-3" bind:this={selected_blocks_container}>
-						{#each selected_blocks as block (block?.id)}
-							{#if block}
-								<div class="relative">
-									<SymbolButton symbol={block} />
-									<button class="absolute top-2 right-2 text-xs bg-background/80 border rounded px-1" onclick={() => toggle_block(block.id)}>Remove</button>
-								</div>
-							{/if}
-						{/each}
-					</div>
-				{:else}
-					<div class="text-sm text-muted-foreground p-6 text-center">Nothing added yet — select additional blocks to include in your starter.</div>
-				{/if}
-			</div>
-		</Tabs.Root>
+		<BlockPickerPanel bind:selected={selected_block_ids} />
 	{/if}
 
 	<!-- Footer -->
