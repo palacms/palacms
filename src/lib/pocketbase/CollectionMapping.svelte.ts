@@ -23,11 +23,6 @@ export type CollectionMappingOptions<T extends ObjectWithId> = {
 	links?: Record<string, (this: MappedObject<T, { links: {} }>) => unknown>
 }
 
-export type StagedOperation<T extends ObjectWithId> =
-	| { operation: 'create'; processed: boolean; data: Omit<T, 'id'> }
-	| { operation: 'update'; processed: boolean; data: Partial<T> }
-	| { operation: 'delete'; processed: boolean }
-
 export type CollectionMapping<T extends ObjectWithId, Options extends CollectionMappingOptions<T>> = {
 	one: (id: string) => MappedObject<T, Options> | undefined | null
 	list: (options?: ListOptions) => MappedObjectList<T, Options> | undefined | null
