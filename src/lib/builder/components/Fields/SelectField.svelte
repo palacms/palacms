@@ -175,7 +175,7 @@
 	}
 	.field-button.subfield-button:focus {
 		/* background: var(--color-gray-8); */
-		border-color: var(--weave-primary-color);
+		border-color: var(--pala-primary-color);
 		outline: 0;
 	}
 	.item-options {

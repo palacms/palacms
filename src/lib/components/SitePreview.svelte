@@ -3,7 +3,7 @@
 	import { Globe } from 'lucide-svelte'
 	import { onDestroy, tick } from 'svelte'
 
-	let { site, style }: { site?: Site; style?: string } = $props()
+	let { site, style, src }: { site?: Site; style?: string; src?: string } = $props()
 
 	let container = $state()
 	let scale = $state()
@@ -14,7 +14,7 @@
 
 	async function init_preview() {
 		await tick()
-		if (!iframe?.contentWindow?.document?.body) return
+		// if (!iframe?.contentWindow?.document?.body) return
 		if (resize_observer) resize_observer?.disconnect()
 
 		resize_observer = new ResizeObserver((entries) => {
@@ -46,16 +46,16 @@
 
 <div class="iframe-root bg-gray-900" {style}>
 	<div bind:this={container} class="iframe-container">
-		{#if site?.preview}
+		{#if site && (src || site.preview)}
 			<iframe
 				tabindex="-1"
 				bind:this={iframe}
-				class="rounded overflow-hidden bg-white"
-				style="transform: scale({scale}); width: 1024px;"
+				class="w-[1024px] rounded overflow-hidden bg-white"
+				style:transform="scale({scale})"
 				style:height={iframeHeight}
 				class:fadein={iframeLoaded}
 				title="site preview"
-				src={`/?_site=${site.id}`}
+				src={src ?? `/?_site=${site.id}`}
 				onload={async () => {
 					await init_preview()
 					iframeLoaded = true

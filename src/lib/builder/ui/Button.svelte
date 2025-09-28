@@ -68,14 +68,14 @@
 			box-shadow: var(--primo-ring-thin);
 			/* background: var(
         --Button-bg-hover,
-        var(--weave-primary-color-dark)
+        var(--pala-primary-color-dark)
       );
       color: var(--Button-color-hover, var(--primo-color-white)); */
 		}
 
 		&[disabled] {
 			color: #cecece;
-			border: 1px solid #70809e;
+			border: 1px solid var(--pala-primary-color);
 			opacity: 0.2;
 			cursor: not-allowed;
 		}

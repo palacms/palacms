@@ -249,7 +249,7 @@
 		transition: 0.1s;
 
 		&.active {
-			color: var(--weave-primary-color);
+			color: var(--pala-primary-color);
 		}
 	}
 </style>

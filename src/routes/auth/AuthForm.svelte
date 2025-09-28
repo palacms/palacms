@@ -154,17 +154,13 @@
 			justify-content: center;
 			align-items: center;
 			padding: 0.65rem;
-			border: 1.5px solid #70809e;
+			border: 1.5px solid var(--pala-primary-color);
 			border-radius: 0.25rem;
 
 			&:hover {
-				background-color: #70809e;
+				background-color: var(--pala-primary-color);
 				transition: 0.2s;
-				color: #121212;
-			}
-
-			&:focus {
-				background-color: var(--weave-primary-color-dark);
+				color: white;
 			}
 
 			@keyframes icon-spin {

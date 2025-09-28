@@ -65,7 +65,7 @@
 		width: 30px;
 		top: 2px;
 		background: var(--color-gray-8);
-		/* border: 1px solid var(--weave-primary-color); */
+		/* border: 1px solid var(--pala-primary-color); */
 		transition: 0.1s;
 		z-index: 0;
 	}
@@ -98,12 +98,12 @@
 		}
 
 		&:focus-visible {
-			outline: 1px solid var(--weave-primary-color);
+			outline: 1px solid var(--pala-primary-color);
 		}
 
 		&.active {
 			color: white;
-			/* border-bottom-color: var(--weave-primary-color); */
+			/* border-bottom-color: var(--pala-primary-color); */
 		}
 
 		&.showing_key_hint .label {

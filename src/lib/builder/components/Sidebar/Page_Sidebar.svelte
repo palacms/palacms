@@ -95,11 +95,11 @@
 		{#if $site_html !== null}
 			{#each available_symbols ?? [] as symbol (symbol.id)}
 				<div use:drag_target={symbol}>
-					<Sidebar_Symbol {symbol} controls_enabled={false} append={$site_html} active_page_type_id={page_type?.id} toggled={true} />
+					<Sidebar_Symbol {symbol} controls_enabled={false} head={$site_html} active_page_type_id={page_type?.id} toggled={true} />
 				</div>
 			{/each}
 		{:else}
-			<div style="display: flex;justify-content: center;font-size: 2rem;color:var(--color-gray-6)">
+			<div class="flex justify-center text-3xl color-[var(--color-gray-6)] pt-4">
 				<UI.Spinner variant="loop" />
 			</div>
 		{/if}
@@ -147,7 +147,7 @@
 	{/if}
 	{#if $current_user?.siteRole === 'developer'}
 		<Button
-			class="mt-4"
+			class="mt-2"
 			size="sm"
 			variant="outline"
 			onclick={() => {
@@ -155,8 +155,8 @@
 				goto(`${base_path}/page-type--${page_type?.id}?tab=fields`)
 			}}
 		>
-			<SquarePen class="w-3" />
 			Manage Fields
+			<ExternalLink class="w-3" />
 		</Button>
 	{/if}
 {/snippet}

@@ -158,11 +158,11 @@
 		gap: 0.75rem;
 		overflow: hidden;
 		align-items: flex-start;
-		/* border: 1px solid var(--weave-primary-color); */
+		/* border: 1px solid var(--pala-primary-color); */
 		/* padding: 0.5rem; */
 
 		.spinner-container {
-			background: var(--weave-primary-color);
+			background: var(--pala-primary-color);
 			height: 100%;
 			width: 100%;
 			display: flex;
@@ -204,7 +204,7 @@
 
 			&:hover {
 				opacity: 0.95;
-				background: var(--weave-primary-color);
+				background: var(--pala-primary-color);
 			}
 
 			span {
@@ -261,7 +261,7 @@
 
 			&.active {
 				cursor: unset;
-				color: var(--weave-primary-color);
+				color: var(--pala-primary-color);
 			}
 
 			&:last-child {

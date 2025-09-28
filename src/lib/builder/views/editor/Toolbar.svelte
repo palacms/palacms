@@ -135,19 +135,19 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] max-w-[1600px] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] max-w-[1600px] h-[calc(100vh_-_1rem)] max-h-[100vh] flex flex-col p-4">
 		<SiteEditor onClose={() => (editing_site = false)} bind:has_unsaved_changes={site_has_unsaved_changes} />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_pages}>
-	<Dialog.Content class="z-[999] max-w-[1200px] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-[100vh] flex flex-col p-4">
 		<SitePages />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_page_types}>
-	<Dialog.Content class="z-[999] max-w-[1200px] h-full max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-[100vh] flex flex-col p-4">
 		<PageTypeModal />
 	</Dialog.Content>
 </Dialog.Root>
@@ -196,8 +196,8 @@
 			<div class="button-group">
 				{#if $mod_key_held}
 					<div class="page-hotkeys">
-						<div style:color={going_up ? 'var(--weave-primary-color)' : 'inherit'} style:opacity={can_navigate_up ? 1 : 0.3}>&#8984; ↑</div>
-						<div style:color={going_down ? 'var(--weave-primary-color)' : 'inherit'} style:opacity={can_navigate_down ? 1 : 0.3}>&#8984; ↓</div>
+						<div style:color={going_up ? 'var(--pala-primary-color)' : 'inherit'} style:opacity={can_navigate_up ? 1 : 0.3}>&#8984; ↑</div>
+						<div style:color={going_down ? 'var(--pala-primary-color)' : 'inherit'} style:opacity={can_navigate_down ? 1 : 0.3}>&#8984; ↓</div>
 					</div>
 				{:else}
 					<div class="flex rounded" style="border: 1px solid #222" bind:this={page_dropdown_anchor}>

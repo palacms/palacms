@@ -27,7 +27,7 @@
 
 <style lang="postcss">
 	button {
-		background: var(--weave-primary-color);
+		background: var(--pala-primary-color);
 		color: var(--primo-color-black);
 		padding: 0.5rem 1rem;
 		border-radius: var(--primo-border-radius);
@@ -37,7 +37,7 @@
 			color 0.1s;
 
 		&:hover {
-			background: var(--weave-primary-color-dark);
+			background: var(--pala-primary-color-dark);
 			color: var(--primo-color-white);
 		}
 

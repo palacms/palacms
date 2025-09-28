@@ -1335,7 +1335,7 @@
 		background-color: var(--color-gray-9);
 		color: var(--primo-color-white);
 		/* border-bottom-width: 2px; */
-		border-color: var(--weave-primary-color);
+		border-color: var(--pala-primary-color);
 	}
 	.floating-menu {
 		overflow: hidden;

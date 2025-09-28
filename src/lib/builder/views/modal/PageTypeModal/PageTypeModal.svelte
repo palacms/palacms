@@ -5,6 +5,7 @@
 	import PageForm from './PageTypeForm.svelte'
 	import { PageTypes, manager } from '$lib/pocketbase/collections'
 	import { site_context } from '$lib/builder/stores/context'
+	import { page as pageState } from '$app/state'
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const { value: site } = site_context.get()
@@ -30,7 +31,7 @@
 	<ul class="grid gap-2">
 		{#each site?.page_types() || [] as page_type}
 			<li>
-				<Item {page_type} active={false} />
+				<Item {page_type} active={pageState.params.page_type === page_type.id} />
 			</li>
 		{/each}
 		{#if creating_page_type}

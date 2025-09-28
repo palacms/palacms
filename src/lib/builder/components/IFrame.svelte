@@ -4,6 +4,7 @@
 	import { tick } from 'svelte'
 	import { static_iframe_srcdoc } from './misc'
 	import * as _ from 'lodash-es'
+	import { watch, useResizeObserver } from 'runed'
 
 	/**
 	 * @typedef {Object} Props
@@ -15,29 +16,23 @@
 	 */
 
 	/** @type {Props} */
-	let { componentCode, height = $bindable(), srcdoc = '', head = '', append = '' } = $props()
+	let { componentCode, height = $bindable(), srcdoc = '', head = '' } = $props()
 
 	let container = $state()
 	let iframe = $state()
-	let iframeLoaded = $state()
-	let finishedResizing = $state(false)
-	async function setIframeContent() {
-		setScaleRatio()
-		await tick()
-		setHeight()
-	}
+	let iframe_loaded = $state(false)
+	let finished_resizing = $state(false)
 
-	function setHeight() {
-		// iframe.height = '';
-		const newHeight = iframe.contentWindow.document.body.scrollHeight * scaleRatio
-		// iframe.height = newHeight;
-		// iframe.width = newHeight;
+	function set_height() {
+		if (!iframe?.contentWindow?.document?.body) return
+		const body = iframe.contentWindow.document.body
+		const newHeight = body.scrollHeight * scaleRatio
 		height = newHeight
-		container_height = iframe.contentWindow.document.body.scrollHeight
-		finishedResizing = true
+		container_height = body.scrollHeight
+		finished_resizing = true
 	}
 
-	function setScaleRatio() {
+	function set_scale_ratio() {
 		if (!container || !iframe) return
 		const { clientWidth: parentWidth } = container
 		const { clientWidth: childWidth } = iframe
@@ -49,74 +44,84 @@
 
 	let load_observer = $state()
 	let resize_observer = $state()
+	let iframe_body = $state(null)
 
-	function append_to_iframe(code) {
-		var container = document.createElement('div')
-
-		// Set the innerHTML of the container to your HTML string
-		container.innerHTML = code
-
-		// Append each element in the container to the document head
-		Array.from(container.childNodes).forEach((node) => {
-			iframe.contentWindow.document.body.appendChild(node)
-		})
+	function sync_iframe_size() {
+		if (!container || !iframe) return
+		if (!iframe?.contentDocument?.body) return
+		set_scale_ratio()
+		set_height()
 	}
 
-	let setup_complete = $state(false)
+	// observe changes in component height to sync scaled height/ratio
+	// mostly useful to updating in response to images loading in
+	useResizeObserver(() => iframe_body, sync_iframe_size)
+
+	// Set srcdoc from component code
 	let generated_srcdoc = $state('')
 	let active_code = {}
-	let active_append = ''
-	async function set_srcdoc(componentCode) {
-		if (_.isEqual(active_code, componentCode) && active_append === append) {
-			return
+	let active_head = $state('')
+	watch(
+		() => componentCode,
+		(code) => {
+			if (_.isEqual(active_code, code) || !code) {
+				return
+			}
+			generated_srcdoc = static_iframe_srcdoc({
+				head: head + code.head,
+				html: code.body,
+				css: code.css
+				// foot: append
+			})
+			active_code = _.cloneDeep(code)
 		}
-		active_code = _.cloneDeep(componentCode)
-		active_append = append
-		generated_srcdoc = static_iframe_srcdoc({
-			head: componentCode.head,
-			html: componentCode.body,
-			css: componentCode.css,
-			foot: append
-		})
-		setup_complete = true
-	}
-	$effect(() => {
-		iframeLoaded && setIframeContent()
-	})
-	$effect(() => {
-		if (container && iframe) {
+	)
+
+	// Sync the iframe size (ratio & height) on initial load
+	watch(
+		() => iframe_loaded,
+		(loaded) => {
+			if (!loaded) return
+			iframe_body = iframe?.contentDocument?.body ?? null
+			if (!iframe_body) return
+			tick().then(sync_iframe_size)
+		}
+	)
+
+	// Append site HEAD code to iframe head
+	watch(
+		() => ({ iframe_loaded, head }),
+		({ loaded, head }) => {
+			if (!loaded || !head) return
+			if (active_head === head) return
+			var container = document.createElement('div')
+			container.innerHTML = head
+			Array.from(container.childNodes).forEach((node) => {
+				iframe.contentWindow.document.head.appendChild(node)
+			})
+			active_head = head
+		}
+	)
+
+	// listen to sidebar resizing to update scale ratio
+	watch(
+		() => ({ container, iframe }),
+		({ container, iframe }) => {
+			if (!container || !iframe) return
 			if (load_observer) load_observer.disconnect()
 			if (resize_observer) resize_observer.disconnect()
 			const sidebar = container.closest('.sidebar')
 			if (sidebar) {
-				resize_observer = new ResizeObserver(setScaleRatio).observe(sidebar)
+				resize_observer = new ResizeObserver(set_scale_ratio).observe(sidebar)
 				load_observer = new ResizeObserver(() => {
 					// workaround for on:load not working reliably
-					if (iframe?.contentWindow.document.body?.childNodes) {
-						setScaleRatio()
+					if (iframe?.contentWindow?.document?.body?.childNodes) {
+						set_scale_ratio()
 					}
 				}).observe(iframe)
 			}
 		}
-	})
-	$effect(() => {
-		iframe && append_to_iframe(append)
-	})
-	$effect(() => {
-		componentCode && set_srcdoc(componentCode)
-	})
-
-	function append_to_head(code) {
-		var container = document.createElement('div')
-		container.innerHTML = code
-		Array.from(container.childNodes).forEach((node) => {
-			iframe.contentWindow.document.head.appendChild(node)
-		})
-	}
-
-	$effect(() => {
-		iframeLoaded && head && append_to_head(head)
-	})
+	)
 
 	onDestroy(() => {
 		if (load_observer) load_observer.disconnect()
@@ -124,10 +129,10 @@
 	})
 </script>
 
-<svelte:window onresize={setScaleRatio} />
+<svelte:window onresize={set_scale_ratio} />
 
 <div class="IFrame">
-	{#if !iframeLoaded}
+	{#if !iframe_loaded}
 		<div class="spinner-container">
 			<Icon icon="eos-icons:three-dots-loading" />
 		</div>
@@ -135,14 +140,13 @@
 	<div bind:this={container} class="iframe-container" style:height="{container_height * scaleRatio}px">
 		{#if generated_srcdoc || srcdoc}
 			<iframe
-				class:fadein={finishedResizing}
+				class:fadein={finished_resizing}
 				style:transform="scale({scaleRatio})"
 				style:height={100 / scaleRatio + '%'}
 				scrolling="no"
 				title="Preview HTML"
 				onload={() => {
-					append_to_head(head)
-					iframeLoaded = true
+					iframe_loaded = true
 				}}
 				srcdoc={generated_srcdoc || srcdoc}
 				bind:this={iframe}

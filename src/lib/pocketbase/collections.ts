@@ -83,6 +83,34 @@ export const MarketplaceSymbols = createCollectionMapping('library_symbols', Lib
 	}
 })
 
+// Marketplace Sites and Groups (for Starter selection UI)
+export const MarketplaceSiteGroups = createCollectionMapping('site_groups', SiteGroup, marketplace_manager, {
+	instance: marketplace,
+	links: {
+		sites() {
+			return MarketplaceSites.from(this.collection.instance).list({ filter: { group: this.id } })
+		}
+	}
+})
+
+export const MarketplaceSites = createCollectionMapping('sites', Site, marketplace_manager, {
+	instance: marketplace,
+	links: {
+		pages() {
+			return Pages.from(this.collection.instance).list({ filter: { site: this.id } })
+		},
+		page_types() {
+			return PageTypes.from(this.collection.instance).list({ filter: { site: this.id } })
+		},
+		symbols() {
+			return SiteSymbols.from(this.collection.instance).list({ filter: { site: this.id } })
+		},
+		uploads() {
+			return SiteUploads.from(this.collection.instance).list({ filter: { site: this.id } })
+		}
+	}
+})
+
 export const LibrarySymbols = createCollectionMapping('library_symbols', LibrarySymbol, manager, {
 	links: {
 		fields() {
@@ -137,7 +165,7 @@ export const Sites = createCollectionMapping('sites', Site, manager, {
 			return SiteRoleAssignments.from(this.collection.instance).list({ filter: { site: this.id } })
 		},
 		symbols() {
-			return SiteSymbols.from(this.collection.instance).list({ filter: { site: this.id } })
+			return SiteSymbols.from(this.collection.instance).list({ filter: { site: this.id }, sort: '-created' })
 		},
 		fields() {
 			return SiteFields.from(this.collection.instance).list({ filter: { site: this.id } })

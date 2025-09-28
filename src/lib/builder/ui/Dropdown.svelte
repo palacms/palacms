@@ -25,7 +25,7 @@
 </script>
 
 <DropdownMenu.Root>
-<DropdownMenu.Trigger class={buttonVariants({ variant: 'ghost', size, class: 'p-1 rounded-md focus-visible:ring-1 focus-visible:ring-[var(--weave-primary-color)] focus-visible:outline-none' })}>
+	<DropdownMenu.Trigger class={buttonVariants({ variant: 'ghost', size, class: 'p-1 rounded-md focus-visible:ring-1 focus-visible:ring-[var(--pala-primary-color)] focus-visible:outline-none' })}>
 		{#if label}
 			<Icon {icon} />
 			<p>{label}</p>

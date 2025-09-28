@@ -374,7 +374,7 @@
 				z-index: 20;
 
 				&:hover {
-					background: var(--weave-primary-color);
+					background: var(--pala-primary-color);
 					color: var(--primo-color-codeblack);
 				}
 

@@ -221,7 +221,7 @@
 				{/snippet}
 			</Masonry>
 		{:else}
-			<EmptyState icon={Cuboid} title="No Blocks to display" description="Blocks are components you can add to any site. When you create one it'll show up here." />
+			<EmptyState class="h-[50vh]" icon={Cuboid} title="No Blocks to display" description="Blocks are components you can add to any site. When you create one it'll show up here." />
 		{/if}
 	{/key}
 </div>
