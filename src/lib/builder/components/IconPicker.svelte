@@ -3,7 +3,6 @@
 	import { createEventDispatcher } from 'svelte'
 	import { fade } from 'svelte/transition'
 	import Icon from '@iconify/svelte'
-	import axios from 'axios'
 	import { createPopperActions } from 'svelte-popperjs'
 	import { clickOutside } from '../utilities'
 	import { offsetByFixedParents } from '../utils/popper-fix'
@@ -43,10 +42,12 @@
 
 	let icons = $state([])
 	async function search() {
-		axios.get(`https://api.iconify.design/search?query=${encodeURIComponent(search_query.trim())}&limit=32`).then(({ data }) => {
-			icons = data.icons
-			searched = true
-		})
+		fetch(`https://api.iconify.design/search?query=${encodeURIComponent(search_query.trim())}&limit=32`)
+			.then((res) => res.json())
+			.then((data) => {
+				icons = data.icons
+				searched = true
+			})
 	}
 
 	let showing_popover = $state(false)

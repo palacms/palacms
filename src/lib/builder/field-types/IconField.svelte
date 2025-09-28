@@ -2,7 +2,6 @@
 	import { watch } from 'runed'
 	import { loadIcon, buildIcon } from '@iconify/svelte'
 	import IconPicker from '../components/IconPicker.svelte'
-	import axios from 'axios'
 	import type { Entity } from '$lib/Content.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
@@ -23,8 +22,6 @@
 
 	const value = $derived(entry?.value ?? '')
 
-	let searched = $state(false)
-
 	// ensure value is valid
 	watch(
 		() => value,
@@ -34,26 +31,6 @@
 			}
 		}
 	)
-
-	// search immediately when passed a query
-	if (search_query) {
-		search()
-	}
-
-	// hide icons when clearing search text
-	$effect(() => {
-		if (search_query === '') {
-			searched = false
-		}
-	})
-
-	let icons = []
-	async function search() {
-		axios.get(`https://api.iconify.design/search?query=${encodeURIComponent(search_query.trim())}&limit=32`).then(({ data }) => {
-			icons = data.icons
-			searched = true
-		})
-	}
 
 	async function select_icon(icon) {
 		// delete icon
