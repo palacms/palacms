@@ -65,7 +65,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 	const collectionMapping: CollectionMapping<T, Options> = {
 		one: (id) => {
 			const change = changes.get(id)
-			let data = records.get(id)
+			let { data } = records.get(id) ?? {}
 
 			if (change && change.operation === 'delete') {
 				return undefined
@@ -80,7 +80,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 							collection
 								.getOne(id)
 								.then((record) => {
-									records.set(id, record as unknown as T)
+									records.set(id, { data: record })
 								})
 								.catch((error) => {
 									console.error(error)
@@ -116,7 +116,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 							.then((fetchedRecords) => {
 								// Store the full records
 								fetchedRecords.forEach((record) => {
-									records.set(record.id, record as unknown as T)
+									records.set(record.id, { data: record })
 								})
 								// Store the list of IDs
 								lists.set(listId, { invalidated: false, ids: fetchedRecords.map(({ id }) => id) })
@@ -209,7 +209,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 				changes.set(id, change)
 			}
 
-			let data = records.get(id)
+			let { data } = records.get(id) ?? {}
 			data = Object.assign({}, data, change.data)
 			return mapObject(data)
 		},
@@ -226,7 +226,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 		},
 		authWithPassword: async (usernameOrEmail, password) => {
 			const response = await collection.authWithPassword(usernameOrEmail, password)
-			records.set(response.record.id, response.record as unknown as T)
+			records.set(response.record.id, { data: response.record })
 
 			// Clear loaded data because authorization has been updated.
 			lists.clear()
