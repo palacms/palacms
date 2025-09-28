@@ -21,6 +21,13 @@ export type ListOptions = {
 export type CollectionMappingOptions<T extends ObjectWithId> = {
 	instance?: PocketBase
 	links?: Record<string, (this: MappedObject<T, { links: {} }>) => unknown>
+
+	/**
+	 * Whether to enable real-time updates for the collection.
+	 *
+	 * @default false
+	 */
+	subscribe?: boolean
 }
 
 export type CollectionMapping<T extends ObjectWithId, Options extends CollectionMappingOptions<T>> = {
@@ -48,6 +55,23 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 	const instanceCache = new Map<PocketBase, CollectionMapping<T, Options>>()
 	const collection = instance.collection(name)
 	const { changes, records, lists } = manager
+
+	if (options?.subscribe) {
+		collection.subscribe('*', (data) => {
+			const operation = data.action as 'create' | 'update' | 'delete'
+			const values = data.record
+			const id = values.id
+			const existingChange = changes.get(id)
+			if (operation === 'update' && existingChange && existingChange.operation === 'update' && !existingChange.committed) {
+				// Ignore remote change. Local change will overwrite it.
+				return
+			} else {
+				// Reset position of the change to place it the last
+				changes.delete(id)
+				changes.set(id, { collection, operation, committed: true, data: values })
+			}
+		})
+	}
 
 	const mapObject = (record: unknown): MappedObject<T, Options> => {
 		const object = model.parse(record)
