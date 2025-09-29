@@ -311,10 +311,6 @@
 				font-size: 0.75rem;
 			}
 
-			button[disabled] {
-				cursor: initial;
-			}
-
 			button:hover {
 				opacity: 0.6;
 			}
