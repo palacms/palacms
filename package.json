@@ -58,7 +58,7 @@
 		"lowlight": "^3.3.0",
 		"lucide-svelte": "^0.544.0",
 		"mode-watcher": "^1.1.0",
-		"nanoid": "^5.1.5",
+		"nanoid": "^5.1.6",
 		"paneforge": "^1.0.2",
 		"pluralize": "^8.0.0",
 		"pocketbase": "^0.26.2",
