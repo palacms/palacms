@@ -1,3 +1,15 @@
+// Migration 1758864438 (2025-09-26): Make field `key` optional and drop unique index.
+//
+// Context:
+// - Having `key` required prevented the app from committing field creations unless
+//   `key` was filled out immediately.
+// - This caused a bug where creating a field right after editing a field triggered
+//   a commit on both operations and led to a crash.
+//
+// What this does:
+// - Marks the `key` text field as not required.
+// - Removes the unique index on the collection.
+
 package migrations
 
 import (
@@ -37,6 +49,7 @@ func init() {
 			return nil
 		},
 		func(app core.App) error {
+			// This migration is irreversible.
 			return nil
 		},
 	)
