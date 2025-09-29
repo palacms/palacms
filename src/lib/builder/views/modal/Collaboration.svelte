@@ -4,8 +4,10 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog'
 	import { Button } from '$lib/components/ui/button'
 	import * as Dialog from '$lib/components/ui/dialog'
+	import { instance } from '$lib/instance'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { manager, SiteRoleAssignments, Users, type Sites } from '$lib/pocketbase/collections'
+	import { self } from '$lib/pocketbase/PocketBase'
 	import Icon from '@iconify/svelte'
 	import { Loader } from 'lucide-svelte'
 	import { nanoid } from 'nanoid'
@@ -13,41 +15,131 @@
 	let { site }: { site: ObjectOf<typeof Sites> } = $props()
 
 	let sending = $state(false)
+	let generating = $state(false)
+	let error = $state('')
+	let link = $state('')
+	let link_shown = $state(false)
 	let email = $state('')
 	let role = $state<SiteRoleAssignment['role']>('developer')
 
 	async function invite_collaborator() {
-		const stillLoading = !users || !server_members || !site_collborators
-		if (stillLoading) {
-			throw new Error('Still loading')
-		}
+		try {
+			const stillLoading = !users || !server_members || !site_collborators
+			if (stillLoading) {
+				error = 'Not ready'
+				throw new Error('Still loading')
+			}
 
-		sending = true
+			sending = true
+			error = ''
 
-		const hasSiteAccess = [...server_members, ...site_collborators.map(({ user }) => user)].some((user) => user?.email === email)
-		if (hasSiteAccess) {
-			throw new Error('Collaborator already exists')
-		}
+			const hasSiteAccess = [...server_members, ...site_collborators.map(({ user }) => user)].some((user) => user?.email === email)
+			if (hasSiteAccess) {
+				error = 'Collaborator already exists'
+				throw new Error('Collaborator already exists')
+			}
 
-		const password = nanoid(30)
-		const user =
-			users.find((user) => user.email === email) ??
-			Users.create({
-				email,
-				password,
-				passwordConfirm: password,
-				invite: 'pending'
+			const password = nanoid(30)
+			const user =
+				users.find((user) => user.email === email) ??
+				Users.create({
+					email,
+					password,
+					passwordConfirm: password,
+					invite: 'pending'
+				})
+			SiteRoleAssignments.create({
+				site: site.id,
+				user: user.id,
+				role
 			})
-		SiteRoleAssignments.create({
-			site: site.id,
-			user: user.id,
-			role
-		})
 
-		await manager.commit()
-		email = ''
-		role = 'developer'
-		sending = false
+			await manager.commit()
+			email = ''
+			role = 'developer'
+		} catch (e) {
+			if (!error) error = 'Unexpected error'
+			throw e
+		} finally {
+			sending = false
+		}
+	}
+
+	async function generate_link() {
+		try {
+			const stillLoading = !users || !server_members || !site_collborators
+			if (stillLoading) {
+				error = 'Not ready'
+				throw new Error('Still loading')
+			}
+
+			generating = true
+			error = ''
+			link = ''
+			link_shown = false
+
+			const hasSiteAccess = [...server_members, ...site_collborators.map(({ user }) => user)].some((user) => user?.email === email)
+			if (hasSiteAccess) {
+				error = 'Collaborator already exists'
+				throw new Error('Collaborator already exists')
+			}
+
+			const user = users.find((user) => user.email === email)
+			if (user) {
+				SiteRoleAssignments.create({
+					site: site.id,
+					user: user.id,
+					role
+				})
+
+				await manager.commit()
+				email = ''
+				role = 'developer'
+				link = location.protocol + '//' + site.host + '/admin'
+				link_shown = true
+			} else {
+				const password = nanoid(30)
+				const user = Users.create({
+					email,
+					password,
+					passwordConfirm: password
+				})
+				SiteRoleAssignments.create({
+					site: site.id,
+					user: user.id,
+					role
+				})
+
+				await manager.commit()
+				email = ''
+				role = 'developer'
+
+				const response = await fetch(`${self.baseURL}/api/palacms/password-link`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${self.authStore.token}`
+					},
+					body: JSON.stringify({
+						site_id: site.id,
+						user_id: user.id
+					})
+				}).then((response) => {
+					if (!response.ok) {
+						error = 'Error generating link'
+						throw new Error('Non-ok response')
+					}
+					return response.json()
+				})
+				link = response.link
+				link_shown = true
+			}
+		} catch (e) {
+			if (!error) error = 'Unexpected error'
+			throw e
+		} finally {
+			generating = false
+		}
 	}
 
 	async function handle_role_assignment_delete() {
@@ -77,6 +169,28 @@
 		editor: 'Content Editor'
 	}
 </script>
+
+<AlertDialog.Root
+	bind:open={link_shown}
+	onOpenChange={(open) => {
+		if (!open) {
+			link = ''
+		}
+	}}
+>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Link to share</AlertDialog.Title>
+			<AlertDialog.Description>
+				Share the following link to invited user:
+				<pre class="link">{link}</pre>
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel>Done</AlertDialog.Cancel>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
 
 <AlertDialog.Root
 	bind:open={is_remove_collaborator_open}
@@ -118,25 +232,52 @@
 		<form
 			onsubmit={(e) => {
 				e.preventDefault()
-				invite_collaborator()
+
+				if (!(e.submitter instanceof HTMLButtonElement)) {
+					return
+				}
+
+				const method = e.submitter.value
+				if (method === 'email') {
+					invite_collaborator()
+				} else if (method === 'link') {
+					generate_link()
+				}
 			}}
 		>
 			<label class="subheading" for="email">Enter collaborator email</label>
 			<div>
 				<div class="input-group">
-					<input bind:value={email} type="email" placeholder="Email address" name="email" />
-					<select bind:value={role}>
+					<input bind:value={email} type="email" placeholder="Email address" name="email" required />
+					<select bind:value={role} required>
 						<option value="developer">Developer</option>
 						<option value="editor">Content Editor</option>
 					</select>
 				</div>
-				<button type="submit">
-					{#if sending}
+			</div>
+			<div>
+				{#if instance.smtp_enabled}
+					<button type="submit" value="email">
+						{#if sending}
+							<Icon icon="eos-icons:three-dots-loading" />
+						{:else}
+							Send invite
+						{/if}
+					</button>
+					<span>or</span>
+				{/if}
+				<button type="submit" value="link">
+					{#if generating}
 						<Icon icon="eos-icons:three-dots-loading" />
 					{:else}
-						Send invite
+						Generate link
 					{/if}
 				</button>
+				{#if error}
+					<output class="error">
+						{error}
+					</output>
+				{/if}
 			</div>
 		</form>
 		<section>
@@ -205,22 +346,31 @@
 	.subheading {
 		font-weight: 700;
 		font-size: 0.75rem;
-		margin-bottom: 0.5rem;
+	}
+	.link {
+		margin-top: 0.5rem;
+		padding: 1rem;
+		background-color: #1c1c1c;
+		white-space: pre-wrap;
+		word-break: break-all;
+		user-select: all;
 	}
 	form {
 		display: grid;
-		/* gap: 0.25rem; */
+		gap: 0.5rem;
 
 		div {
 			display: flex;
 			gap: 0.5rem;
 			font-size: 0.75rem;
+			align-items: center;
 
 			.input-group {
 				flex: 1;
 				border-radius: 4px;
 				border: 1px solid var(--color-gray-7);
 				color: var(--color-gray-2);
+				height: 2.5rem;
 			}
 
 			input {
@@ -240,6 +390,10 @@
 				padding: 10px 12px;
 				background: var(--color-gray-7);
 				border-radius: 4px;
+			}
+
+			.error {
+				color: #f72228;
 			}
 		}
 	}

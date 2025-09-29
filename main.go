@@ -29,6 +29,10 @@ func setup(pb *pocketbase.PocketBase) error {
 		return err
 	}
 
+	if err := internal.RegisterPasswordLinkEndpoint(pb); err != nil {
+		return err
+	}
+
 	if err := internal.RegisterInfoEndpoint(pb); err != nil {
 		return err
 	}

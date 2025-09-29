@@ -56,14 +56,17 @@ func RegisterInfoEndpoint(pb *pocketbase.PocketBase) error {
 
 			version := getVersion()
 			telemetryEnabled := isUsageStateEnabled()
+			smtpEnabled := pb.Settings().SMTP.Enabled
 			return requestEvent.JSON(200, struct {
 				Id               string `json:"id"`
 				Version          string `json:"version"`
 				TelemetryEnabled bool   `json:"telemetry_enabled"`
+				SMTPEnabled      bool   `json:"smtp_enabled"`
 			}{
 				Id:               id,
 				Version:          version,
 				TelemetryEnabled: telemetryEnabled,
+				SMTPEnabled:      smtpEnabled,
 			})
 		})
 

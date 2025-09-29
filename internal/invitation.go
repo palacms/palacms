@@ -11,8 +11,10 @@ import (
 
 func RegisterEmailInvitation(pb *pocketbase.PocketBase) error {
 	pb.OnRecordAfterCreateSuccess("site_role_assignments").BindFunc(func(event *core.RecordEvent) error {
-		if err := sendInvitation(event.App, event.Record); err != nil {
-			event.App.Logger().Error(err.Error())
+		if event.App.Settings().SMTP.Enabled {
+			if err := sendInvitation(event.App, event.Record); err != nil {
+				event.App.Logger().Error(err.Error())
+			}
 		}
 		return event.Next()
 	})
