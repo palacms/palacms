@@ -163,11 +163,6 @@
 						<li>
 							<span class="letter">{user?.email[0]}</span>
 							<span class="email">{user?.email}</span>
-							{#if user?.invite === 'pending'}
-								<span class="status-pill pending">Invitation pending</span>
-							{:else if user?.invite === 'sent'}
-								<span class="status-pill sent">Invitation sent</span>
-							{/if}
 							<span class="role">
 								{role_names[assignment.role]}
 							</span>
