@@ -1,9 +1,13 @@
 <script lang="ts">
-	import type { SiteRoleAssignment } from '$lib/common/models/SiteRoleAssignment'
+	import { SiteRoleAssignment } from '$lib/common/models/SiteRoleAssignment'
+	import type { User } from '$lib/common/models/User'
+	import * as AlertDialog from '$lib/components/ui/alert-dialog'
+	import { Button } from '$lib/components/ui/button'
 	import * as Dialog from '$lib/components/ui/dialog'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { manager, SiteRoleAssignments, Users, type Sites } from '$lib/pocketbase/collections'
 	import Icon from '@iconify/svelte'
+	import { Loader } from 'lucide-svelte'
 	import { nanoid } from 'nanoid'
 
 	let { site }: { site: ObjectOf<typeof Sites> } = $props()
@@ -46,20 +50,65 @@
 		sending = false
 	}
 
+	async function handle_role_assignment_delete() {
+		if (!collaborator_to_remove) return
+		removing_collaborator = true
+		SiteRoleAssignments.delete(collaborator_to_remove.assignment.id)
+		await manager.commit()
+		is_remove_collaborator_open = false
+		removing_collaborator = false
+		collaborator_to_remove = undefined
+	}
+
 	let users = $derived(Users.list())
 	let server_members = $derived(users?.filter(({ serverRole }) => !!serverRole))
 	let site_collborators = $derived(
 		site.role_assignments()?.map((assignment) => ({
 			assignment,
-			user: users?.find((user) => user.id === assignment.user)
+			user: users?.find((user) => user.id === assignment.user)!
 		}))
 	)
+	let is_remove_collaborator_open = $state(false)
+	let removing_collaborator = $state(false)
+	let collaborator_to_remove = $state<{ user: User; assignment: SiteRoleAssignment }>()
 
 	const role_names = {
 		developer: 'Developer',
 		editor: 'Content Editor'
 	}
 </script>
+
+<AlertDialog.Root
+	bind:open={is_remove_collaborator_open}
+	onOpenChange={(open) => {
+		if (!open) {
+			removing_collaborator = false
+			collaborator_to_remove = undefined
+		}
+	}}
+>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Are you sure?</AlertDialog.Title>
+			<AlertDialog.Description>
+				You are about to remove collaborator <strong>{collaborator_to_remove?.user.email}</strong>
+				from the site.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+			<AlertDialog.Action onclick={handle_role_assignment_delete} class="bg-red-600 hover:bg-red-700">
+				{#if removing_collaborator}
+					<div class="animate-spin absolute">
+						<Loader />
+					</div>
+				{:else}
+					Remove {collaborator_to_remove?.user.email}
+				{/if}
+			</AlertDialog.Action>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
 
 <Dialog.Header class="mb-2" title="Site Collaborators" />
 
@@ -103,6 +152,11 @@
 							<span class="role">
 								{role_names[serverRole ?? 'none']}
 							</span>
+							<span class="remove-action" title="User with a server role cannot be removed from the site">
+								<Button type="button" variant="destructive" disabled>
+									<Icon icon="ion:trash" />
+								</Button>
+							</span>
 						</li>
 					{/each}
 					{#each site_collborators ?? [] as { user, assignment }}
@@ -116,6 +170,18 @@
 							{/if}
 							<span class="role">
 								{role_names[assignment.role]}
+							</span>
+							<span class="remove-action" title="Remove the site collaborator">
+								<Button
+									type="button"
+									variant="destructive"
+									onclick={() => {
+										collaborator_to_remove = { user, assignment }
+										is_remove_collaborator_open = true
+									}}
+								>
+									<Icon icon="ion:trash" />
+								</Button>
 							</span>
 						</li>
 					{/each}
