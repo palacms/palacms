@@ -21,12 +21,14 @@ export type ListOptions = {
 export type CollectionMappingOptions<T extends ObjectWithId> = {
 	instance?: PocketBase
 	links?: Record<string, (this: MappedObject<T, { links: {} }>) => unknown>
-}
 
-export type StagedOperation<T extends ObjectWithId> =
-	| { operation: 'create'; processed: boolean; data: Omit<T, 'id'> }
-	| { operation: 'update'; processed: boolean; data: Partial<T> }
-	| { operation: 'delete'; processed: boolean }
+	/**
+	 * Whether to enable real-time updates for the collection.
+	 *
+	 * @default false
+	 */
+	subscribe?: boolean
+}
 
 export type CollectionMapping<T extends ObjectWithId, Options extends CollectionMappingOptions<T>> = {
 	one: (id: string) => MappedObject<T, Options> | undefined | null
@@ -54,6 +56,23 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 	const collection = instance.collection(name)
 	const { changes, records, lists } = manager
 
+	if (options?.subscribe) {
+		collection.subscribe('*', (data) => {
+			const operation = data.action as 'create' | 'update' | 'delete'
+			const values = data.record
+			const id = values.id
+			const existingChange = changes.get(id)
+			if (operation === 'update' && existingChange && existingChange.operation === 'update' && !existingChange.committed) {
+				// Ignore remote change. Local change will overwrite it.
+				return
+			} else {
+				// Reset position of the change to place it the last
+				changes.delete(id)
+				changes.set(id, { collection, operation, committed: true, data: values })
+			}
+		})
+	}
+
 	const mapObject = (record: unknown): MappedObject<T, Options> => {
 		const object = model.parse(record)
 		const links = Object.fromEntries(
@@ -65,7 +84,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 	const collectionMapping: CollectionMapping<T, Options> = {
 		one: (id) => {
 			const change = changes.get(id)
-			let data = records.get(id)
+			let { data } = records.get(id) ?? {}
 
 			if (change && change.operation === 'delete') {
 				return undefined
@@ -80,7 +99,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 							collection
 								.getOne(id)
 								.then((record) => {
-									records.set(id, record as unknown as T)
+									records.set(id, { data: record })
 								})
 								.catch((error) => {
 									console.error(error)
@@ -116,7 +135,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 							.then((fetchedRecords) => {
 								// Store the full records
 								fetchedRecords.forEach((record) => {
-									records.set(record.id, record as unknown as T)
+									records.set(record.id, { data: record })
 								})
 								// Store the list of IDs
 								lists.set(listId, { invalidated: false, ids: fetchedRecords.map(({ id }) => id) })
@@ -209,7 +228,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 				changes.set(id, change)
 			}
 
-			let data = records.get(id)
+			let { data } = records.get(id) ?? {}
 			data = Object.assign({}, data, change.data)
 			return mapObject(data)
 		},
@@ -226,7 +245,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 		},
 		authWithPassword: async (usernameOrEmail, password) => {
 			const response = await collection.authWithPassword(usernameOrEmail, password)
-			records.set(response.record.id, response.record as unknown as T)
+			records.set(response.record.id, { data: response.record })
 
 			// Clear loaded data because authorization has been updated.
 			lists.clear()
