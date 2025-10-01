@@ -78,6 +78,10 @@
 		position: relative;
 		border: 1px solid var(--color-gray-8);
 		border-radius: 2rem;
+
+		&:focus {
+			outline-color: var(--pala-primary-color);
+		}
 	}
 
 	.half {
@@ -95,10 +99,6 @@
 
 		&:first-child {
 			border-right: 0;
-		}
-
-		&:focus-visible {
-			outline: 1px solid var(--pala-primary-color);
 		}
 
 		&.active {

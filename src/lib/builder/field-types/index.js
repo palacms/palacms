@@ -1,6 +1,7 @@
 import Number from './Number.svelte'
 import ImageField from './ImageField.svelte'
 import Markdown from './Markdown.svelte'
+import RichText from './RichText.svelte'
 import Switch from './Switch.svelte'
 import URL from './URL.svelte'
 import Link from './Link.svelte'
@@ -40,6 +41,12 @@ export default [
 		component: TextField
 	},
 	{
+		id: 'rich-text',
+		icon: 'material-symbols:format-paragraph-rounded',
+		label: 'Rich Text',
+		component: RichText
+	},
+	{
 		id: 'markdown',
 		icon: 'material-symbols:markdown',
 		label: 'Markdown',
@@ -62,13 +69,6 @@ export default [
 		icon: 'fa6-solid:icons',
 		label: 'Icon',
 		component: IconField
-	},
-
-	{
-		id: 'number',
-		icon: 'formkit:number',
-		label: 'Number',
-		component: Number
 	},
 	{
 		id: 'url',
@@ -110,6 +110,12 @@ export default [
 		icon: 'iconoir:multiple-pages',
 		label: 'Page List',
 		component: PageList
+	},
+	{
+		id: 'number',
+		icon: 'formkit:number',
+		label: 'Number',
+		component: Number
 	},
 	{
 		id: 'slider',

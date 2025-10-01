@@ -2,12 +2,6 @@ import * as _ from 'lodash-es'
 import { v4 as uuidv4 } from 'uuid'
 import { createUniqueID } from '$lib/builder/utilities'
 import { get_empty_value } from '$lib/builder/utils'
-// idk what's going on here, check later
-// import showdown from '$lib/builder/libraries/showdown/showdown.min.js'
-// import showdownHighlight from 'showdown-highlight'
-// export const converter = new showdown.Converter({
-// 	extensions: [showdownHighlight()]
-// })
 
 const Field = (field) => {
 	if (field.type === 'content') {
@@ -180,10 +174,7 @@ export function validate_site_structure_v2(site) {
 			],
 			content: {
 				en: {
-					content: {
-						markdown: '# This is a content block',
-						html: '<h1>This is a content block</h1>'
-					}
+					content: '# This is a content block'
 				}
 			},
 			_old_id: null
@@ -227,12 +218,9 @@ export function validate_site_structure_v2(site) {
 		} else if (section.type === 'content') {
 			symbol = symbols.at(-1)
 			content = Object.entries(site.content).reduce((accumulator, [locale, value]) => {
-				const html = value?.[page.url]?.[section.id]
+				const markdown = value?.[page.url]?.[section.id] ?? ''
 				accumulator[locale] = {
-					content: {
-						html,
-						markdown: html
-					}
+					content: markdown
 				}
 				return accumulator
 			}, {})

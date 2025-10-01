@@ -130,10 +130,7 @@ export function validate_site_structure_v2(data) {
 			],
 			content: {
 				en: {
-					content: {
-						markdown: '# This is a content block',
-						html: '<h1>This is a content block</h1>'
-					}
+					content: '# This is a content block'
 				}
 			},
 			_old_id: null
@@ -154,12 +151,9 @@ export function validate_site_structure_v2(data) {
 		} else if (section.type === 'content') {
 			symbol = symbols.at(-1)
 			content = Object.entries(site.content).reduce((accumulator, [locale, value]) => {
-				const html = value?.[page.url]?.[section.id]
+				const markdown = value?.[page.url]?.[section.id] ?? ''
 				accumulator[locale] = {
-					content: {
-						html,
-						markdown: html
-					}
+					content: markdown
 				}
 				return accumulator
 			}, {})

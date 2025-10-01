@@ -1,5 +1,9 @@
 import * as _ from 'lodash-es'
 import { customAlphabet } from 'nanoid/non-secure'
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js' // https://highlightjs.org
+import { generateHTML } from '@tiptap/core'
+import { rich_text_extensions } from '$lib/builder/rich-text/extensions'
 
 import { processors } from './component.js'
 
@@ -29,17 +33,17 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 	return res
 }
 
-const cssCache = new Map()
+const css_cache = new Map()
 let requesting = new Set()
 export async function processCSS(raw) {
-	if (cssCache.has(raw)) {
-		return cssCache.get(raw)
+	if (css_cache.has(raw)) {
+		return css_cache.get(raw)
 	} else if (requesting.has(raw)) {
 		await new Promise((resolve) => {
 			setTimeout(resolve, 200)
 		})
-		if (cssCache.has(raw)) {
-			return cssCache.get(raw)
+		if (css_cache.has(raw)) {
+			return css_cache.get(raw)
 		}
 	}
 
@@ -56,7 +60,7 @@ export async function processCSS(raw) {
 		console.log('CSS Error:', res.error)
 		return raw
 	} else if (res.css) {
-		cssCache.set(raw, res.css)
+		css_cache.set(raw, res.css)
 		requesting.delete(raw)
 		return res.css
 	}
@@ -85,7 +89,12 @@ export function get_empty_value(field) {
 			size: null
 		}
 	else if (field.type === 'text') return ''
-	else if (field.type === 'markdown') return { html: '', markdown: '' }
+	else if (field.type === 'markdown') return ''
+	else if (field.type === 'rich-text')
+		return {
+			type: 'doc',
+			content: [{ type: 'paragraph' }]
+		}
 	else if (field.type === 'link')
 		return {
 			label: '',
@@ -102,37 +111,50 @@ export function get_empty_value(field) {
 		return ''
 	}
 }
+let markdown_renderer
+function get_markdown_renderer() {
+	if (!markdown_renderer) {
+		markdown_renderer = new MarkdownIt({
+			html: true,
+			linkify: true,
+			typographer: true,
+			highlight: function (str, lang) {
+				if (lang && hljs.getLanguage(lang)) {
+					try {
+						return '<pre><code class="hljs">' + hljs.highlight(str, { language: lang, ignoreIllegals: true }).value + '</code></pre>'
+					} catch (__) {}
+				}
 
-let converter, showdown, showdown_highlight
-export async function convert_html_to_markdown(html) {
-	if (converter) {
-		return converter.makeMarkdown(html)
-	} else {
-		const modules = await Promise.all([import('showdown'), import('showdown-highlight')])
-		showdown = modules[0].default
-		showdown_highlight = modules[1].default
-		converter = new showdown.Converter({
-			simpleLineBreaks: true,
-			backslashEscapesHTMLTags: true,
-			extensions: [showdown_highlight()]
+				return '<pre><code class="hljs">' + markdown_renderer.utils.escapeHtml(str) + '</code></pre>'
+			}
 		})
-		return converter.makeMarkdown(html)
+	}
+	return markdown_renderer
+}
+
+const markdown_cache = new Map()
+export function convert_markdown_to_html(markdown = '') {
+	if (markdown_cache.has(markdown)) return markdown_cache.get(markdown)
+	try {
+		const html = get_markdown_renderer().render(markdown)
+		markdown_cache.set(markdown, html)
+		return html
+	} catch (error) {
+		console.error('Failed to convert markdown to html', error)
+		return ''
 	}
 }
 
-export async function convert_markdown_to_html(markdown) {
-	if (converter) {
-		return converter.makeHtml(markdown)
-	} else {
-		const modules = await Promise.all([import('showdown'), import('showdown-highlight')])
-		showdown = modules[0].default
-		showdown_highlight = modules[1].default
-		converter = new showdown.Converter({
-			simpleLineBreaks: true,
-			backslashEscapesHTMLTags: true,
-			extensions: [showdown_highlight()]
-		})
-		return converter.makeHtml(markdown)
+const rich_text_cache = new Map()
+export function convert_rich_text_to_html(tiptap_obj) {
+	if (rich_text_cache.has(tiptap_obj)) return rich_text_cache.get(tiptap_obj)
+	try {
+		const html = generateHTML(tiptap_obj, rich_text_extensions)
+		rich_text_cache.set(tiptap_obj, html)
+		return html
+	} catch (error) {
+		console.error('Failed to render rich text content', error)
+		return ''
 	}
 }
 

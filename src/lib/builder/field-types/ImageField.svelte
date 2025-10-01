@@ -4,13 +4,22 @@
 	import TextInput from '../ui/TextInput.svelte'
 	import Spinner from '../ui/Spinner.svelte'
 	import imageCompression from 'browser-image-compression'
-	import type { Entity } from '$lib/Content.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 	import { LibraryUploads, SiteUploads } from '$lib/pocketbase/collections'
 	import { site_context } from '../stores/context'
 	import { self } from '$lib/pocketbase/PocketBase'
+
+	const {
+		field,
+		entry: passedEntry,
+		onchange
+	}: {
+		field: Field
+		entry?: Entry
+		onchange: FieldValueHandler
+	} = $props()
 
 	type ImageFieldValue = {
 		alt: string
@@ -23,17 +32,6 @@
 		url: '',
 		upload: null
 	}
-
-	const {
-		field,
-		entry: passedEntry,
-		onchange
-	}: {
-		entity: Entity
-		field: Field
-		entry?: Entry
-		onchange: FieldValueHandler
-	} = $props()
 
 	const entry = $derived(passedEntry || { value: default_value }) as Omit<Entry, 'value'> & { value: ImageFieldValue }
 	const { value: site } = site_context.getOr({ value: null })
@@ -131,6 +129,9 @@
 				oninput={(value) => {
 					onchange({ [field.key]: { 0: { value: { ...entry.value, url: value, upload: undefined } } } })
 				}}
+				onchange={(value) => {
+					onchange({ [field.key]: { 0: { value: { ...entry.value, url: value, upload: undefined } } } })
+				}}
 			/>
 		</div>
 	</div>
@@ -168,7 +169,6 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			padding: 3rem;
 		}
 	}
 	input {

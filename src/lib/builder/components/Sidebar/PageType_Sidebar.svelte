@@ -165,7 +165,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] h-[calc(100vh_-_1rem)] flex flex-col p-4">
+	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] max-w-none h-[calc(100vh_-_1rem)] flex flex-col p-4">
 		<BlockEditor
 			block={active_block}
 			bind:has_unsaved_changes={editing_block_has_unsaved_changes}
@@ -200,7 +200,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] h-[calc(100vh_-_1rem)] flex flex-col p-4">
+	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] max-w-none h-[calc(100vh_-_1rem)] flex flex-col p-4">
 		<BlockEditor
 			bind:has_unsaved_changes={creating_block_has_unsaved_changes}
 			header={{
@@ -223,7 +223,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] h-[calc(100vh_-_1rem)] flex flex-col p-4">
+	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] max-w-none h-[calc(100vh_-_1rem)] flex flex-col p-4">
 		<BlockPicker
 			{site}
 			onsave={async (blocks) => {

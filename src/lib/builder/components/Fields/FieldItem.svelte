@@ -194,7 +194,7 @@
 
 		// Markdown patterns
 		if (/\b(markdown|md|rich|formatted|wysiwyg|content|body|description|bio|about|summary|details)\b/.test(combined)) {
-			return /\b(markdown|md)\b/.test(combined) ? 'markdown' : 'text'
+			return /\b(markdown|md)\b/.test(combined) ? 'markdown' : 'rich-text'
 		}
 
 		// Info/Help patterns

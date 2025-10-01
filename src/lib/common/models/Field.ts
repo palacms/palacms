@@ -3,6 +3,7 @@ import { RepeaterField } from './fields/RepeaterField'
 import { GroupField } from './fields/GroupField'
 import { TextField } from './fields/TextField'
 import { MarkdownField } from './fields/MarkdownField'
+import { RichTextField } from './fields/RichTextField'
 import { LinkField } from './fields/LinkField'
 import { ImageField } from './fields/ImageField'
 import { IconField } from './fields/IconField'
@@ -22,6 +23,7 @@ export const Field = z.discriminatedUnion('type', [
 	GroupField,
 	TextField,
 	MarkdownField,
+	RichTextField,
 	LinkField,
 	ImageField,
 	IconField,
