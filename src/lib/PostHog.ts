@@ -3,16 +3,12 @@ import posthog from 'posthog-js/dist/module.no-external'
 import 'posthog-js/dist/exception-autocapture'
 import 'posthog-js/dist/tracing-headers'
 import 'posthog-js/dist/web-vitals'
-
-type InstanceInfo = { id: string; version: string; telemetry_enabled: boolean }
+import { instance } from './instance'
 
 const POSTHOG_KEY = 'phc_uh5ILOgLhZ4Pg5KLdrzTmiuZNLwsQeihA1Af1rTqNK1'
 const POSTHOG_HOST = 'https://us.i.posthog.com'
 
-export let instance: InstanceInfo
-
 export const initialized = (async () => {
-	instance = await fetch(new URL('/api/palacms/info', self.baseURL)).then((res) => res.json())
 	if (!instance.telemetry_enabled) {
 		return
 	}

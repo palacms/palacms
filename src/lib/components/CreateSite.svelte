@@ -517,35 +517,42 @@
 
 		return site
 	}
-	// Clone the selected starter, copy optional blocks, and commit once.
-	// Calls oncreated() when finished.
+
+	// Clone the selected starter
 	async function create_site() {
 		if (!selected_starter_id) return
 		loading = true
 		try {
 			if (selected_starter_source === 'local') {
 				await cloneSite.run()
-				// Find the created site for this host
-				const created_sites = Sites.list({ filter: { host: pageState.url.host } }) ?? []
-				const created_site = created_sites.find((s) => s.name === site_name) ?? created_sites[0]
-				if (created_site) {
-					await copy_selected_blocks_to_site(created_site.id)
-					await manager.commit()
-				}
-				oncreated?.()
 			} else {
 				const group_id = site_group?.id ?? SiteGroups.create({ name: 'Default', index: 0 }).id
-				const site = await clone_marketplace_starter(selected_starter_id, site_name, pageState.url.host, group_id)
-				await copy_selected_blocks_to_site(site.id)
-				await manager.commit()
-				oncreated?.()
+				await clone_marketplace_starter(selected_starter_id, site_name, pageState.url.host, group_id)
 			}
 		} catch (e) {
 			console.error(e)
-		} finally {
-			loading = false
 		}
 	}
+
+	// Find the created site for this host
+	const created_sites = $derived(Sites.list({ filter: { host: pageState.url.host } }) ?? [])
+	const created_site = $derived(created_sites.find((s) => s.name === site_name) ?? created_sites[0])
+
+	// Finalize created site: copy optional blocks, and commit once.
+	// Calls oncreated() when finished.
+	let finalized = false
+	$effect(() => {
+		if (!finalized && created_site) {
+			finalized = true
+			copy_selected_blocks_to_site(created_site.id)
+				.then(() => manager.commit())
+				.then(() => oncreated?.())
+				.catch((e) => console.error(e))
+				.finally(() => {
+					loading = false
+				})
+		}
+	})
 </script>
 
 <div class="max-w-[1400px] h-screen px-2 flex flex-col mx-auto">
