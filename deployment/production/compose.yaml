@@ -8,8 +8,6 @@ services:
       - palacms-data:/app/pb_data
     networks:
       traefik-public: null
-    extra_hosts:
-      - mail.pala.dev=host-gateway
     labels:
       - traefik.docker.network=traefik-public
       - traefik.enable=true
