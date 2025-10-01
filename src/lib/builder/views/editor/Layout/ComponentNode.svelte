@@ -7,21 +7,14 @@
 	import LinkField from '$lib/builder/field-types/Link.svelte'
 	import VideoModal from '$lib/builder/views/modal/VideoModal.svelte'
 	import Icon from '@iconify/svelte'
-	import Typography from '@tiptap/extension-typography'
-	import StarterKit from '@tiptap/starter-kit'
-	import Image from '@tiptap/extension-image'
-	import Youtube from '@tiptap/extension-youtube'
-	import Highlight from '@tiptap/extension-highlight'
-	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-	import Link from '@tiptap/extension-link'
-	import { all, createLowlight } from 'lowlight'
 	import { tick, createEventDispatcher } from 'svelte'
 	import { createUniqueID } from '$lib/builder/utils'
 	import { processCode, compare_urls } from '$lib/builder/utils'
 	import { hovering_outside } from '$lib/builder/utilities'
 	import { locale } from '$lib/builder/stores/app/misc'
 	import { site_html } from '$lib/builder/stores/app/page'
-	import MarkdownButton from './MarkdownButton.svelte'
+	import RichTextButton from './RichTextButton.svelte'
+	import ImageOverlay from '$lib/builder/components/ImageEditorOverlay.svelte'
 	import { watch } from 'runed'
 	import { component_iframe_srcdoc } from '$lib/builder/components/misc'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
@@ -29,67 +22,62 @@
 	import { self } from '$lib/pocketbase/PocketBase'
 	import { site_context } from '$lib/builder/stores/context'
 	import { Editor, Extension } from '@tiptap/core'
-	import { renderToHTMLString, renderToMarkdown } from '@tiptap/static-renderer'
+	import { rich_text_extensions } from '$lib/builder/rich-text/extensions'
+	import MarkdownCodeMirror from '$lib/builder/components/CodeEditor/MarkdownCodeMirror.svelte'
+	import { convert_markdown_to_html, convert_rich_text_to_html } from '$lib/builder/utils'
 	import { useContent } from '$lib/Content.svelte'
 	import { build_live_page_url } from '$lib/pages'
 
-	const lowlight = createLowlight(all)
+	const { value: site } = site_context.getOr({ value: null })
 
 	const dispatch = createEventDispatcher()
 
-	// Define extensions for both the editor and static HTML generation
-	const tiptapExtensions = [
-		StarterKit.configure({
-			codeBlock: false, // Disable default codeBlock as we're using CodeBlockLowlight
-			link: false // Disable default link as we're using custom Link configuration
-		}),
-		Image,
-		Youtube.configure({
-			modestBranding: true
-		}),
-		Typography,
-		CodeBlockLowlight.configure({
-			lowlight
-		}),
-		Link.configure({
-			HTMLAttributes: {
-				'data-tiptap-link': 'true'
-			},
-			openOnClick: false
-		}),
-		Highlight.configure({ multicolor: false })
-	]
-
 	let { block, section }: { block: ObjectOf<typeof SiteSymbols>; section: ObjectOf<typeof PageTypeSections> | ObjectOf<typeof PageSections> } = $props()
 
-	let node = $state()
+	let node = $state() as HTMLIFrameElement
 
 	const fields = $derived(block.fields())
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
 	const data = $derived(useContent(section, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
 
-	let floating_menu = $state()
-	let bubble_menu = $state()
-	let image_editor = $state()
-	let image_editor_is_visible = $state(false)
-	const { value: site } = site_context.getOr({ value: null })
+	let bubble_menu_state = $state({ visible: false, top: 0, left: 0 })
+	let floating_menu_state = $state({ visible: false, top: 0, left: 0 })
 
-	let link_editor_is_visible = $state(false)
+	let image_overlay_is_visible = $state(false)
+	let image_editor = $state<HTMLElement>()
+	let image_editor_element = $state<HTMLImageElement | null>(null)
 
-	let active_editor = $state()
+	async function attach_image_overlay(element, id: string | null = null) {
+		image_editor_element = element
+		image_overlay_is_visible = true
+		current_image_id = id // Store the ID for later use
+	}
+
+	let editing_markdown = $state(false)
+	let current_markdown_entry_id = $state<string>()
+	let current_markdown_value = $state<string>()
+	const markdown_elements = new Map<string, HTMLElement>()
+
+	let active_editor = $state<Editor>()
 	let formatting_state = $state({
 		bold: false,
 		italic: false,
 		highlight: false
 	})
 
-	// Store editor instances by markdown ID so we can access them later
-	let markdown_editors = new Map()
+	// Store editor instances by rich-text ID so we can access them later
+	let rich_text_editors = new Map<string, Editor>()
+	const rich_text_classes = {}
 
 	// Keep markdown locked when blur is caused by clicking editor UI buttons
 	let suppress_blur_unlock = $state(false)
-	let suppress_timer: any
+	let suppress_timer: ReturnType<typeof setTimeout>
+
+	// Event listener cleanup
+	let event_listeners = new Map<string, () => void>()
+	let window_message_handler: ((event: MessageEvent) => void) | null = null
+	let doc_event_listeners = new Map<string, () => void>()
 
 	let error = $state('')
 
@@ -116,12 +104,10 @@
 		}
 	}
 
-	let scrolling = false
 	let is_editing = $state(false)
 	$inspect({ is_editing })
 
-	const markdown_classes = {}
-	let field_save_timeout
+	let field_save_timeout: ReturnType<typeof setTimeout>
 
 	function handle_lock() {
 		is_editing = true
@@ -142,27 +128,31 @@
 		}
 	}
 
+	// Helper function to clean up event listeners
+	function cleanup_event_listeners() {
+		// Clean up all stored event listeners
+		event_listeners.forEach((cleanup) => cleanup())
+		event_listeners.clear()
+
+		// Clean up doc event listeners
+		doc_event_listeners.forEach((cleanup) => cleanup())
+		doc_event_listeners.clear()
+	}
+
 	async function make_content_editable() {
-		if (!node?.contentDocument) return
+		if (!node?.contentDocument || !entries || !fields) return
 
-		const doc = node.contentDocument
-		const valid_elements = Array.from(doc.querySelectorAll(`img, a, p, span, h1, h2, h3, h4, h5, h6, div`)).filter((element) => {
-			const [child_node] = Array.from(element.childNodes).filter((node) => {
-				const has_text = node?.nodeName === '#text' && node.nodeValue.trim().length > 0
-				return has_text
-			})
+		// Clean up previous event listeners before adding new ones
+		cleanup_event_listeners()
 
-			const html = element?.innerHTML?.trim() || ''
-
-			if (html || child_node || element.tagName === 'IMG' || element.tagName === 'A') {
-				return true
-			}
-		})
+		const valid_elements: HTMLElement[] = Array.from(node.contentDocument.querySelectorAll(`img, a, p, span, h1, h2, h3, h4, h5, h6, div`)).filter(
+			(el): el is HTMLElement => el.tagName === 'IMG' || !!el.textContent?.trim()
+		)
 
 		// loop over component_data and match to elements
 		const assigned_entry_ids = new Set() // elements that have been matched to a field ID
 
-		const static_field_types = ['text', 'link', 'image', 'markdown']
+		const static_field_types = ['text', 'link', 'image', 'markdown', 'rich-text']
 		const static_fields = fields.filter((f) => static_field_types.includes(f.type)) ?? []
 
 		for (const field of static_fields) {
@@ -172,13 +162,12 @@
 					id: entry.id,
 					key: field.key,
 					value: entry.value,
-					type: field.type,
-					config: field.config
+					type: field.type
 				})
 			}
 		}
 
-		function search_elements_for_value({ id, key, value, type, options = {} }) {
+		function search_elements_for_value({ id, key, value, type }) {
 			for (const element of valid_elements) {
 				if (element.dataset['entry']) continue // element is already tagged, skip
 
@@ -187,8 +176,7 @@
 					key,
 					value,
 					type,
-					element,
-					options
+					element
 				})
 				if (matched) {
 					assigned_entry_ids.add(id)
@@ -197,21 +185,24 @@
 			}
 		}
 
-		function match_value_to_element({ id, element, key, value, type, options = {} }) {
-			// if (value === '' || !value) return false
-
-			// ignore element
+		function match_value_to_element({ id, element, key, value, type }) {
+			// ignore element (user override)
 			if (element.dataset.key === '') {
 				return false
 			}
 
+			// skip empty element
+			if (type !== 'image' && !element.textContent.trim()) return false
+
 			// Match by explicitly set key
 			const key_matches = element.dataset.key === key
 			if (key_matches) {
-				if (type === 'markdown') {
-					set_editable_markdown({ element, key, id })
+				if (type === 'rich-text') {
+					set_editable_rich_text({ element, id, value })
+				} else if (type === 'markdown') {
+					set_editable_markdown({ element, id, value })
 				} else if (type === 'image') {
-					set_editable_image({ element, id, options })
+					set_editable_image({ element, id })
 				} else if (type === 'link') {
 					set_editable_link({ element, id, url: value.url })
 				} else {
@@ -225,22 +216,28 @@
 				const external_url_matches = value.url?.replace(/\/$/, '') === element.href?.replace(/\/$/, '')
 				const internal_url_matches = window.location.origin + value.url?.replace(/\/$/, '') === element.href?.replace(/\/$/, '')
 				const link_matches = (external_url_matches || internal_url_matches) && value.label === element.innerText
-
 				if (link_matches) {
-					set_editable_link({ element, id, key, url: value.url })
+					set_editable_link({ element, id, url: value.url })
 					return true
 				}
 			} else if (type === 'image' && element.nodeName === 'IMG') {
 				const image_matches = compare_urls(value.url, element.src)
 				if (image_matches) {
-					set_editable_image({ element, id, options })
+					set_editable_image({ element, id })
+					return true
+				}
+			} else if (type === 'rich-text' && element.nodeName === 'DIV') {
+				const existing_html = element.innerHTML.trim().replace(/<!---->/g, '') // remove svelte hydration markers
+				const candidate_html = convert_rich_text_to_html(value)
+				if (existing_html === candidate_html) {
+					set_editable_rich_text({ element, id, value })
 					return true
 				}
 			} else if (type === 'markdown' && element.nodeName === 'DIV') {
-				const html = element.innerHTML?.trim()
-				const html_matches = html === value.html
-				if (html_matches && html.length > 0) {
-					set_editable_markdown({ element, key, id })
+				const existing_html = element.innerHTML.trim()
+				const candidate_html = convert_markdown_to_html(value).trim()
+				if (existing_html === candidate_html) {
+					set_editable_markdown({ id, element, value })
 					return true
 				}
 			} else if (type === 'text') {
@@ -255,25 +252,25 @@
 			}
 		}
 
-		async function set_editable_markdown({ id, key, element }) {
-			const html = element.innerHTML.trim()
+		async function set_editable_rich_text({ id, element, value }) {
 			element.innerHTML = ''
+			element.setAttribute('data-entry', id)
 
-			// move element classes to tiptap div
-			const markdown_id = element.getAttribute('data-markdown-id') || createUniqueID()
-			let saved_markdown_classes = markdown_classes[markdown_id]
-			if (!saved_markdown_classes) {
-				markdown_classes[markdown_id] = element.className
-				saved_markdown_classes = markdown_classes[markdown_id]
+			// move element classes to tiptap div to maintain styling
+			const rich_text_id = element.getAttribute('data-rich-text-id') || createUniqueID()
+			let saved_rich_text_classes = rich_text_classes[rich_text_id]
+			if (!saved_rich_text_classes) {
+				rich_text_classes[rich_text_id] = element.className
+				saved_rich_text_classes = rich_text_classes[rich_text_id]
 				element.classList.remove(...element.classList)
-				element.setAttribute('data-markdown-id', markdown_id) // necessary since data-markdown-id gets cleared when hydrating (i.e. editing from fields)
+				element.setAttribute('data-rich-text-id', rich_text_id) // necessary since data attribute gets cleared when hydrating (i.e. editing from fields)
 			}
 
 			const editor = new Editor({
-				content: html,
+				content: value,
 				element,
 				extensions: [
-					...tiptapExtensions,
+					...rich_text_extensions,
 					Extension.create({
 						onFocus() {
 							active_editor = editor
@@ -283,6 +280,8 @@
 						},
 						onSelectionUpdate() {
 							update_formatting_state()
+							// Update menu positions when selection changes
+							update_menu_positions()
 						},
 						onBlur: async ({ event }) => {
 							// Only unlock when blur wasn't caused by clicking editor UI
@@ -292,18 +291,10 @@
 							// Final save on blur
 							clearTimeout(field_save_timeout)
 							const json = editor.getJSON()
-							const html = renderToHTMLString({
-								extensions: tiptapExtensions,
-								content: json
-							})
-							const markdown = renderToMarkdown({
-								extensions: tiptapExtensions,
-								content: json
-							})
-							save_edited_value({ id, value: { html, markdown } })
+							save_edited_value({ id, value: json })
 							setTimeout(() => {
 								// Hide floating menu on blur, timeout so click registers first
-								if (floating_menu) floating_menu.style.display = 'none'
+								hide_menus()
 							}, 100)
 						},
 						onUpdate: async ({ editor }) => {
@@ -311,72 +302,103 @@
 							clearTimeout(field_save_timeout)
 							field_save_timeout = setTimeout(async () => {
 								const json = editor.getJSON()
-								const html = renderToHTMLString({
-									extensions: tiptapExtensions,
-									content: json
-								})
-								const markdown = renderToMarkdown({
-									extensions: tiptapExtensions,
-									content: json
-								})
-								save_edited_value({ id, value: { html, markdown } })
+								save_edited_value({ id, value: json })
 							}, 200)
 						}
 					})
 				],
 				editorProps: {
 					attributes: {
-						class: saved_markdown_classes,
-						'data-markdown-id': markdown_id
+						class: saved_rich_text_classes,
+						'data-rich-text-id': rich_text_id
+					},
+					handleDOMEvents: {
+						click: (view, event) => {
+							const target = event.target as HTMLElement
+
+							if (target.tagName === 'A') {
+								event.preventDefault()
+
+								// Get the position of the clicked link
+								const pos = view.posAtDOM(target, 0)
+								const resolved = view.state.doc.resolve(pos)
+								const linkMark = resolved.marks().find((mark) => mark.type.name === 'link')
+
+								if (linkMark) {
+									// Extract link data
+									const href = linkMark.attrs.href || ''
+									const text = target.textContent || ''
+
+									current_link_value = {
+										url: href,
+										label: text,
+										active: true
+									}
+									current_link_position = { from: pos, to: pos + text.length }
+									current_link_entry_id = null // No entry for TipTap links
+									current_link_element = target as HTMLLinkElement
+									editing_existing_link = true
+									editing_link = true
+									return true
+								}
+							}
+
+							return false
+						},
+						mouseover: (view, event) => {
+							const target = event.target as HTMLElement
+							if (target.tagName === 'IMG') {
+								const src = target.getAttribute('src') || ''
+								const alt = target.getAttribute('alt') || ''
+
+								// Get the position of the hovered image
+								const pos = view.posAtDOM(target, 0)
+								const node = view.state.doc.nodeAt(pos)
+
+								current_image_value = { url: src, alt }
+								current_image_element = target as HTMLImageElement
+								current_image_position = { from: pos, to: pos + (node?.nodeSize || 0) }
+								current_image_id = null // No entry for TipTap images
+
+								// Show the overlay for TipTap images
+								attach_image_overlay(target as HTMLImageElement, null)
+								return true
+							}
+							return false
+						}
 					}
 				}
 			})
 
 			// Store the editor instance for later access
-			markdown_editors.set(markdown_id, editor)
+			rich_text_editors.set(rich_text_id, editor)
 		}
 
-		async function set_editable_image({ element, id, options }) {
-			let rect
-			element.setAttribute(`data-entry`, id)
-			element.onmousemove = (e) => {
-				if (!image_editor_is_visible) {
-					attach_image_overlay(e)
-				}
+		function set_editable_markdown({ id, element, value }: { id: string; element: HTMLElement; value: any }) {
+			element.setAttribute('data-entry', id)
+			element.style.cursor = 'text'
+			markdown_elements.set(id, element as HTMLElement)
+
+			const click_handler = (event: Event) => {
+				event.preventDefault()
+				event.stopPropagation()
+				current_markdown_entry_id = id
+				current_markdown_value = value
+				editing_markdown = true
 			}
-			async function attach_image_overlay(e) {
-				image_editor_is_visible = true
-				await tick()
-				const iframe_rect = node.getBoundingClientRect()
-				rect = element.getBoundingClientRect()
-				image_editor.style.left = `${rect.left + iframe_rect.left}px`
-				image_editor.style.top = `${rect.top + iframe_rect.top}px`
-				image_editor.style.width = `${rect.width}px`
-				image_editor.style.height = `${rect.height}px`
-				image_editor.style.borderRadius = getComputedStyle(element).borderRadius
 
-				image_editor.onwheel = (e) => {
-					image_editor_is_visible = false
-				}
+			element.addEventListener('click', click_handler, { capture: true })
 
-				image_editor.onmouseleave = (e) => {
-					const is_outside = e.x >= Math.floor(rect.right) || e.y >= Math.floor(rect.bottom) || e.x <= Math.floor(rect.left) || e.y <= Math.floor(rect.top)
-					if (is_outside) {
-						image_editor_is_visible = false
-					}
-				}
-				image_editor.onclick = () => {
-					current_image_element = element
-					current_image_id = id
-					// Set current_image_value from the entry
-					const entry = entries?.find((entry) => entry.id === id)
-					current_image_value = entry?.value || {
-						url: element.src || '',
-						alt: element.alt || ''
-					}
-					editing_image = true
-					image_editor_is_visible = false
-				}
+			// Store cleanup function
+			event_listeners.set(`markdown-${id}`, () => {
+				element.removeEventListener('click', click_handler, { capture: true })
+			})
+		}
+
+		async function set_editable_image({ id, element }: { id: string; element: HTMLElement }) {
+			element.setAttribute(`data-entry`, id)
+			element.onmousemove = () => {
+				attach_image_overlay(element, id)
 			}
 		}
 
@@ -384,73 +406,87 @@
 			element.style.outline = '0'
 			element.setAttribute(`data-entry`, id)
 			element.contentEditable = true
-			let updated_url = url
-			let rect
-			element.onkeydown = (e) => {
-				if (e.code === 'Enter') {
-					e.preventDefault()
-					e.target.blur()
-					link_editor_is_visible = false
-					save_edited_value({
-						id,
-						value: {
-							url: updated_url,
-							label: element.innerText
-						}
-					})
+
+			const click_handler = (e: Event) => {
+				e.preventDefault()
+				e.stopPropagation()
+				current_link_element = element
+				current_link_entry_id = id
+				// Set current_link_value from the entry
+				const entry = entries?.find((entry) => entry.id === id)
+				current_link_value = entry?.value || {
+					url: element.href || '',
+					label: element.innerText || '',
+					active: true
 				}
+				hide_menus()
+				editing_link = true
 			}
-			element.addEventListener(
-				'click',
-				(e) => {
-					e.preventDefault()
-					e.stopPropagation()
-					current_link_element = element
-					current_link_id = id
-					// Set current_link_value from the entry
-					const entry = entries?.find((entry) => entry.id === id)
-					current_link_value = entry?.value || {
-						url: element.href || '',
-						label: element.innerText || '',
-						active: true
-					}
-					// Hide menus when opening modal
-					bubble_menu.style.display = 'none'
-					floating_menu.style.display = 'none'
-					editing_link = true
-				},
-				{ capture: true }
-			)
+
+			element.addEventListener('click', click_handler, { capture: true })
+
+			// Store cleanup function
+			event_listeners.set(`link-${id}`, () => {
+				element.removeEventListener('click', click_handler, { capture: true })
+			})
 		}
 
 		async function set_editable_text({ id, element }) {
 			element.style.outline = '0'
 			element.setAttribute(`data-entry`, id)
-			element.onkeydown = (e) => {
+
+			const keydown_handler = (e: KeyboardEvent) => {
 				if (e.code === 'Enter') {
 					e.preventDefault()
-					e.target.blur()
+					const target = e.target as HTMLElement
+					if (target) target.blur()
 				}
 			}
-			element.oninput = (e) => {
+
+			const input_handler = (e: Event) => {
 				// Debounce saves to avoid constant re-renders while editing
 				clearTimeout(field_save_timeout)
 				field_save_timeout = setTimeout(() => {
-					save_edited_value({ id, value: e.target.innerText })
+					const target = e.target as HTMLElement
+					if (target) save_edited_value({ id, value: target.innerText })
 				}, 200)
 			}
-			element.onblur = (e) => {
+
+			const blur_handler = (e: Event) => {
 				handle_unlock()
 				// Final save on blur
 				clearTimeout(field_save_timeout)
-				save_edited_value({ id, value: e.target.innerText })
+				const target = e.target as HTMLElement
+				if (target) save_edited_value({ id, value: target.innerText })
 			}
-			element.onfocus = () => {
+
+			const focus_handler = () => {
 				handle_lock()
 				dispatch('lock')
 			}
+
+			element.addEventListener('keydown', keydown_handler)
+			element.addEventListener('input', input_handler)
+			element.addEventListener('blur', blur_handler)
+			element.addEventListener('focus', focus_handler)
 			element.contentEditable = true
+
+			// Store cleanup function
+			event_listeners.set(`text-${id}`, () => {
+				element.removeEventListener('keydown', keydown_handler)
+				element.removeEventListener('input', input_handler)
+				element.removeEventListener('blur', blur_handler)
+				element.removeEventListener('focus', focus_handler)
+			})
 		}
+	}
+
+	function handle_markdown_save() {
+		const value = current_markdown_value
+		save_edited_value({ id: current_markdown_entry_id, value })
+		const target = markdown_elements.get(current_markdown_entry_id!)
+		target!.innerHTML = convert_markdown_to_html(value)
+		editing_markdown = false
 	}
 
 	async function save_edited_value({ id, value }) {
@@ -473,7 +509,7 @@
 		commit_task = setTimeout(() => manager.commit(), 500)
 	}
 
-	let commit_task
+	let commit_task: ReturnType<typeof setTimeout>
 
 	let mounted = false
 	function dispatch_mount() {
@@ -483,150 +519,23 @@
 		}
 	}
 
-	// Reroute links to correctly open externally and internally, and handle TipTap images
+	// Finds and enables editing for images inside rich-text containers
+	// TipTap image and link handling is now done via handleDOMEvents in the editor creation
+
+	// Reroute non-entry links to open in a new tab
+	// const rerouted_links
 	async function reroute_links() {
-		if (!node?.contentDocument) return
-		const { pathname, origin } = window.location
-		const [site] = pathname.split('/').slice(1)
-		const site_url = `${origin}/${site}`
-
-		// Handle TipTap images (they don't have entries but should be editable)
-		node.contentDocument.querySelectorAll('img').forEach((image) => {
-			// Skip images that are already handled by field entries
-			if (image.dataset.entry || image.dataset.key) {
-				return
-			}
-
-			// Only handle images that are within markdown fields
-			const markdownContainer = image.closest('[data-markdown-id]')
-			if (!markdownContainer) {
-				return
-			}
-
-			// Handle TipTap markdown images
-			let rect
-			image.onmousemove = (e) => {
-				if (!image_editor_is_visible) {
-					attach_tiptap_image_overlay(image)
-				}
-			}
-		})
-
-		async function attach_tiptap_image_overlay(element) {
-			image_editor_is_visible = true
-			await tick()
-			const iframe_rect = node.getBoundingClientRect()
-			const rect = element.getBoundingClientRect()
-			image_editor.style.left = `${rect.left + iframe_rect.left}px`
-			image_editor.style.top = `${rect.top + iframe_rect.top}px`
-			image_editor.style.width = `${rect.width}px`
-			image_editor.style.height = `${rect.height}px`
-			image_editor.style.borderRadius = getComputedStyle(element).borderRadius
-
-			image_editor.onwheel = (e) => {
-				image_editor_is_visible = false
-			}
-
-			image_editor.onmouseleave = (e) => {
-				const is_outside = e.x >= Math.floor(rect.right) || e.y >= Math.floor(rect.bottom) || e.x <= Math.floor(rect.left) || e.y <= Math.floor(rect.top)
-				if (is_outside) {
-					image_editor_is_visible = false
-				}
-			}
-
-			image_editor.onclick = () => {
-				current_image_element = element
-				current_image_id = null // No entry for TipTap images
-				// Set current_image_value from the element
-				current_image_value = {
-					url: element.src || '',
-					alt: element.alt || '',
-					upload: null // Clear any previous upload
-				}
-				editing_image = true
-				image_editor_is_visible = false
-			}
-		}
-
-		node.contentDocument.querySelectorAll('a').forEach((link) => {
-			// Skip editable links - they have their own handlers
-			if (link.dataset.entry || link.dataset.key) {
-				return
-			}
-
-			// Handle TipTap markdown links
-			if (link.dataset.tiptapLink === 'true') {
-				link.onclick = (e) => {
-					e.preventDefault()
-					current_link_id = null // No entry for TipTap links
-					current_link_element = link // Store the link element for TipTap links
-					current_link_value = {
-						url: link.href || '',
-						label: link.textContent || '',
-						active: true
-					}
-					bubble_menu.style.display = 'none'
-					floating_menu.style.display = 'none'
-					editing_link = true
-				}
-				return
-			}
-
-			link.onclick = (e) => {
+		node.contentDocument!.querySelectorAll<HTMLLinkElement>(':not([data-rich-text-id]) a:not([data-entry]):not([data-key]').forEach((link) => {
+			link.addEventListener('click', (e) => {
 				e.preventDefault()
-			}
-
-			// link internally
-			if (window.location.host === link.host) {
-				// TODO: restore, but use a 'link' button
-				// link navigates to site home
-				// if (link.pathname === '/') {
-				// 	link.addEventListener('click', () => {
-				// 		goto(`${site_url}/`)
-				// 	})
-				// 	return
-				// }
-				// const page_slugs = link.pathname.split('/').slice(1)
-				// const page_path = page_slugs.join('/')
-				// // Link to page
-				// const page_exists = page_slugs.every((slug, i) => {
-				// 	const parent_page_id = $pages.find((p) => p.slug === page_slugs[i - 1])?.id || null
-				// 	return $pages.find((p) => p.slug === slug && p.parent === parent_page_id)
-				// })
-				// if (page_exists) {
-				// 	link.addEventListener('click', () => {
-				// 		goto(`${site_url}/${page_path}`)
-				// 	})
-				// } else {
-				// 	// TODO: Create page
-				// }
-			} else {
-				openLinkInNewWindow(link)
-			}
-
-			function openLinkInNewWindow(link) {
-				if (link.dataset.key || link.dataset.entry) return // is editable
-				if (!link.dataset.listenerAdded) {
-					link.addEventListener('click', () => {
-						window.open(link.href, '_blank')
-					})
-					link.dataset.listenerAdded = 'true'
-				}
-			}
+				window.open(link.href, '_blank')
+			})
 		})
 	}
 
 	function on_page_scroll() {
-		image_editor_is_visible = false
-		link_editor_is_visible = false
-		bubble_menu.style.display = 'none'
-		floating_menu.style.display = 'none'
-	}
-
-	function on_hover_outside_image_editor(e) {
-		if (hovering_outside(e, image_editor)) {
-			image_editor_is_visible = false
-		}
+		image_overlay_is_visible = false
+		update_menu_positions()
 	}
 
 	let last_code_signature = $state<string>('')
@@ -646,92 +555,118 @@
 		}
 	)
 
-	let mutation_observer
-	let iframe_resize_observer = $state()
+	let mutation_observer: MutationObserver
+	let iframe_resize_observer: ResizeObserver
 
 	onMount(() => {
 		mutation_observer = new MutationObserver(() => {
 			dispatch_mount()
-			reroute_links()
 		})
 
 		// Resize component iframe wrapper on resize to match content height (message set from `setup_component_iframe`)
-		window.addEventListener('message', (event) => {
+		window_message_handler = (event: MessageEvent) => {
 			if (node && event.data?.type === 'resize') {
 				if (event.data.id === section.id) {
 					node.style.height = event.data.height + 'px'
 				}
 			}
-		})
+		}
+		window.addEventListener('message', window_message_handler)
 
-		// Hide Editor UI on scroll and hover outside
 		document.querySelector('#Page')?.addEventListener('scroll', on_page_scroll)
-		document.querySelector('#Page')?.addEventListener('mouseover', on_hover_outside_image_editor)
 
 		return () => {
 			mutation_observer?.disconnect()
 			iframe_resize_observer?.disconnect()
 
+			// Clean up window message listener
+			if (window_message_handler) {
+				window.removeEventListener('message', window_message_handler)
+				window_message_handler = null
+			}
+
+			// Clean up all event listeners
+			cleanup_event_listeners()
+
+			// Clear timeouts
+			if (field_save_timeout) clearTimeout(field_save_timeout)
+			if (commit_task) clearTimeout(commit_task)
+			if (suppress_timer) clearTimeout(suppress_timer)
+
 			document.querySelector('#Page')?.removeEventListener('scroll', on_page_scroll)
-			document.querySelector('#Page')?.removeEventListener('mouseover', on_hover_outside_image_editor)
 		}
 	})
 
 	function update_menu_positions() {
-		if (!node?.contentDocument || !floating_menu || !bubble_menu) return
-
-		// Hide menus if any modal is open
 		if (editing_link || editing_image || editing_video) {
-			bubble_menu.style.display = 'none'
-			floating_menu.style.display = 'none'
+			hide_menus()
 			return
 		}
 
-		const iframe_rect = node.getBoundingClientRect()
-		const selection = node.contentDocument.getSelection()
+		// Get selection from the iframe document, not the main document
+		const iframeDoc = node.contentDocument
 
-		if (selection?.rangeCount > 0) {
-			const range = selection.getRangeAt(0)
-			const hasSelection = selection.toString().length > 0
-
-			// Bubble menu logic - only show in markdown fields
-			if (hasSelection) {
-				// Check if selection is within a markdown field
-				const commonAncestor = range.commonAncestorContainer
-				const element = commonAncestor.nodeType === 3 ? commonAncestor.parentElement : commonAncestor
-				const markdownContainer = element?.closest('[data-markdown-id]')
-
-				if (markdownContainer) {
-					const rect = range.getBoundingClientRect()
-					bubble_menu.style.position = 'fixed'
-					bubble_menu.style.left = `${rect.left + iframe_rect.left}px`
-					bubble_menu.style.top = `${rect.bottom + iframe_rect.top + 10}px`
-					bubble_menu.style.display = 'flex'
-				} else {
-					bubble_menu.style.display = 'none'
-				}
-			} else {
-				bubble_menu.style.display = 'none'
-			}
-
-			// Floating menu logic - only show in markdown fields
-			const startNode = range.startContainer
-			const blockElement = startNode.nodeType === 3 ? startNode.parentElement : startNode
-			const isInMarkdownField = blockElement?.closest('[data-markdown-id]')
-			const isTopLevelBlock = blockElement?.parentElement?.matches('.ProseMirror')
-			const isEmptyParagraph = blockElement?.textContent === ''
-			const isAtStart = range.startOffset === 0
-
-			if (isEmptyParagraph && isAtStart && isTopLevelBlock && isInMarkdownField) {
-				const rect = blockElement.getBoundingClientRect()
-				floating_menu.style.position = 'fixed'
-				floating_menu.style.left = `${rect.left + iframe_rect.left + 10}px`
-				floating_menu.style.top = `${rect.top + iframe_rect.top + 7}px`
-				floating_menu.style.display = 'flex'
-			} else {
-				floating_menu.style.display = 'none'
-			}
+		const selection = iframeDoc?.getSelection()
+		if (!selection || selection.rangeCount === 0) {
+			hide_menus()
+			return
 		}
+
+		update_bubble_menu(selection)
+		update_floating_menu(selection)
+	}
+
+	function update_bubble_menu(selection: Selection) {
+		const has_selection = selection.toString().length > 0
+		if (!has_selection) {
+			bubble_menu_state.visible = false
+			return
+		}
+
+		const range = selection.getRangeAt(0)
+		const common_ancestor = range.commonAncestorContainer
+		const element = common_ancestor instanceof Text ? common_ancestor.parentElement : common_ancestor
+		const rich_text_container = (element as Element)?.closest('[data-rich-text-id]')
+
+		if (rich_text_container) {
+			const iframe_rect = node.getBoundingClientRect()
+			const rect = range.getBoundingClientRect()
+			bubble_menu_state = {
+				visible: true,
+				left: rect.left + iframe_rect.left,
+				top: rect.bottom + iframe_rect.top + 10
+			}
+		} else {
+			bubble_menu_state.visible = false
+		}
+	}
+
+	function update_floating_menu(selection: Selection) {
+		const range = selection.getRangeAt(0)
+		const startNode = range.startContainer
+
+		const blockElement = startNode instanceof Text ? startNode.parentElement : startNode
+		const is_in_rich_text = (blockElement as Element).closest('[data-rich-text-id]')
+		const is_top_level_block = blockElement!.parentElement!.matches('.ProseMirror')
+		const is_empty_paragraph = blockElement!.textContent === ''
+		const is_at_start = range.startOffset === 0
+
+		if (is_in_rich_text && is_top_level_block && is_empty_paragraph && is_at_start) {
+			const iframe_rect = node.getBoundingClientRect()
+			const rect = (blockElement as Element).getBoundingClientRect()
+			floating_menu_state = {
+				visible: true,
+				left: rect.left + iframe_rect.left + 10,
+				top: rect.top + iframe_rect.top + 7
+			}
+		} else {
+			floating_menu_state.visible = false
+		}
+	}
+
+	function hide_menus() {
+		bubble_menu_state.visible = false
+		floating_menu_state.visible = false
 	}
 
 	let setup_complete = $state(false)
@@ -739,11 +674,11 @@
 	function setup_component_iframe() {
 		setup_complete = false
 		// Clear previous editor instances
-		markdown_editors.clear()
+		rich_text_editors.clear()
 		// Wait for iframe to be ready
 		node.removeEventListener('load', setup)
 
-		if (node.contentDocument.readyState === 'complete') {
+		if (node.contentDocument!.readyState === 'complete') {
 			setup()
 		} else {
 			node.addEventListener('load', setup)
@@ -751,6 +686,18 @@
 
 		function setup() {
 			const doc = node.contentDocument
+			if (!doc) return
+
+			// Clean up previous doc event listeners
+			doc_event_listeners.forEach((cleanup) => cleanup())
+			doc_event_listeners.clear()
+
+			doc.body.addEventListener('scroll', on_page_scroll)
+
+			// Store cleanup function for doc scroll listener
+			doc_event_listeners.set('scroll', () => {
+				doc.body.removeEventListener('scroll', on_page_scroll)
+			})
 
 			// Disconnect previous observer if it exists
 			iframe_resize_observer?.disconnect()
@@ -771,9 +718,6 @@
 				attributes: true,
 				characterData: true
 			})
-
-			doc.addEventListener('mouseup', update_menu_positions)
-			doc.addEventListener('keyup', update_menu_positions)
 
 			setup_complete = true
 			// Every time setup is completed, we send the component to the IFrame.
@@ -807,8 +751,9 @@
 
 	async function send_component_to_iframe(js, data) {
 		try {
-			node.contentWindow.postMessage({ type: 'component', payload: { js, data } }, '*')
+			node.contentWindow!.postMessage({ type: 'component', payload: { js, data } }, '*')
 			setTimeout(make_content_editable, 200) // wait for component to mount within iframe
+			// reroute_links()
 		} catch (e) {
 			console.error(e)
 			error = e
@@ -816,47 +761,101 @@
 		}
 	}
 
-	// Handle bubble and float menu positioning
-	$effect(() => {
-		const doc = node?.contentDocument
-		if (doc) {
-			const events = ['selectionchange', 'keyup', 'mouseup', 'touchend']
-
-			const update = _.debounce(update_menu_positions, 50)
-			events.forEach((event) => doc.addEventListener(event, update))
-
-			return () => {
-				events.forEach((event) => doc.removeEventListener(event, update))
-			}
-		}
-	})
+	let editing_video = $state(false)
 
 	let editing_image = $state(false)
+	let current_image_element = $state<HTMLImageElement | null>(null)
+	let current_image_id = $state<string | null>(null)
+	let current_image_value = $state<{ url: string; alt: string; upload?: string | null }>({ url: '', alt: '' })
+
 	let editing_link = $state(false)
-	let editing_video = $state(false)
-	let current_image_element = $state(null)
-	let current_image_id = $state(null)
-	let current_image_value = $state({ url: '', alt: '' })
-	let current_link_element = $state(null)
-	let current_link_id = $state(null)
-	let current_link_value = $state({ url: '', label: '', active: true })
+	let current_link_element = $state<HTMLLinkElement | null>(null)
+	let current_link_entry_id = $state(null)
+	let current_link_value = $state<{ url: string; label: string; active: boolean; originalLabel?: string; page?: string }>({ url: '', label: '', active: true })
 	let current_link_page = $derived(current_link_value.page ? Pages.one(current_link_value.page) : null)
 	let current_link_url = $derived(current_link_page ? build_live_page_url(current_link_page)?.pathname : current_link_value.url)
+
+	// TipTap image and link position tracking (like RichText)
+	let current_image_position = $state<{ from: number; to: number } | null>(null)
+	let current_link_position = $state<{ from: number; to: number } | null>(null)
+	let editing_existing_link = $state(false)
 </script>
 
 <Dialog.Root bind:open={editing_image}>
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12">
-		{@const field = fields?.find((f) => entries?.find((e) => e.id === current_image_id)?.field === f.id) || { label: 'Image', key: 'image', type: 'image', config: {} }}
+		{@const field =
+			fields?.find((f) => entries?.find((e) => e.id === current_image_id)?.field === f.id) || ({ id: '', label: 'Image', key: 'image', type: 'image' as const, config: {}, index: 0 } as any)}
 		{@const entry = {
+			id: current_image_id || '',
+			locale: 'en' as const,
+			field: field.id,
+			index: 0,
 			value: current_image_value
-		}}
+		} as any}
 		<form
 			onsubmit={async (e) => {
 				e.preventDefault()
 
 				// Handle submit - same logic as Done button
 
-				if (!current_image_element && active_editor) {
+				if (current_image_position && active_editor) {
+					// Handle TipTap image editing with position tracking (like RichText)
+					const { from, to } = current_image_position
+
+					// Get the image URL - either from direct URL or from upload
+					let imageUrl = current_image_value.url
+					if (!imageUrl && current_image_value.upload) {
+						// Get upload URL from the upload record
+						const upload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
+						if (upload) {
+							const baseURL = self.baseURL
+							const collection = site ? 'site_uploads' : 'library_uploads'
+
+							// Only use the PocketBase URL if the file is saved server-side (string)
+							// If it's still a File object, we need to commit it first
+							if (typeof upload.file === 'string') {
+								imageUrl = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
+							} else {
+								try {
+									// Force commit the upload to save it server-side
+									await manager.commit()
+
+									// Refresh the upload record to get the server-side filename
+									const refreshedUpload = site ? await self.collection('site_uploads').getOne(current_image_value.upload) : await self.collection('library_uploads').getOne(current_image_value.upload)
+
+									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
+										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
+									} else {
+										console.error('Upload still not committed after manager.commit()')
+										alert('Upload failed to complete. Please try again.')
+										editing_image = false
+										return
+									}
+								} catch (error) {
+									console.error('Failed to commit upload:', error)
+									alert('Failed to save image. Please try again.')
+									editing_image = false
+									return
+								}
+							}
+						}
+					}
+
+					// Replace the image at the tracked position
+					active_editor
+						.chain()
+						.setTextSelection({ from, to })
+						.deleteSelection()
+						.insertContent({
+							type: 'image',
+							attrs: {
+								src: imageUrl,
+								alt: current_image_value.alt,
+								'data-id': createUniqueID()
+							} as any
+						})
+						.run()
+				} else if (!current_image_element && active_editor) {
 					// Handle TipTap editor images - only for NEW images from floating menu
 
 					// Get the image URL - either from direct URL or from upload
@@ -901,7 +900,7 @@
 					// Just insert the image and let TipTap's onUpdate handle the save automatically
 					active_editor.chain().focus().setImage({ src: imageUrl, alt: current_image_value.alt }).run()
 				} else if (current_image_element && !current_image_id) {
-					// Handle existing TipTap markdown images (no entry)
+					// Handle existing TipTap rich-text images (no entry)
 
 					let imageUrl = ''
 					if (current_image_value.url) {
@@ -909,27 +908,27 @@
 						imageUrl = current_image_value.url
 					}
 
-					const markdownContainer = current_image_element.closest('[data-markdown-id]')
-					if (markdownContainer) {
-						const markdownId = markdownContainer.getAttribute('data-markdown-id')
-						const editor = markdown_editors.get(markdownId)
+					const rich_text_container = current_image_element.closest('[data-rich-text-id]')
+					if (rich_text_container) {
+						const rich_text_id = rich_text_container.getAttribute('data-rich-text-id')
+						const editor = rich_text_editors.get(rich_text_id!)
 
 						if (editor && editor.view) {
 							// Find the image node in the document and select it, then update
-							let imagePos = null
-							editor.view.state.doc.descendants((node, pos) => {
-								if (node.type.name === 'image' && node.attrs.src === current_image_element.src) {
-									imagePos = pos
+							let image_position: null | number = null
+							editor.view.state.doc.descendants((node, position) => {
+								if (node.type.name === 'image' && node.attrs.src === current_image_element!.src) {
+									image_position = position
 									return false // Stop searching
 								}
 							})
 
-							if (imagePos !== null) {
+							if (image_position !== null) {
 								// Select the image node and update its attributes
 								const result = editor
 									.chain()
 									.focus()
-									.setNodeSelection(imagePos)
+									.setNodeSelection(image_position)
 									.updateAttributes('image', {
 										src: imageUrl,
 										alt: current_image_value.alt
@@ -940,16 +939,7 @@
 								// but let's trigger it manually to be sure
 								setTimeout(() => {
 									const json = editor.getJSON()
-									const html = renderToHTMLString({
-										extensions: tiptapExtensions,
-										content: json
-									})
-									const markdown = renderToMarkdown({
-										extensions: tiptapExtensions,
-										content: json
-									})
-
-									save_edited_value({ id: markdownId, value: { html, markdown } })
+									save_edited_value({ id: rich_text_id, value: json })
 								}, 100)
 							} else {
 								current_image_element.src = current_image_value.url
@@ -973,16 +963,16 @@
 					})
 				}
 				editing_image = false
+				current_image_position = null
 			}}
 		>
 			<ImageField
-				entity={section}
 				{field}
 				{entry}
-				onchange={async (changeData) => {
+				onchange={async (changeData: any) => {
 					// Extract the actual value from the nested structure
 					const fieldKey = Object.keys(changeData)[0]
-					const newValue = changeData[fieldKey][0].value
+					const newValue = changeData[fieldKey][0].value as any
 
 					// If there's a new upload, populate the URL field with the upload URL
 					// This handles both new uploads and replacements
@@ -1010,33 +1000,30 @@
 						}
 					}
 
-					current_image_value = newValue
+					current_image_value = newValue as any
 				}}
 			/>
 			<div class="flex justify-end gap-2 mt-2">
+				<!-- Delete button (for TipTap images) -->
 				{#if current_image_element && !current_image_id}
 					<button
 						type="button"
 						onclick={() => {
-							// Delete the image from TipTap markdown only (not for image fields)
-							if (current_image_element) {
-								const markdownContainer = current_image_element.closest('[data-markdown-id]')
-								if (markdownContainer) {
-									const markdownId = markdownContainer.getAttribute('data-markdown-id')
-									const editor = markdown_editors.get(markdownId)
-									if (editor) {
-										// Find and delete the image node
-										let imagePos = null
-										editor.view.state.doc.descendants((node, pos) => {
-											if (node.type.name === 'image' && node.attrs.src === current_image_element.src) {
-												imagePos = pos
-												return false
-											}
-										})
-										if (imagePos !== null) {
-											editor.chain().focus().setNodeSelection(imagePos).deleteSelection().run()
-										}
+							// Delete the image from TipTap rich-text only (not for image fields)
+							const rich_text_container = current_image_element!.closest('[data-rich-text-id]')
+							if (rich_text_container) {
+								const rich_text_id = rich_text_container.getAttribute('data-rich-text-id')
+								const editor = rich_text_editors.get(rich_text_id!)
+								// Find and delete the image node
+								let image_position: null | number = null
+								editor!.view.state.doc.descendants((node, position) => {
+									if (node.type.name === 'image' && node.attrs.src === current_image_element!.src) {
+										image_position = position
+										return false
 									}
+								})
+								if (image_position !== null) {
+									editor!.chain().focus().setNodeSelection(image_position).deleteSelection().run()
 								}
 							}
 							editing_image = false
@@ -1054,15 +1041,33 @@
 
 <Dialog.Root bind:open={editing_link}>
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12 overflow-visible">
-		{@const field = fields?.find((f) => entries?.find((e) => e.id === current_link_id)?.field === f.id) || { label: 'Link', key: 'link', type: 'link', config: {} }}
+		{@const field =
+			fields?.find((f) => entries?.find((e) => e.id === current_link_entry_id)?.field === f.id) || ({ id: '', label: 'Link', key: 'link', type: 'link' as const, config: {}, index: 0 } as any)}
 		{@const entry = {
-			value: current_link_value || { url: '', label: '' }
-		}}
+			id: current_link_entry_id || '',
+			locale: 'en' as const,
+			field: field.id,
+			index: 0,
+			value: current_link_value || { url: '', label: '', active: true }
+		} as any}
 		<form
 			onsubmit={(e) => {
 				e.preventDefault()
 				// Handle submit - same logic as Done button
-				if (active_editor && current_link_value.originalLabel !== undefined) {
+				if (current_link_position && active_editor && editing_existing_link) {
+					// Handle TipTap link editing with position tracking (like RichText)
+					const { from, to } = current_link_position
+					active_editor
+						.chain()
+						.setTextSelection({ from, to })
+						.deleteSelection()
+						.insertContent({
+							type: 'text',
+							text: current_link_value.label,
+							marks: [{ type: 'link', attrs: { href: current_link_url } }]
+						})
+						.run()
+				} else if (active_editor && current_link_value.originalLabel !== undefined) {
 					// Handle new TipTap links created from bubble menu
 					const chain = active_editor.chain().focus()
 
@@ -1074,35 +1079,36 @@
 							.insertContent({
 								type: 'text',
 								text: current_link_value.label,
-								marks: [{ type: 'link', attrs: { href: current_link_url } }]
+								marks: [{ type: 'link', attrs: { href: current_link_url || '' } }]
 							})
 							.run()
 					} else {
 						// Just wrap existing text in link
-						chain.setLink({ href: current_link_url }).run()
+						chain.setLink({ href: current_link_url || '' }).run()
 					}
-				} else if (current_link_element && !current_link_id) {
-					// Handle existing TipTap markdown links (clicked from content)
-					current_link_element.href = current_link_url
+				} else if (current_link_element && !current_link_entry_id) {
+					// Handle existing TipTap rich-text links (clicked from content)
+					current_link_element.href = current_link_url || ''
 					current_link_element.textContent = current_link_value.label
 					// TODO: Save link into Markdown content
-				} else if (current_link_element && current_link_id) {
+				} else if (current_link_element && current_link_entry_id) {
 					// Handle direct link editing (entry-based)
-					current_link_element.href = current_link_url
+					current_link_element.href = current_link_url || ''
 					current_link_element.innerText = current_link_value.label
-					save_edited_value({ id: current_link_id, value: _.cloneDeep(current_link_value) })
+					save_edited_value({ id: current_link_entry_id, value: _.cloneDeep(current_link_value) })
 				}
 				editing_link = false
+				editing_existing_link = false
+				current_link_position = null
 			}}
 		>
 			<LinkField
-				entity={section}
 				{field}
 				{entry}
-				onchange={(changeData) => {
+				onchange={(changeData: any) => {
 					// Extract the actual value from the nested structure
 					const fieldKey = Object.keys(changeData)[0]
-					const newValue = changeData[fieldKey][0].value
+					const newValue = changeData[fieldKey][0].value as any
 					current_link_value = newValue
 				}}
 			/>
@@ -1129,35 +1135,51 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-{#if image_editor_is_visible}
-	<button
-		style:pointer-events={scrolling ? 'none' : 'all'}
-		in:fade={{ duration: 100 }}
-		class="image-editor"
-		bind:this={image_editor}
-		onmousedown={() => {
+{#if image_overlay_is_visible}
+	<ImageOverlay
+		bind:visible={image_overlay_is_visible}
+		bind:image_element={image_editor_element}
+		showDelete={current_image_id === null}
+		onClick={() => {
+			current_image_id = current_image_id // for image entries (non-tiptap)
+			current_image_element = image_editor_element
+			current_image_value = {
+				url: image_editor_element?.src || '',
+				alt: image_editor_element?.alt || '',
+				upload: null // Clear any previous upload
+			}
+			editing_image = true
+			image_overlay_is_visible = false
+		}}
+		onDelete={() => {
+			if (image_editor_element) {
+				// Remove the image element from the DOM
+				// image_editor_element.remove()
+				image_overlay_is_visible = false
+			}
+		}}
+		onMouseDown={() => {
 			suppress_blur_unlock = true
 			clearTimeout(suppress_timer)
 			suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
 		}}
-	>
-		<Icon icon="uil:image-upload" />
-	</button>
+	/>
 {/if}
 
-{#if link_editor_is_visible}
-	<div in:fade={{ duration: 100 }} class="primo-reset link-editor">
-		<button onclick={() => (link_editor_is_visible = false)}>
-			<Icon icon="ic:round-close" />
-		</button>
-		<button class="icon" data-link>
-			<Icon icon="heroicons-solid:external-link" />
-		</button>
-		<form>
-			<input type="text" />
-		</form>
-	</div>
-{/if}
+<Dialog.Root bind:open={editing_markdown}>
+	<Dialog.Content class="z-[999] sm:max-w-[720px] h-auto max-h-[calc(100vh_-_1rem)] w-full pt-4 gap-0 flex flex-col">
+		<Dialog.Header
+			title="Edit Markdown"
+			button={{
+				label: 'Save',
+				onclick: handle_markdown_save,
+				hint: '⌘S'
+			}}
+			class="flex items-center justify-between pb-2"
+		/>
+		<MarkdownCodeMirror bind:value={current_markdown_value} autofocus on:save={handle_markdown_save} />
+	</Dialog.Content>
+</Dialog.Root>
 
 {#if $site_html && generated_js}
 	<iframe
@@ -1177,93 +1199,116 @@
   </pre>
 {/if}
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class="menu floating-menu primo-reset"
-	bind:this={floating_menu}
-	style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}"
-	onmousedown={() => {
-		suppress_blur_unlock = true
-		clearTimeout(suppress_timer)
-		suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
-	}}
->
-	{#if active_editor}
-		<MarkdownButton
-			icon="fa-solid:heading"
+{#if floating_menu_state.visible}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="menu floating-menu"
+		style:top="{floating_menu_state.top}px"
+		style:left="{floating_menu_state.left}px"
+		onmousedown={() => {
+			suppress_blur_unlock = true
+			clearTimeout(suppress_timer)
+			suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
+		}}
+	>
+		<RichTextButton
+			icon="lucide:heading-1"
+			aria_label="Heading 1"
 			onclick={() => {
-				floating_menu.style.display = 'none'
-				active_editor.chain().focus().toggleHeading({ level: 1 }).run()
+				active_editor!.chain().focus().toggleHeading({ level: 1 }).run()
+				hide_menus()
 			}}
 		/>
-		<MarkdownButton
-			icon="fa-solid:code"
+		<RichTextButton
+			icon="lucide:heading-2"
+			aria_label="Heading 2"
 			onclick={() => {
-				floating_menu.style.display = 'none'
-				active_editor.chain().focus().toggleCodeBlock().run()
+				active_editor!.chain().focus().toggleHeading({ level: 2 }).run()
+				hide_menus()
 			}}
 		/>
-		<MarkdownButton
-			icon="fa-solid:quote-left"
+		<RichTextButton
+			icon="lucide:heading-3"
+			aria_label="Heading 3"
 			onclick={() => {
-				floating_menu.style.display = 'none'
-				active_editor.chain().focus().toggleBlockquote().run()
+				active_editor!.chain().focus().toggleHeading({ level: 3 }).run()
+				hide_menus()
 			}}
 		/>
-		<MarkdownButton
-			icon="fa-solid:list"
+		<RichTextButton
+			icon="lucide:code"
+			aria_label="Code Block"
 			onclick={() => {
-				floating_menu.style.display = 'none'
-				active_editor.chain().focus().toggleBulletList().run()
+				active_editor!.chain().focus().toggleCodeBlock().run()
+				hide_menus()
 			}}
 		/>
-		<MarkdownButton
-			icon="fa-solid:list-ol"
+		<RichTextButton
+			icon="lucide:quote"
+			aria_label="Quote"
 			onclick={() => {
-				floating_menu.style.display = 'none'
-				active_editor.chain().focus().toggleOrderedList().run()
+				active_editor!.chain().focus().toggleBlockquote().run()
+				hide_menus()
 			}}
 		/>
-		<MarkdownButton
-			icon="fa-solid:image"
+		<RichTextButton
+			icon="lucide:list"
+			aria_label="Bullet List"
 			onclick={() => {
-				bubble_menu.style.display = 'none'
-				floating_menu.style.display = 'none'
+				active_editor!.chain().focus().toggleBulletList().run()
+				hide_menus()
+			}}
+		/>
+		<RichTextButton
+			icon="lucide:list-ordered"
+			aria_label="Numbered List"
+			onclick={() => {
+				active_editor!.chain().focus().toggleOrderedList().run()
+				hide_menus()
+			}}
+		/>
+		<RichTextButton
+			icon="lucide:image"
+			aria_label="Insert Image"
+			onclick={() => {
+				hide_menus()
 				current_image_id = null
 				current_image_element = null
 				current_image_value = { url: '', alt: '' }
 				editing_image = true
 			}}
 		/>
-		<MarkdownButton
+		<RichTextButton
 			icon="lucide:youtube"
+			aria_label="Insert YouTube Video"
 			onclick={() => {
-				bubble_menu.style.display = 'none'
-				floating_menu.style.display = 'none'
+				hide_menus()
 				editing_video = true
 			}}
 		/>
-	{/if}
-</div>
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class="menu bubble-menu primo-reset"
-	bind:this={bubble_menu}
-	style="display:{editing_link || editing_image || editing_video ? 'none' : 'none'}"
-	onmousedown={() => {
-		suppress_blur_unlock = true
-		clearTimeout(suppress_timer)
-		suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
-	}}
->
-	{#if active_editor}
-		<MarkdownButton
-			icon="fa-solid:link"
+	</div>
+{/if}
+
+{#if bubble_menu_state.visible}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="menu bubble-menu"
+		style:top="{bubble_menu_state.top}px"
+		style:left="{bubble_menu_state.left}px"
+		onmousedown={() => {
+			suppress_blur_unlock = true
+			clearTimeout(suppress_timer)
+			suppress_timer = setTimeout(() => (suppress_blur_unlock = false), 400)
+		}}
+	>
+		<RichTextButton
+			icon="lucide:link"
+			aria_label="Link"
 			onclick={() => {
 				// Get selected text to pre-fill the link label
-				const selection = active_editor.view.state.selection
-				const selectedText = active_editor.view.state.doc.textBetween(selection.from, selection.to)
-				current_link_id = null // No entry for new TipTap links
+				const selection = active_editor!.view.state.selection
+				const selectedText = active_editor!.view.state.doc.textBetween(selection.from, selection.to)
+				current_link_entry_id = null // No entry for new TipTap links
 				current_link_element = null
 				current_link_value = {
 					url: '',
@@ -1272,37 +1317,39 @@
 					originalLabel: selectedText // Store original to check if it changed
 				}
 				// Hide menus when opening modal
-				bubble_menu.style.display = 'none'
-				floating_menu.style.display = 'none'
+				hide_menus()
 				editing_link = true
 			}}
 		/>
-		<MarkdownButton
-			icon="fa-solid:bold"
+		<RichTextButton
+			icon="lucide:bold"
+			aria_label="Bold"
 			onclick={() => {
-				active_editor.chain().focus().toggleBold().run()
+				active_editor!.chain().focus().toggleBold().run()
 				update_formatting_state()
 			}}
 			active={formatting_state.bold}
 		/>
-		<MarkdownButton
-			icon="fa-solid:italic"
+		<RichTextButton
+			icon="lucide:italic"
+			aria_label="Italic"
 			onclick={() => {
-				active_editor.chain().focus().toggleItalic().run()
+				active_editor!.chain().focus().toggleItalic().run()
 				update_formatting_state()
 			}}
 			active={formatting_state.italic}
 		/>
-		<MarkdownButton
-			icon="fa-solid:highlighter"
+		<RichTextButton
+			icon="lucide:highlighter"
+			aria_label="Highlight"
 			onclick={() => {
-				active_editor.chain().focus().toggleHighlight().run()
+				active_editor!.chain().focus().toggleHighlight().run()
 				update_formatting_state()
 			}}
 			active={formatting_state.highlight}
 		/>
-	{/if}
-</div>
+	</div>
+{/if}
 
 <style lang="postcss">
 	iframe {
@@ -1320,6 +1367,7 @@
 	}
 	.menu {
 		font-size: var(--font-size-1);
+		position: fixed;
 		display: flex;
 		border-radius: var(--input-border-radius);
 		/* margin-left: 0.5rem; */
@@ -1340,50 +1388,8 @@
 	.floating-menu {
 		overflow: hidden;
 		transform: translateY(-0.5rem);
-		color: var(--color-gray-8);
-		background-color: var(--primo-color-white);
-	}
-	.image-editor {
-		position: fixed;
-		font-size: 14px;
-		background: rgba(0, 0, 0, 0.8);
-		color: white;
-		border-bottom-right-radius: 4px;
-		z-index: 9;
-		transform-origin: top left;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		font-size: 2rem;
-		overflow: visible;
-
-		:global(svg) {
-			height: clamp(0.5rem, 50%, 4rem);
-			width: auto;
-		}
-	}
-
-	.link-editor {
-		position: fixed;
-		font-size: 14px;
-		background: rgba(0, 0, 0, 0.9);
-		color: white;
-		z-index: 999;
-		display: flex;
-
-		button {
-			background: var(--color-gray-7);
-			display: flex;
-			align-items: center;
-			padding: 0 5px;
-			border-right: 1px solid var(--color-gray-6);
-		}
-
-		input {
-			padding: 2px 5px;
-			background: var(--color-gray-8);
-			color: var(--color-gray-1);
-			outline: 0;
-		}
+		color: var(--primo-color-white);
+		background-color: var(--color-gray-9);
+		border-color: var(--pala-primary-color);
 	}
 </style>
