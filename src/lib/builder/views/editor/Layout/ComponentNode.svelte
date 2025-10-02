@@ -167,6 +167,9 @@
 			}
 		}
 
+		// open any other links in a new tab
+		reroute_links()
+
 		function search_elements_for_value({ id, key, value, type }) {
 			for (const element of valid_elements) {
 				if (element.dataset['entry']) continue // element is already tagged, skip
@@ -389,6 +392,13 @@
 
 			element.addEventListener('click', click_handler, { capture: true })
 
+			// prevent links within markdown content from navigating
+			element.querySelectorAll('a').forEach((a) =>
+				a.addEventListener('click', (e) => {
+					e.preventDefault()
+				})
+			)
+
 			// Store cleanup function
 			event_listeners.set(`markdown-${id}`, () => {
 				element.removeEventListener('click', click_handler, { capture: true })
@@ -519,13 +529,10 @@
 		}
 	}
 
-	// Finds and enables editing for images inside rich-text containers
-	// TipTap image and link handling is now done via handleDOMEvents in the editor creation
-
 	// Reroute non-entry links to open in a new tab
 	// const rerouted_links
 	async function reroute_links() {
-		node.contentDocument!.querySelectorAll<HTMLLinkElement>(':not([data-rich-text-id]) a:not([data-entry]):not([data-key]').forEach((link) => {
+		node.contentDocument!.querySelectorAll<HTMLLinkElement>(':not([data-entry-id]:not([data-key]) a), a:not([data-entry]):not([data-key]').forEach((link) => {
 			link.addEventListener('click', (e) => {
 				e.preventDefault()
 				window.open(link.href, '_blank')
@@ -753,7 +760,6 @@
 		try {
 			node.contentWindow!.postMessage({ type: 'component', payload: { js, data } }, '*')
 			setTimeout(make_content_editable, 200) // wait for component to mount within iframe
-			// reroute_links()
 		} catch (e) {
 			console.error(e)
 			error = e
