@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
-	import UI from '$lib/builder/ui'
+	import { Skeleton } from '$lib/components/ui/skeleton'
 	import { dragging_symbol } from '$lib/builder/stores/app/misc'
 	import Sidebar_Symbol from './Sidebar_Symbol.svelte'
 	import Content from '../Content.svelte'
@@ -99,8 +99,16 @@
 				</div>
 			{/each}
 		{:else}
-			<div class="flex justify-center text-3xl color-[var(--color-gray-6)] pt-4">
-				<UI.Spinner variant="loop" />
+			<!-- Loading skeletons for blocks list -->
+			<div class="block-skeletons pt-2">
+				{#each Array(4) as _, i}
+					<div class="skeleton-item mb-4">
+						<div class="flex items-center justify-between pb-2">
+							<Skeleton class="h-4 w-28" />
+						</div>
+						<Skeleton class="h-24 w-full rounded-md" />
+					</div>
+				{/each}
 			</div>
 		{/if}
 	</div>

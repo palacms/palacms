@@ -3,7 +3,7 @@
 	import * as _ from 'lodash-es'
 	import { goto } from '$app/navigation'
 	import { browser } from '$app/environment'
-	import UI from '../../ui/index.js'
+	import { Skeleton } from '$lib/components/ui/skeleton'
 	// Icon component removed to prevent stack overflow issues
 	import Icon from '@iconify/svelte'
 	import BlockEditor from '$lib/builder/views/modal/BlockEditor.svelte'
@@ -426,8 +426,17 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="flex justify-center text-3xl color-[var(--color-gray-6)] pt-4">
-						<UI.Spinner variant="loop" />
+					<!-- Loading skeletons for block list -->
+					<div class="block-list">
+						{#each site_symbols as _}
+							<div class="block">
+								<div class="flex items-center justify-between pb-2">
+									<Skeleton class="h-4 w-32" />
+									<Skeleton class="h-4 w-12" />
+								</div>
+								<Skeleton class="h-24 w-full rounded-md" />
+							</div>
+						{/each}
 					</div>
 				{/if}
 			{:else}

@@ -15,7 +15,7 @@ func getVersion() string {
 
 // Get or create unique instance ID
 func getInstanceId(pb *pocketbase.PocketBase) (string, error) {
-	collection, err := pb.FindCollectionByNameOrId("telemetry_values")
+	collection, err := pb.FindCollectionByNameOrId("config_values")
 	if err != nil {
 		return "", err
 	}

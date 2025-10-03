@@ -9,6 +9,7 @@ export const PageListField = FieldBase.extend({
 			page_type: z.string().nonempty(),
 			condition: Condition.nullable().optional()
 		})
+		.nullable()
 })
 
 export type PageListField = z.infer<typeof PageListField>
