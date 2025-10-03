@@ -83,7 +83,7 @@
 			let changed = false
 			for (const id of parent_field_ids) {
 				if (!(id in selected_tabs)) {
-					selected_tabs[id] = 'entry'
+					selected_tabs[id] = $current_user?.siteRole === 'developer' ? 'field' : 'entry'
 					changed = true
 				}
 			}
