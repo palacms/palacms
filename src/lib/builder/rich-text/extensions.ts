@@ -6,7 +6,11 @@ import Highlight from '@tiptap/extension-highlight'
 // import Link from '@tiptap/extension-link'
 
 export const rich_text_extensions = [
-	StarterKit.configure(),
+	StarterKit.configure({
+		link: {
+			openOnClick: false
+		}
+	}),
 	Image,
 	Youtube.configure({
 		modestBranding: true

@@ -151,11 +151,15 @@
 
 		// loop over component_data and match to elements
 		const assigned_entry_ids = new Set() // elements that have been matched to a field ID
+		const matched_elements = new Set() // track which elements have been matched
 
 		const static_field_types = ['text', 'link', 'image', 'markdown', 'rich-text']
 		const static_fields = fields.filter((f) => static_field_types.includes(f.type)) ?? []
 
 		for (const field of static_fields) {
+			// Check if all elements are already matched
+			if (matched_elements.size === valid_elements.length) break
+
 			const relevant_entries = entries.filter((e) => e.field === field.id)
 			for (const entry of relevant_entries) {
 				search_elements_for_value({
@@ -172,7 +176,7 @@
 
 		function search_elements_for_value({ id, key, value, type }) {
 			for (const element of valid_elements) {
-				if (element.dataset['entry']) continue // element is already tagged, skip
+				if (matched_elements.has(element)) continue // element is already matched, skip
 
 				const matched = match_value_to_element({
 					id,
@@ -183,6 +187,7 @@
 				})
 				if (matched) {
 					assigned_entry_ids.add(id)
+					matched_elements.add(element)
 					break
 				}
 			}
@@ -237,7 +242,7 @@
 					return true
 				}
 			} else if (type === 'markdown' && element.nodeName === 'DIV') {
-				const existing_html = element.innerHTML.trim()
+				const existing_html = element.innerHTML.replace(/<!---->/g, '').trim() // remove svelte hydration markers
 				const candidate_html = convert_markdown_to_html(value).trim()
 				if (existing_html === candidate_html) {
 					set_editable_markdown({ id, element, value })
@@ -318,10 +323,7 @@
 					handleDOMEvents: {
 						click: (view, event) => {
 							const target = event.target as HTMLElement
-
 							if (target.tagName === 'A') {
-								event.preventDefault()
-
 								// Get the position of the clicked link
 								const pos = view.posAtDOM(target, 0)
 								const resolved = view.state.doc.resolve(pos)
@@ -393,11 +395,11 @@
 			element.addEventListener('click', click_handler, { capture: true })
 
 			// prevent links within markdown content from navigating
-			element.querySelectorAll('a').forEach((a) =>
+			element.querySelectorAll('a').forEach((a) => {
 				a.addEventListener('click', (e) => {
 					e.preventDefault()
 				})
-			)
+			})
 
 			// Store cleanup function
 			event_listeners.set(`markdown-${id}`, () => {
@@ -532,7 +534,7 @@
 	// Reroute non-entry links to open in a new tab
 	// const rerouted_links
 	async function reroute_links() {
-		node.contentDocument!.querySelectorAll<HTMLLinkElement>(':not([data-entry-id]:not([data-key]) a), a:not([data-entry]):not([data-key]').forEach((link) => {
+		node.contentDocument!.querySelectorAll<HTMLLinkElement>('a:not([data-entry] a):not([data-key] a):not([data-entry]):not([data-key])').forEach((link) => {
 			link.addEventListener('click', (e) => {
 				e.preventDefault()
 				window.open(link.href, '_blank')
