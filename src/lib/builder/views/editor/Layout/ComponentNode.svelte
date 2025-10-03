@@ -105,7 +105,6 @@
 	}
 
 	let is_editing = $state(false)
-	$inspect({ is_editing })
 
 	let field_save_timeout: ReturnType<typeof setTimeout>
 
@@ -654,7 +653,7 @@
 		const range = selection.getRangeAt(0)
 		const startNode = range.startContainer
 
-		const blockElement = startNode instanceof Text ? startNode.parentElement : startNode
+		const blockElement = startNode.nodeName === '#text' ? startNode.parentElement : startNode
 		const is_in_rich_text = (blockElement as Element).closest('[data-rich-text-id]')
 		const is_top_level_block = blockElement!.parentElement!.matches('.ProseMirror')
 		const is_empty_paragraph = blockElement!.textContent === ''
