@@ -135,19 +135,19 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] max-w-[1600px] h-[calc(100vh_-_1rem)] max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] max-w-none h-[calc(100vh_-_1rem)] max-h-none flex flex-col p-4">
 		<SiteEditor onClose={() => (editing_site = false)} bind:has_unsaved_changes={site_has_unsaved_changes} />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_pages}>
-	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-none flex flex-col p-4">
 		<SitePages />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_page_types}>
-	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-none flex flex-col p-4">
 		<PageTypeModal />
 	</Dialog.Content>
 </Dialog.Root>
