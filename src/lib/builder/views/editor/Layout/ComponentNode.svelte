@@ -45,7 +45,6 @@
 	let floating_menu_state = $state({ visible: false, top: 0, left: 0 })
 
 	let image_overlay_is_visible = $state(false)
-	let image_editor = $state<HTMLElement>()
 	let image_editor_element = $state<HTMLImageElement | null>(null)
 
 	async function attach_image_overlay(element, id: string | null = null) {
@@ -63,7 +62,8 @@
 	let formatting_state = $state({
 		bold: false,
 		italic: false,
-		highlight: false
+		highlight: false,
+		strike: false
 	})
 
 	// Store editor instances by rich-text ID so we can access them later
@@ -122,7 +122,8 @@
 			formatting_state = {
 				bold: active_editor.isActive('bold'),
 				italic: active_editor.isActive('italic'),
-				highlight: active_editor.isActive('highlight')
+				highlight: active_editor.isActive('highlight'),
+				strike: active_editor.isActive('strike')
 			}
 		}
 	}
@@ -384,10 +385,11 @@
 			markdown_elements.set(id, element as HTMLElement)
 
 			const click_handler = (event: Event) => {
+				const entry = entries?.find((e) => e.id === id) // get updated value (bc formatting differences register as updates)
 				event.preventDefault()
 				event.stopPropagation()
 				current_markdown_entry_id = id
-				current_markdown_value = value
+				current_markdown_value = entry?.value || value
 				editing_markdown = true
 			}
 
@@ -531,7 +533,6 @@
 	}
 
 	// Reroute non-entry links to open in a new tab
-	// const rerouted_links
 	async function reroute_links() {
 		node.contentDocument!.querySelectorAll<HTMLLinkElement>('a:not([data-entry] a):not([data-key] a):not([data-entry]):not([data-key])').forEach((link) => {
 			link.addEventListener('click', (e) => {
@@ -1293,6 +1294,14 @@
 				editing_video = true
 			}}
 		/>
+		<RichTextButton
+			icon="lucide:minus"
+			aria_label="Horizontal Rule"
+			onclick={() => {
+				active_editor!.chain().focus().setHorizontalRule().run()
+				hide_menus()
+			}}
+		/>
 	</div>
 {/if}
 
@@ -1354,6 +1363,15 @@
 				update_formatting_state()
 			}}
 			active={formatting_state.highlight}
+		/>
+		<RichTextButton
+			icon="lucide:strikethrough"
+			aria_label="Strikethrough"
+			onclick={() => {
+				active_editor!.chain().focus().toggleStrike().run()
+				update_formatting_state()
+			}}
+			active={formatting_state.strike}
 		/>
 	</div>
 {/if}
