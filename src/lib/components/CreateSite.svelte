@@ -700,7 +700,7 @@
 							{#if active_starters_group_sites?.length === 0}
 								<div class="text-sm text-muted-foreground p-6 text-center">No sites in this group.</div>
 							{:else if active_starters_group_sites}
-								<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+								<div class="grid gap-4 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
 									{#each active_starters_group_sites as site}
 										{@render StarterButton(site)}
 									{/each}
@@ -731,7 +731,7 @@
 						</ul>
 					</div>
 					<!-- Marketplace Sites grid -->
-					<div class="p-3 pr-0 grid gap-4 col-span-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+					<div class="p-3 pr-0 grid gap-4 col-span-3 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
 						{#if marketplace_starter_sites === undefined}
 							{#each Array.from({ length: 6 }) as _}
 								<Skeleton class="aspect-video w-full" />
@@ -754,7 +754,9 @@
 					{#if selected_starter_site}
 						{@const preview_url = selected_starter_source === 'marketplace' ? `https://${selected_starter_site?.host}` : `/?_site=${selected_starter_site?.id}`}
 						<div class="flex-1 min-h-0">
-							<SitePreview style="height: 100%" site={selected_starter_site} src={selected_starter_site ? preview_url : ''} />
+							{#key selected_starter_id}
+								<SitePreview style="height: 100%; --thumbnail-height: %124" site={selected_starter_site} src={selected_starter_site ? preview_url : ''} />
+							{/key}
 						</div>
 						{#if preview_url}
 							<div class="px-3 py-2 text-xs text-right text-muted-foreground">
