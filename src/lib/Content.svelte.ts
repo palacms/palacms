@@ -391,7 +391,8 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			else if (field.type === 'page-list' && field.key) {
 				if (!field.config?.page_type) continue
 				const pages = Pages.list({ filter: { page_type: field.config.page_type } })?.sort((a, b) => a.index - b.index)
-				if (!pages) continue
+				if (pages === null) continue
+				if (!pages) return
 
 				const data = pages.map((page) => {
 					const pageType = PageTypes.one(page.page_type)
@@ -420,7 +421,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 						if (!content[locale][field.key]) content[locale][field.key] = []
 
 						const url = build_live_page_url(pages[index])?.pathname
-						if (url === undefined) continue
+						if (url === undefined) return
 
 						content[locale][field.key].push({
 							...data[index]?.[locale],
