@@ -529,6 +529,7 @@
 				const group_id = site_group?.id ?? SiteGroups.create({ name: 'Default', index: 0 }).id
 				await clone_marketplace_starter(selected_starter_id, site_name, pageState.url.host, group_id)
 			}
+			done_creating_site = true
 		} catch (e) {
 			console.error(e)
 		}
@@ -540,9 +541,10 @@
 
 	// Finalize created site: copy optional blocks, and commit once.
 	// Calls oncreated() when finished.
+	let done_creating_site = $state(false)
 	let finalized = false
 	$effect(() => {
-		if (!finalized && created_site) {
+		if (!finalized && done_creating_site && created_site) {
 			finalized = true
 			copy_selected_blocks_to_site(created_site.id)
 				.then(() => manager.commit())
