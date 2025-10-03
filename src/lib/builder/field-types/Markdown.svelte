@@ -23,7 +23,7 @@
 
 <label for={field.id}>
 	<span class="primo--field-label">{field.label}</span>
-	<MarkdownCodeMirror id={field.id} value={entry?.value} placeholder="Write markdown..." on:change={({ detail }) => handle_change(detail.value)} />
+	<MarkdownCodeMirror id={field.id} value={entry?.value} on:change={({ detail }) => handle_change(detail.value)} />
 </label>
 
 <style lang="postcss">
