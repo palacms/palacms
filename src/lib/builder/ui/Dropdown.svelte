@@ -14,18 +14,20 @@
 	 * @property {string} [label]
 	 * @property {string} [icon]
 	 * @property {'sm' | 'lg'} [size]
+	 * @property {1 | 2} [px]
 	 * @property {any} [options]
 	 * @property {any} [dividers]
-	 * @property {string} [placement]
 	 * @property {string} [variant]
 	 */
 
 	/** @type {Props} */
-	let { label = '', icon = 'carbon:overflow-menu-vertical', options = [], dividers = [], placement = 'bottom-start', size = 'sm' } = $props()
+	let { label = '', icon = 'carbon:overflow-menu-vertical', options = [], dividers = [], px = 1, size = 'sm' } = $props()
 </script>
 
 <DropdownMenu.Root>
-	<DropdownMenu.Trigger class={buttonVariants({ variant: 'ghost', size, class: 'p-1 rounded-md focus-visible:ring-1 focus-visible:ring-[var(--pala-primary-color)] focus-visible:outline-none' })}>
+	<DropdownMenu.Trigger
+		class={buttonVariants({ variant: 'ghost', size, class: `py-1 px-${px} rounded-md focus-visible:ring-1 focus-visible:ring-[var(--pala-primary-color)] focus-visible:outline-none` })}
+	>
 		{#if label}
 			<Icon {icon} />
 			<p>{label}</p>

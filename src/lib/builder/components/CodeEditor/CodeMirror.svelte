@@ -11,7 +11,7 @@
 	import { standardKeymap, indentWithTab } from '@codemirror/commands'
 	import { EditorState, Compartment } from '@codemirror/state'
 	import { autocompletion } from '@codemirror/autocomplete'
-	import { oneDarkTheme, ThemeHighlighting } from './theme'
+	import { vsCodeDark } from './theme'
 	import { svelteCompletions, cssCompletions } from './extensions/autocomplete'
 	import { getLanguage } from './extensions'
 	import highlight_active_line from './extensions/inspector'
@@ -94,8 +94,7 @@
 		extensions: [
 			EditorState.readOnly.of(disabled),
 			language,
-			oneDarkTheme,
-			ThemeHighlighting,
+			vsCodeDark,
 			keymap.of([
 				...standardKeymap,
 				...(mode !== 'javascript'

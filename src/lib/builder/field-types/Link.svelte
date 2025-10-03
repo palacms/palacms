@@ -2,16 +2,16 @@
 	import * as _ from 'lodash-es'
 	import Icon from '@iconify/svelte'
 	import UI from '../ui'
-	import type { Entity } from '$lib/Content.svelte'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 	import { site_context } from '$lib/builder/stores/context'
 	import type { Field } from '$lib/common/models/Field'
 
-	const { field, entry: passedEntry, onchange }: { entity: Entity; field: Field; entry?: any; onchange: FieldValueHandler } = $props()
+	const { field, entry: passedEntry, onchange }: { field: Field; entry?: any; onchange: FieldValueHandler } = $props()
 
 	const default_value = {
 		label: '',
-		url: ''
+		url: '',
+		page: null
 	}
 
 	const default_entry = { value: default_value }
@@ -20,7 +20,17 @@
 	const entry = $derived(passedEntry || default_entry)
 	const selectable_pages = $derived(site?.pages() ?? [])
 
-	let selected = $derived<'page' | 'url'>(entry.value.page ? 'page' : 'url')
+	// Auto-select first page on open
+	$effect(() => {
+		const top_page = selectable_pages[0]
+		const has_url = entry?.value?.url
+		const has_page = entry?.value?.page
+		if (!has_url && !has_page && selected === 'page') {
+			onchange({ [field.key]: { 0: { value: { ...entry.value, page: top_page.id } } } })
+		}
+	})
+
+	let selected = $derived<'page' | 'url'>('page')
 </script>
 
 <div class="Link">
@@ -47,6 +57,7 @@
 			</div>
 			{#if selected === 'page'}
 				<UI.Select
+					fullwidth={true}
 					value={entry.value.page}
 					options={selectable_pages.sort((a, b) => a.index - b.index).map((p) => ({ ...p, label: p.name, value: p.id }))}
 					on:input={({ detail: pageId }) => {

@@ -68,7 +68,6 @@
 		if (first_subfield) {
 			const [ent] = useEntries(entity, first_subfield, entry) ?? []
 			if (first_subfield.type === 'link') return ent?.value?.label
-			else if (first_subfield.type === 'markdown') return ent?.value?.markdown
 			else return ent?.value
 		} else {
 			return singular_label

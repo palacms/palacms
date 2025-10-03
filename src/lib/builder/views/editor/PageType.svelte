@@ -914,7 +914,7 @@
 		--Spinner-color-opaque: rgba(248, 68, 73, 0.2);
 	}
 	main {
-		padding: 0.5rem;
+		padding: 1rem 0.5rem;
 		background-color: var(--color-gray-950);
 		transition: 0.2s opacity;
 		opacity: 0;
@@ -948,6 +948,7 @@
 
 	.page-zone.header-zone {
 		border-style: solid;
+		margin-bottom: 1rem;
 	}
 
 	.page-zone.header-zone.dragging-over {
@@ -957,6 +958,7 @@
 	.page-zone.body-zone {
 		border-style: solid;
 		max-height: none; /* Override the general max-height for body zone */
+		margin-bottom: 1rem;
 	}
 
 	.page-zone.body-zone.dragging-over {
@@ -965,6 +967,7 @@
 
 	.page-zone.footer-zone {
 		border-style: solid;
+		margin-bottom: 1rem;
 	}
 
 	.page-zone.footer-zone.dragging-over {
@@ -973,10 +976,11 @@
 
 	.zone-label {
 		font-size: 0.75rem;
-		font-weight: 500;
+		/* font-weight: 500; */
 		color: white;
-		margin-left: 0.5rem;
-		margin-top: 0.75rem;
+		/* margin-left: 0.5rem; */
+		/* margin-top: 0.75rem; */
+		margin-bottom: 0.25rem;
 		user-select: none;
 	}
 
@@ -1021,13 +1025,13 @@
 
 	.code-zone {
 		position: relative;
-		border: 2px solid rgba(255, 255, 255, 0.2);
-		margin-bottom: 1rem;
-		background: var(--color-gray-900);
+		/* border: 2px solid rgba(255, 255, 255, 0.2); */
+		/* background: var(--color-gray-900); */
 	}
 
 	.code-zone.head-zone {
 		border-color: rgba(76, 175, 80, 0.3);
+		margin-bottom: 1rem;
 	}
 
 	.code-zone.foot-zone {

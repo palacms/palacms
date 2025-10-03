@@ -24,6 +24,10 @@
 			if (parentWidth === 0) return
 			scale = parentWidth / childWidth
 			iframeHeight = `${100 / scale}%`
+			// give it a sec to load in
+			setTimeout(() => {
+				iframeLoaded = true
+			}, 200)
 		})
 
 		resize_observer.observe(container)
@@ -58,7 +62,6 @@
 				src={src ?? `/?_site=${site.id}`}
 				onload={async () => {
 					await init_preview()
-					iframeLoaded = true
 				}}
 			></iframe>
 		{:else}
@@ -91,7 +94,7 @@
 	iframe {
 		pointer-events: none;
 		opacity: 0;
-		transition: opacity 0.1s;
+		transition: opacity 0.2s;
 		width: 100vw;
 		will-change: opacity;
 		transform-origin: top left;

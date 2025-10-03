@@ -2,7 +2,7 @@ import type { Entry } from '$lib/common/models/Entry.js'
 import type { locales } from './common'
 import { SiteFields, Sites, Pages, PageTypeFields, PageTypes, SiteSymbols, LibrarySymbols, PageTypeSections, PageSections, LibraryUploads } from './pocketbase/collections'
 import type { Field } from './common/models/Field'
-import { get_empty_value } from '$lib/builder/utils'
+import { get_empty_value, convert_markdown_to_html, convert_rich_text_to_html } from '$lib/builder/utils'
 import { self } from './pocketbase/PocketBase'
 import type { ObjectOf } from './pocketbase/CollectionMapping.svelte'
 import { build_live_page_url } from './pages'
@@ -131,7 +131,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 		for (const field of filteredFields) {
 			const fieldEntries = resolveEntries({ entity, field, entries, parentEntry })
-			if (!fieldEntries) return
+			if (!fieldEntries || !field.key) return
 
 			// Handle page-field fields specially - get content from the page entity
 			// Fallback behavior: If the referenced page field doesn't exist on the
@@ -141,7 +141,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			// the editor behavior where irrelevant Page Fields are hidden from
 			// content editors. The fallback is applied consistently in all
 			// assignment branches below using `?? get_empty_value(pageField)`.
-			if (field.type === 'page-field' && field.key) {
+			if (field.type === 'page-field') {
 				const locale = 'en'
 				if (!content[locale]) content[locale] = {}
 
@@ -265,7 +265,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			}
 
 			// Handle site fields specially - get content from the site entity
-			else if (field.type === 'site-field' && field.key) {
+			else if (field.type === 'site-field') {
 				const locale = 'en'
 				if (!content[locale]) content[locale] = {}
 
@@ -294,7 +294,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			}
 
 			// Handle group fields specially - collect subfield entries into an object
-			else if (field.type === 'group' && field.key) {
+			else if (field.type === 'group') {
 				const locale = 'en'
 				if (!content[locale]) content[locale] = {}
 				content[locale]![field.key] = {}
@@ -310,7 +310,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			}
 
 			// Handle repeater fields specially - collect array of subfield entries into an object
-			else if (field.type === 'repeater' && field.key) {
+			else if (field.type === 'repeater') {
 				// Ensure we always provide an array, even if there are no entries
 				if (fieldEntries.length === 0) {
 					if (!content.en) content.en = {}
@@ -322,12 +322,31 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 					const data = getContent({ entity, fields, entries, parentField: field, parentEntry: entry })
 					if (!data) continue
-					;(content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
+						; (content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
 				}
 			}
 
+			// Handle markdown fields: markdown -> HTML
+			else if (field.type === 'markdown') {
+				const [entry] = fieldEntries
+				if (!entry) continue
+				if (typeof entry.value !== 'string') continue
+				if (!content[entry.locale]) content[entry.locale] = {}
+
+				content[entry.locale]![field.key] = convert_markdown_to_html(entry.value)
+			}
+
+			// Handle rich-text fields: JSON -> HTML
+			else if (field.type === 'rich-text') {
+				const [entry] = fieldEntries
+				if (!entry) continue
+				if (!content[entry.locale]) content[entry.locale] = {}
+				const html = convert_rich_text_to_html(entry.value)
+				content[entry.locale]![field.key] = html
+			}
+
 			// Handle image fields specially - get url
-			else if (field.type === 'image' && field.key) {
+			else if (field.type === 'image') {
 				const [entry] = fieldEntries
 				if (!entry) continue
 				if (!content[entry.locale]) content[entry.locale] = {}
@@ -349,7 +368,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			}
 
 			// Handle page fields specially - get content from the page entity
-			else if (field.type === 'page' && field.key) {
+			else if (field.type === 'page') {
 				const [entry] = fieldEntries
 				if (!entry) continue
 				if (!content[entry.locale]) content[entry.locale] = {}
@@ -388,7 +407,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			}
 
 			// Handle page-list fields specially
-			else if (field.type === 'page-list' && field.key) {
+			else if (field.type === 'page-list') {
 				if (!field.config?.page_type) continue
 				const pages = Pages.list({ filter: { page_type: field.config.page_type } })?.sort((a, b) => a.index - b.index)
 				if (!pages) continue
@@ -436,7 +455,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			}
 
 			// Handle link fields specifially - translate page ID into URL
-			else if (field.type === 'link' && field.key) {
+			else if (field.type === 'link') {
 				const [entry] = fieldEntries
 				if (!entry) continue
 				if (!content[entry.locale]) content[entry.locale] = {}

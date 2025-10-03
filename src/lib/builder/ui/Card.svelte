@@ -129,6 +129,7 @@
 	.card-body {
 		/* margin: 1.5rem; */
 		margin: 1rem;
+		overflow-x: hidden; /* for richtext field */
 
 		&:not(:only-child) {
 			margin-top: 0;

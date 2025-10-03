@@ -9,11 +9,7 @@
 		}
 	} = $props()
 
-	let html = $state('')
-	const info = field.config?.info || ''
-	convert_markdown_to_html(info).then((result) => {
-		html = result
-	})
+	let html = $derived(convert_markdown_to_html(field.config?.info || ''))
 </script>
 
 <div class="main info-field">

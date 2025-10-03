@@ -586,7 +586,7 @@
 			}
 		}}
 	>
-		<Dialog.Content class="z-[999] max-w-none h-full max-h-[100vh] flex flex-col p-4">
+		<Dialog.Content class="z-[999] max-w-none h-full max-h-[calc(100vh_-_1rem)] flex flex-col p-4">
 			<SectionEditor
 				bind:has_unsaved_changes={section_has_unsaved_changes}
 				component={hovered_section}

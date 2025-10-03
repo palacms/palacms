@@ -28,7 +28,7 @@
 </script>
 
 <div>
-	<div class="image-info">
+	<div class="VideoModal">
 		{#if loading}
 			<UI.Spinner />
 		{:else if value.url}
@@ -72,12 +72,12 @@
 </div>
 
 <style lang="postcss">
-	.image-info {
+	.VideoModal {
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
 		background: #1a1a1a;
-		padding: 0.25rem 0.75rem 0.75rem 0.75rem;
+		padding: 1.5rem;
 		--Spinner-padding: 3rem;
 		gap: 0.5rem;
 	}
