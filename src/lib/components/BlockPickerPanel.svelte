@@ -190,9 +190,3 @@
 		{/if}
 	</div>
 </Tabs.Root>
-
-<style lang="postcss">
-	:global(.BlockPickerPanel__skeleton) {
-		@apply col-span-3 p-3 pr-0 overflow-auto;
-	}
-</style>
