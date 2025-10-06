@@ -1,8 +1,6 @@
 <script>
-	import { toast } from 'svelte-sonner'
 	import SitePreview from '$lib/components/SitePreview.svelte'
-	import { CircleCheck, CirclePlus, Loader } from 'lucide-svelte'
-	import { Button } from '$lib/components/ui/button'
+	import { ExternalLink } from 'lucide-svelte'
 	import { Site } from '$lib/common/models/Site'
 
 	/**
@@ -47,40 +45,24 @@
 	$effect(() => {
 		iframe && append_to_iframe(append)
 	})
-
-	let added_to_library = $state([])
-	let loading = $state(false)
-	async function add_to_library() {
-		loading = true
-		// const { data } = await axios.get(`https://weave-marketplace.vercel.app/api/starters/${site.id}`)
-		// TODO: Implement
-		throw new Error('Not implemented')
-		loading = false
-		added_to_library.push(site.id)
-		toast.success('Added Starter to Library')
-	}
 </script>
 
 <svelte:window onresize={resizePreview} />
 
-<div class="space-y-3 relative w-full bg-gray-900">
+<div class="space-y-3 relative w-full aspect-[.69] bg-gray-900">
 	<div class="rounded-tl rounded-tr overflow-hidden">
-		<button class="w-full hover:opacity-75 transition-all" onclick={add_to_library} aria-hidden="true">
-			<SitePreview {site} style="--thumbnail-height: 56.25%" src={`https://palacms.com/?_site=${site.id}`} />
-		</button>
+		<a href={`https://${site.host}`} target="_blank" rel="noopener noreferrer" class="w-full hover:opacity-75 transition-all block">
+			<SitePreview {site} style="--thumbnail-height: 140%" src={`https://${site.host}`} />
+		</a>
 	</div>
 	<div class="absolute -bottom-2 rounded-bl rounded-br w-full p-3 z-20 bg-gray-900 truncate flex items-center justify-between">
-		<div class="text-sm font-medium leading-none hover:underline">{site.name}</div>
-		<Button class="h-4 p-0" onclick={add_to_library} variant="ghost" aria-label="Add to Library">
-			{#if loading}
-				<div class="animate-spin">
-					<Loader />
-				</div>
-			{:else if added_to_library.includes(site.id)}
-				<CircleCheck />
-			{:else}
-				<CirclePlus />
-			{/if}
-		</Button>
+		<div class="flex items-center gap-2">
+			<div class="text-sm font-medium leading-none">{site.name}</div>
+			<div class="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">Free</div>
+		</div>
+		<a href={`https://${site.host}`} target="_blank" rel="noopener noreferrer" class="text-xs text-muted-foreground hover:text-foreground hover:underline flex items-center gap-1">
+			<span>Preview</span>
+			<ExternalLink class="h-3 w-3" />
+		</a>
 	</div>
 </div>

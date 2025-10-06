@@ -11,11 +11,13 @@
 	let {
 		symbol,
 		onclick,
-		children = null
+		children = null,
+		show_price = false
 	}: {
 		symbol: ObjectOf<typeof LibrarySymbols>
 		onclick?: () => void
 		children?: null | Snippet
+		show_price?: boolean
 	} = $props()
 
 	const code = $derived(
@@ -43,7 +45,7 @@
 			})
 	})
 
-	const showing_footer = $derived(symbol?.name || children)
+	const showing_footer = $derived(symbol?.name || children || show_price)
 </script>
 
 <div class="relative w-full bg-gray-900 rounded-bl rounded-br">
@@ -52,9 +54,14 @@
 	</button>
 	{#if showing_footer}
 		<div class="w-full p-3 pt-2 bg-gray-900 truncate flex items-center justify-between">
-			{#if symbol?.name}
-				<div class="text-xs leading-none truncate" style="width: calc(100% - 2rem)">{symbol?.name}</div>
-			{/if}
+			<div class="flex items-center gap-2" style="width: calc(100% - 2rem)">
+				{#if symbol?.name}
+					<div class="text-xs leading-none truncate">{symbol?.name}</div>
+				{/if}
+				{#if show_price}
+					<div class="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">Free</div>
+				{/if}
+			</div>
 			{#if children}
 				<div>
 					{@render children()}

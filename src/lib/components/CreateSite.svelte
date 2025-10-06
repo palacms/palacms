@@ -812,7 +812,12 @@
 			{/if}
 		</div>
 		<div class="absolute bottom-0 w-full p-3 z-20 bg-[#000] border-t">
-			<div class="text-sm leading-none truncate">{site.name}</div>
+			<div class="flex items-center gap-2">
+				<div class="text-sm leading-none truncate">{site.name}</div>
+				{#if source === 'marketplace'}
+					<div class="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">Free</div>
+				{/if}
+			</div>
 		</div>
 	</button>
 {/snippet}

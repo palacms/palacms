@@ -151,7 +151,7 @@
 			<Masonry columnCount={2} class="col-span-3 p-3 pr-0 overflow-scroll" items={active_marketplace_blocks_group_symbols} loading={active_marketplace_blocks_group_symbols === undefined}>
 				{#snippet children(symbol)}
 					<div class="relative">
-						<SymbolButton {symbol} onclick={() => toggle_block(symbol.id, 'marketplace')} />
+						<SymbolButton {symbol} show_price={true} onclick={() => toggle_block(symbol.id, 'marketplace')} />
 						{#if selected.some((block) => block.id === symbol.id)}
 							<div class="pointer-events-none absolute inset-0 bg-[#000000AA] flex items-center justify-center">
 								<Check class="text-primary" />

@@ -12,6 +12,7 @@
 	import * as RadioGroup from '$lib/components/ui/radio-group'
 	import { Label } from '$lib/components/ui/label'
 	import { page } from '$app/state'
+	import { goto } from '$app/navigation'
 	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, MarketplaceSymbolGroups, MarketplaceSymbols } from '$lib/pocketbase/collections'
 	import { marketplace } from '$lib/pocketbase/PocketBase'
 	import { last_library_group_id } from '$lib/builder/stores/app/misc'
@@ -22,6 +23,16 @@
 	const marketplace_symbol_group = $derived(group_id ? MarketplaceSymbolGroups.one(group_id) : undefined)
 	const marketplace_symbols = $derived(marketplace_symbol_group?.symbols() ?? undefined)
 	const library_symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
+	const marketplace_symbol_groups = $derived(MarketplaceSymbolGroups.list({ sort: 'index' }) ?? [])
+
+	// Auto-select first marketplace group if none is selected
+	$effect(() => {
+		if (!group_id && marketplace_symbol_groups.length > 0) {
+			const url = new URL(page.url)
+			url.searchParams.set('group', marketplace_symbol_groups[0].id)
+			goto(url, { replaceState: true })
+		}
+	})
 
 	// Prefer last-used group (persisted), fallback to first available
 	let selected_group_id = $state((get(last_library_group_id) || LibrarySymbolGroups.list()?.[0]?.id) ?? '')
@@ -156,6 +167,7 @@
 				{#snippet children(symbol)}
 					<SymbolButton
 						{symbol}
+						show_price={true}
 						onclick={() => {
 							selected_symbol_id = symbol.id
 						}}
