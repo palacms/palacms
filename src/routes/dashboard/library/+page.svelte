@@ -11,7 +11,26 @@
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import DropZone from '$lib/components/DropZone.svelte'
 	import Masonry from '$lib/components/Masonry.svelte'
-	import { CirclePlus, Cuboid, Code, Upload, Download, SquarePen, Trash2, ChevronDown, Loader, Loader2, EllipsisVertical, ArrowLeftRight } from 'lucide-svelte'
+	import {
+		CirclePlus,
+		Cuboid,
+		Code,
+		Upload,
+		Download,
+		SquarePen,
+		Trash2,
+		ChevronDown,
+		Loader,
+		Loader2,
+		EllipsisVertical,
+		ArrowLeftRight,
+		Info,
+		Plus,
+		MousePointer,
+		Edit3,
+		Share,
+		Store
+	} from 'lucide-svelte'
 	import SymbolButton from '$lib/components/SymbolButton.svelte'
 	import { page } from '$app/state'
 	import { goto } from '$app/navigation'
@@ -44,9 +63,18 @@
 	const sidebar = useSidebar()
 
 	let creating_block = $state(false)
+	let is_info_dialog_open = $state(false)
 
 	function open_create_block() {
 		creating_block = true
+	}
+
+	async function create_first_group() {
+		const group = LibrarySymbolGroups.create({ name: 'Default', index: 0 })
+		await manager.commit()
+		const url = new URL(page.url)
+		url.searchParams.set('group', group.id)
+		goto(url, { replaceState: true })
 	}
 
 	let file = $state<File>()
@@ -263,6 +291,9 @@
 		</DropdownMenu.Root>
 	</div>
 	<div class="ml-auto mr-4 flex gap-2">
+		<Button size="sm" variant="ghost" onclick={() => (is_info_dialog_open = true)}>
+			<Info class="h-4 w-4" />
+		</Button>
 		{#if active_symbol_group_id}
 			<Button size="sm" variant="outline" onclick={open_create_block}>
 				<CirclePlus class="h-4 w-4" />
@@ -277,51 +308,84 @@
 </header>
 
 <div class="flex flex-1 flex-col gap-4 px-4 pb-4 overflow-hidden">
-	{#key active_symbol_group_id}
-		{#if group_symbols === undefined}
-			<!-- Loading state -->
-			<div class="flex flex-col items-center justify-center gap-4 py-8">
-				<Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
-				<p class="text-sm text-muted-foreground">Loading blocks...</p>
-			</div>
-		{:else if group_symbols.length}
-			<Masonry items={group_symbols}>
-				{#snippet children(symbol)}
-					<SymbolButton {symbol} onclick={() => begin_symbol_edit(symbol)}>
-						<DropdownMenu.Root>
-							<DropdownMenu.Trigger>
-								<EllipsisVertical size={14} />
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Content>
-								<DropdownMenu.Item onclick={() => begin_symbol_edit(symbol)}>
-									<Code class="h-4 w-4" />
-									<span>Edit</span>
-								</DropdownMenu.Item>
-								<DropdownMenu.Item onclick={() => export_symbol(symbol)}>
-									<Download class="h-4 w-4" />
-									<span>Export</span>
-								</DropdownMenu.Item>
-								<DropdownMenu.Item onclick={() => begin_symbol_move(symbol)}>
-									<ArrowLeftRight class="h-4 w-4" />
-									<span>Move</span>
-								</DropdownMenu.Item>
-								<DropdownMenu.Item onclick={() => begin_symbol_rename(symbol)}>
-									<SquarePen class="h-4 w-4" />
-									<span>Rename</span>
-								</DropdownMenu.Item>
-								<DropdownMenu.Item onclick={() => begin_symbol_delete(symbol)} class="text-red-500 hover:text-red-600 focus:text-red-600">
-									<Trash2 class="h-4 w-4" />
-									<span>Delete</span>
-								</DropdownMenu.Item>
-							</DropdownMenu.Content>
-						</DropdownMenu.Root>
-					</SymbolButton>
-				{/snippet}
-			</Masonry>
-		{:else}
-			<EmptyState class="h-[50vh]" icon={Cuboid} title="No Blocks to display" description="Blocks are components you can add to any site. When you create one it'll show up here." />
-		{/if}
-	{/key}
+	{#if symbol_groups.length === 0}
+		<!-- No groups exist -->
+		<EmptyState
+			class="h-[50vh]"
+			icon={Cuboid}
+			title="No Block Groups"
+			description="Create your first block group to start organizing your components."
+			button={{
+				label: 'Create First Group',
+				icon: CirclePlus,
+				onclick: create_first_group
+			}}
+		/>
+	{:else}
+		{#key active_symbol_group_id}
+			{#if group_symbols === undefined}
+				<!-- Loading state -->
+				<div class="flex flex-col items-center justify-center gap-4 py-8">
+					<Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
+					<p class="text-sm text-muted-foreground">Loading blocks...</p>
+				</div>
+			{:else if group_symbols.length}
+				<Masonry items={group_symbols}>
+					{#snippet children(symbol)}
+						<SymbolButton {symbol} onclick={() => begin_symbol_edit(symbol)}>
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger>
+									<EllipsisVertical size={14} />
+								</DropdownMenu.Trigger>
+								<DropdownMenu.Content>
+									<DropdownMenu.Item onclick={() => begin_symbol_edit(symbol)}>
+										<Code class="h-4 w-4" />
+										<span>Edit</span>
+									</DropdownMenu.Item>
+									<DropdownMenu.Item onclick={() => export_symbol(symbol)}>
+										<Download class="h-4 w-4" />
+										<span>Export</span>
+									</DropdownMenu.Item>
+									<DropdownMenu.Item onclick={() => begin_symbol_move(symbol)}>
+										<ArrowLeftRight class="h-4 w-4" />
+										<span>Move</span>
+									</DropdownMenu.Item>
+									<DropdownMenu.Item onclick={() => begin_symbol_rename(symbol)}>
+										<SquarePen class="h-4 w-4" />
+										<span>Rename</span>
+									</DropdownMenu.Item>
+									<DropdownMenu.Item onclick={() => begin_symbol_delete(symbol)} class="text-red-500 hover:text-red-600 focus:text-red-600">
+										<Trash2 class="h-4 w-4" />
+										<span>Delete</span>
+									</DropdownMenu.Item>
+								</DropdownMenu.Content>
+							</DropdownMenu.Root>
+						</SymbolButton>
+					{/snippet}
+				</Masonry>
+			{:else}
+				<div class="flex flex-col items-center justify-center gap-6 flex-1 h-[50vh]">
+					<div class="flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full dark:bg-gray-800">
+						<Cuboid class="w-10 h-10 text-gray-500 dark:text-gray-400" />
+					</div>
+					<div class="space-y-2 text-center">
+						<h2 class="text-2xl font-bold tracking-tight">No Blocks to display</h2>
+						<p class="text-gray-500 dark:text-gray-400 text-balance max-w-[30rem]">Blocks are components you can add to any site. When you create one it'll show up here.</p>
+					</div>
+					<div class="flex gap-3">
+						<Button onclick={open_create_block} variant="outline">
+							<CirclePlus class="h-4 w-4" />
+							<span>Create Block</span>
+						</Button>
+						<Button onclick={() => goto('/admin/dashboard/marketplace/blocks')} variant="outline">
+							<Store class="h-4 w-4" />
+							<span>Browse Marketplace</span>
+						</Button>
+					</div>
+				</div>
+			{/if}
+		{/key}
+	{/if}
 </div>
 
 <!-- Symbol Dialogs -->
@@ -484,6 +548,59 @@
 			>
 				Cancel
 			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={is_info_dialog_open}>
+	<Dialog.Content class="sm:max-w-[525px] pt-12 gap-0">
+		<h2 class="text-lg font-semibold leading-none tracking-tight">How Blocks Work in Pala</h2>
+		<p class="text-muted-foreground text-sm mb-6">Blocks are reusable components that you can add to any page on your sites.</p>
+
+		<div class="space-y-4">
+			<div class="flex gap-4">
+				<div class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center">
+					<Plus class="w-3 h-3" />
+				</div>
+				<div>
+					<h3 class="font-medium text-sm mb-1">Create or Import Blocks</h3>
+					<p class="text-muted-foreground text-sm">Build custom blocks using the visual editor or import blocks from other sites. Organize them into groups for easy management.</p>
+				</div>
+			</div>
+
+			<div class="flex gap-4">
+				<div class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center">
+					<MousePointer class="w-3 h-3" />
+				</div>
+				<div>
+					<h3 class="font-medium text-sm mb-1">Add Blocks to Pages</h3>
+					<p class="text-muted-foreground text-sm">When editing a page, drag blocks from the sidebar into your page layout. Blocks can be positioned anywhere and customized with different content.</p>
+				</div>
+			</div>
+
+			<div class="flex gap-4">
+				<div class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center">
+					<Edit3 class="w-3 h-3" />
+				</div>
+				<div>
+					<h3 class="font-medium text-sm mb-1">Customize Content</h3>
+					<p class="text-muted-foreground text-sm">Each block can have different content on different pages. Edit text, images, and other content directly in the page editor.</p>
+				</div>
+			</div>
+
+			<div class="flex gap-4">
+				<div class="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center">
+					<Share class="w-3 h-3" />
+				</div>
+				<div>
+					<h3 class="font-medium text-sm mb-1">Reuse Across Sites</h3>
+					<p class="text-muted-foreground text-sm">Export blocks to share with other sites or import blocks from the marketplace to expand your component library.</p>
+				</div>
+			</div>
+		</div>
+
+		<Dialog.Footer class="mt-6">
+			<Button type="button" onclick={() => (is_info_dialog_open = false)}>Got it</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
