@@ -507,7 +507,7 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] h-full max-w-none max-h-[100vh] flex flex-col p-4">
+	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] max-w-none h-[calc(100vh_-_1rem)] flex flex-col p-4">
 		<SectionEditor
 			component={editing_section_target}
 			tab={editing_section_tab}
