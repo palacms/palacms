@@ -142,12 +142,29 @@
 	async function make_content_editable() {
 		if (!node?.contentDocument || !entries || !fields) return
 
+		// Wait for content to load, then get valid elements
+		const valid_elements: HTMLElement[] = await (async () => {
+			const doc = node.contentDocument!
+			const component = doc.querySelector('#component')
+
+			// Poll every 200ms for up to 10 seconds
+			for (let i = 0; i < 50; i++) {
+				await new Promise((resolve) => setTimeout(resolve, 200))
+
+				// Check if component container has content
+				if (component && component.children.length > 0) {
+					// Now get the actual editable elements
+					const elements = Array.from(doc.querySelectorAll('img, a, p, span, h1, h2, h3, h4, h5, h6, div'))
+					return elements.filter((el): el is HTMLElement => el.tagName === 'IMG' || !!el.textContent?.trim())
+				}
+			}
+
+			// Return empty array if no content found after timeout
+			return []
+		})()
+
 		// Clean up previous event listeners before adding new ones
 		cleanup_event_listeners()
-
-		const valid_elements: HTMLElement[] = Array.from(node.contentDocument.querySelectorAll(`img, a, p, span, h1, h2, h3, h4, h5, h6, div`)).filter(
-			(el): el is HTMLElement => el.tagName === 'IMG' || !!el.textContent?.trim()
-		)
 
 		// loop over component_data and match to elements
 		const assigned_entry_ids = new Set() // elements that have been matched to a field ID
@@ -607,6 +624,7 @@
 	})
 
 	function update_menu_positions() {
+		if (!node.contentDocument) return
 		if (editing_link || editing_image || editing_video) {
 			hide_menus()
 			return
@@ -634,7 +652,7 @@
 
 		const range = selection.getRangeAt(0)
 		const common_ancestor = range.commonAncestorContainer
-		const element = common_ancestor instanceof Text ? common_ancestor.parentElement : common_ancestor
+		const element = common_ancestor.nodeName === '#text' ? common_ancestor.parentElement : common_ancestor
 		const rich_text_container = (element as Element)?.closest('[data-rich-text-id]')
 
 		if (rich_text_container) {
@@ -753,7 +771,7 @@
 
 			// Store a snapshot to avoid mutation side-effects
 			last_sent_data = _.cloneDeep(updated_data)
-			last_sent_js = updated_js
+			last_sent_js = updated_js as string
 			send_component_to_iframe(updated_js, updated_data)
 		}
 	)
@@ -761,7 +779,7 @@
 	async function send_component_to_iframe(js, data) {
 		try {
 			node.contentWindow!.postMessage({ type: 'component', payload: { js, data } }, '*')
-			setTimeout(make_content_editable, 200) // wait for component to mount within iframe
+			make_content_editable()
 		} catch (e) {
 			console.error(e)
 			error = e
@@ -1103,7 +1121,7 @@
 					// Handle direct link editing (entry-based)
 					current_link_element.href = current_link_url || ''
 					current_link_element.innerText = current_link_value.label
-					save_edited_value({ id: current_link_entry_id, value: _.cloneDeep(current_link_value) })
+					save_edited_value({ id: current_link_entry_id as string, value: _.cloneDeep(current_link_value) })
 				}
 				editing_link = false
 				editing_existing_link = false
@@ -1131,7 +1149,7 @@
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12">
 		<VideoModal
 			onsave={(url) => {
-				if (url) {
+				if (url && active_editor) {
 					active_editor.commands.setYoutubeVideo({
 						src: url,
 						width: '100%'
