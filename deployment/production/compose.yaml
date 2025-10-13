@@ -17,12 +17,14 @@ services:
       - traefik.http.routers.production-palacms-http.rule=Host(`palacms.com`) || Host(`marketplace.palacms.com`) || HostRegexp(`^.+\.palacms.site$`)
 
       - traefik.http.routers.production-palacms-https.entrypoints=https
+      - traefik.http.routers.production-palacms-https.middlewares=compress
       - traefik.http.routers.production-palacms-https.rule=Host(`palacms.com`)
       - traefik.http.routers.production-palacms-https.service=production-palacms
       - traefik.http.routers.production-palacms-https.tls=true
       - traefik.http.routers.production-palacms-https.tls.certresolver=palacms
 
       - traefik.http.routers.starter-palacms-https.entrypoints=https
+      - traefik.http.routers.starter-palacms-https.middlewares=compress
       - traefik.http.routers.starter-palacms-https.rule=HostRegexp(`^.+\.palacms.site$`)
       - traefik.http.routers.starter-palacms-https.service=production-palacms
       - traefik.http.routers.starter-palacms-https.tls=true
@@ -38,6 +40,7 @@ services:
       - traefik.http.routers.marketplace-palacms-https.middlewares=marketplace-palacms-redirect
 
       - traefik.http.routers.marketplace-palacms-https-api.entrypoints=https
+      - traefik.http.routers.marketplace-palacms-https-api.middlewares=compress
       - traefik.http.routers.marketplace-palacms-https-api.rule=Host(`marketplace.palacms.com`) && PathPrefix(`/api`)
       - traefik.http.routers.marketplace-palacms-https-api.service=production-palacms
       - traefik.http.routers.marketplace-palacms-https-api.tls=true
