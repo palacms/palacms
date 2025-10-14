@@ -10,7 +10,6 @@
 	import ComponentNode from './Layout/ComponentNode.svelte'
 	import BlockToolbar from './Layout/BlockToolbar-simple.svelte'
 	import DropIndicator from './Layout/DropIndicator.svelte'
-	import LockedOverlay from './Layout/LockedOverlay.svelte'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
 	import { locale, dragging_symbol } from '../../stores/app/misc.js'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
@@ -73,14 +72,6 @@
 
 	// detect when all sections are mounted
 	let sections_mounted = $state(0)
-
-	async function lock_block(block_id) {
-		// TODO
-	}
-
-	function unlock_block() {
-		// TODO
-	}
 
 	let hovered_section_id: string | null = $state(null)
 	let hovered_section = $derived(page_type_sections.find((s) => s.id === hovered_section_id))
@@ -152,7 +143,6 @@
 	let editing_section_tab = $state('code')
 	function edit_component(tab) {
 		if (!hovered_section) return
-		lock_block(hovered_section_id)
 		editing_section_tab = tab
 		editing_section = true
 		editing_section_target = hovered_section
@@ -678,8 +668,6 @@
 	<div class="zone-label">Header</div>
 	<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header">
 		{#each header_sections as section (section.id)}
-			{@const locked = undefined}
-			{@const in_current_tab = false}
 			{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
 			<div
 				role="region"
@@ -687,7 +675,6 @@
 				data-section={section.id}
 				data-symbol={symbol?.id}
 				id="section-{section.id}"
-				class:locked
 				onmousemove={() => {
 					if (!moving && !showing_block_toolbar) {
 						show_block_toolbar()
@@ -712,15 +699,10 @@
 				data-test-id="page-type-section-{section.id}"
 				style="min-height: 3rem;overflow:hidden;position: relative;"
 			>
-				{#if locked && !in_current_tab}
-					<LockedOverlay {locked} />
-				{/if}
 				{#if symbol}
 					<ComponentNode
 						{section}
 						block={symbol}
-						on:lock={() => lock_block(section.id)}
-						on:unlock={() => unlock_block()}
 						on:mount={() => sections_mounted++}
 						on:resize={() => {
 							if (showing_block_toolbar) {
@@ -753,8 +735,6 @@
 	</div>
 	<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body">
 		{#each body_sections as section (section.id)}
-			{@const locked = undefined}
-			{@const in_current_tab = false}
 			{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
 			<div
 				role="region"
@@ -762,7 +742,6 @@
 				data-section={section.id}
 				data-symbol={symbol?.id}
 				id="section-{section.id}"
-				class:locked
 				onmousemove={() => {
 					if (!moving && !showing_block_toolbar) {
 						show_block_toolbar()
@@ -787,15 +766,10 @@
 				data-test-id="page-type-section-{section.id}"
 				style="min-height: 3rem;overflow:hidden;position: relative;"
 			>
-				{#if locked && !in_current_tab}
-					<LockedOverlay {locked} />
-				{/if}
 				{#if symbol}
 					<ComponentNode
 						{section}
 						block={symbol}
-						on:lock={() => lock_block(section.id)}
-						on:unlock={() => unlock_block()}
 						on:mount={() => sections_mounted++}
 						on:resize={() => {
 							if (showing_block_toolbar) {
@@ -825,8 +799,6 @@
 	<div class="zone-label">Footer</div>
 	<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer">
 		{#each footer_sections as section (section.id)}
-			{@const locked = undefined}
-			{@const in_current_tab = false}
 			{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
 			<div
 				role="region"
@@ -834,7 +806,6 @@
 				data-section={section.id}
 				data-symbol={symbol?.id}
 				id="section-{section.id}"
-				class:locked
 				onmousemove={() => {
 					if (!moving && !showing_block_toolbar) {
 						show_block_toolbar()
@@ -859,15 +830,10 @@
 				data-test-id="page-type-section-{section.id}"
 				style="min-height: 3rem;overflow:hidden;position: relative;"
 			>
-				{#if locked && !in_current_tab}
-					<LockedOverlay {locked} />
-				{/if}
 				{#if symbol}
 					<ComponentNode
 						{section}
 						block={symbol}
-						on:lock={() => lock_block(section.id)}
-						on:unlock={() => unlock_block()}
 						on:mount={() => sections_mounted++}
 						on:resize={() => {
 							if (showing_block_toolbar) {

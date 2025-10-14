@@ -6,11 +6,9 @@
 	import ImageField from '$lib/builder/field-types/ImageField.svelte'
 	import LinkField from '$lib/builder/field-types/Link.svelte'
 	import VideoModal from '$lib/builder/views/modal/VideoModal.svelte'
-	import Icon from '@iconify/svelte'
 	import { tick, createEventDispatcher } from 'svelte'
 	import { createUniqueID } from '$lib/builder/utils'
 	import { processCode, compare_urls } from '$lib/builder/utils'
-	import { hovering_outside } from '$lib/builder/utilities'
 	import { locale } from '$lib/builder/stores/app/misc'
 	import { site_html } from '$lib/builder/stores/app/page'
 	import RichTextButton from './RichTextButton.svelte'
@@ -107,15 +105,6 @@
 	let is_editing = $state(false)
 
 	let field_save_timeout: ReturnType<typeof setTimeout>
-
-	function handle_lock() {
-		is_editing = true
-	}
-
-	function handle_unlock() {
-		is_editing = false
-		dispatch('unlock')
-	}
 
 	function update_formatting_state() {
 		if (active_editor) {
@@ -299,8 +288,6 @@
 					Extension.create({
 						onFocus() {
 							active_editor = editor
-							handle_lock()
-							dispatch('lock')
 							update_formatting_state()
 						},
 						onSelectionUpdate() {
@@ -311,7 +298,7 @@
 						onBlur: async ({ event }) => {
 							// Only unlock when blur wasn't caused by clicking editor UI
 							if (!suppress_blur_unlock) {
-								handle_unlock()
+								is_editing = false
 							}
 							// Final save on blur
 							clearTimeout(field_save_timeout)
@@ -483,7 +470,7 @@
 			}
 
 			const blur_handler = (e: Event) => {
-				handle_unlock()
+				is_editing = false
 				// Final save on blur
 				clearTimeout(field_save_timeout)
 				const target = e.target as HTMLElement
@@ -491,8 +478,7 @@
 			}
 
 			const focus_handler = () => {
-				handle_lock()
-				dispatch('lock')
+				is_editing = true
 			}
 
 			element.addEventListener('keydown', keydown_handler)
@@ -551,7 +537,8 @@
 
 	// Reroute non-entry links to open in a new tab
 	async function reroute_links() {
-		node.contentDocument!.querySelectorAll<HTMLLinkElement>('a:not([data-entry] a):not([data-key] a):not([data-entry]):not([data-key])').forEach((link) => {
+		if (!node.contentDocument) return
+		node.contentDocument.querySelectorAll<HTMLLinkElement>('a:not([data-entry] a):not([data-key] a):not([data-entry]):not([data-key])').forEach((link) => {
 			link.addEventListener('click', (e) => {
 				e.preventDefault()
 				window.open(link.href, '_blank')
@@ -591,10 +578,15 @@
 
 		// Resize component iframe wrapper on resize to match content height (message set from `setup_component_iframe`)
 		window_message_handler = (event: MessageEvent) => {
-			if (node && event.data?.type === 'resize') {
-				if (event.data.id === section.id) {
-					node.style.height = event.data.height + 'px'
-				}
+			if (!node || event.source !== node.contentWindow) return
+
+			const message = event.data
+			if (!message) return
+
+			if (message.type === 'component-error') {
+				const incoming_error = typeof message.error === 'string' ? message.error : (message.error?.toString?.() ?? 'Unknown error')
+				error = incoming_error
+				dispatch_mount()
 			}
 		}
 		window.addEventListener('message', window_message_handler)
@@ -731,7 +723,9 @@
 
 			const update_height = () => {
 				const height = doc.body.clientHeight
-				window.postMessage({ type: 'resize', height, id: section.id }, '*')
+				if (node) {
+					node.style.height = height + 'px'
+				}
 				dispatch('resize')
 			}
 
@@ -1220,9 +1214,10 @@
 {/if}
 
 {#if error}
-	<pre>
-    {@html error}
-  </pre>
+	<div class="component-error">
+		<pre>{@html error}</pre>
+		<p class="component-error__hint">Check console for full error.</p>
+	</div>
 {/if}
 
 {#if floating_menu_state.visible}
@@ -1403,10 +1398,19 @@
 	}
 	pre {
 		margin: 0;
+	}
+	.component-error {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
 		padding: 1rem;
 		background: var(--primo-color-black);
 		color: var(--color-gray-3);
-		border: 1px solid var(--color-gray-6);
+		border: 2px solid red;
+	}
+	.component-error__hint {
+		font-size: 0.875rem;
+		color: var(--color-gray-5);
 	}
 	.menu {
 		font-size: var(--font-size-1);
