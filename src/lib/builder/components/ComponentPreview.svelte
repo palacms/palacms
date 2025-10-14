@@ -9,25 +9,27 @@
 </script>
 
 <script lang="ts">
-	import { site_context } from '$lib/builder/stores/context'
-	import { onMount, tick, untrack } from 'svelte'
+	import { onMount, tick } from 'svelte'
 	import { slide, fade } from 'svelte/transition'
 	import { dynamic_iframe_srcdoc } from './misc.js'
 	import { highlightedElement } from '../stores/app/misc'
 	import { Inspect } from 'svelte-inspect-value'
 	import Icon from '@iconify/svelte'
 	import { content_editable } from '../utilities'
-	import { processCode } from '../utils.js'
+	import { processCode, processCSS } from '../utils.js'
 	import { debounce } from 'lodash-es'
+	import { watch } from 'runed'
+	import { site_html } from '$lib/builder/stores/app/page.js'
+	import _ from 'lodash-es'
 
 	/**
 	 * @typedef {Object} Props
+	 * @property {string} [id]
 	 * @property {Object} [code]?
 	 * @property {string} [view]?
 	 * @property {string} [orientation]?
 	 * @property {boolean} [loading]?
 	 * @property {boolean} [hideControls]?
-	 * @property {any} [preview]?
 	 * @property {any} [data]
 	 * @property {string | null} [head]?
 	 * @property {string} [append]?
@@ -35,6 +37,7 @@
 
 	/** @type {Props} */
 	let {
+		id,
 		code = {
 			html: '',
 			css: '',
@@ -44,53 +47,16 @@
 		orientation = $bindable('horizontal'),
 		loading = $bindable(false),
 		hideControls = false,
-		preview = null,
 		data = undefined,
-		head = null,
 		append = ''
 	} = $props()
-
-	const { value: site } = site_context.getOr({ value: null })
 
 	$preview_updated = false
 
 	let compilation_error = $state(null)
 
-	let component_head_html = $state(head || '')
-	let head_compiled = $state(false)
-	$effect.pre(() => {
-		if (head === null && !head_compiled) {
-			compile_component_head()
-			head_compiled = true
-		}
-	})
-	async function compile_component_head() {
-		loading = true
-
-		await compile()
-		setTimeout(() => {
-			loading = false
-		}, 200)
-
-		async function compile() {
-			if (!site) return
-
-			const compiled_head = await processCode({
-				component: {
-					html: `<svelte:head>${site.head}</svelte:head>`,
-					css: '',
-					js: '',
-					data: {}
-				}
-			})
-
-			if (!compiled_head.error) {
-				component_head_html = compiled_head.head
-			}
-		}
-	}
-
 	let componentApp = $state(null)
+	let component_mounted = $state(false)
 	let quiet_compile = $state(false)
 	let last_error_html = $state(null)
 	async function compile_component_code() {
@@ -137,6 +103,8 @@
 		}
 	}
 
+	compile_component_code()
+
 	// Debounce compilation to prevent frequent recompilation during typing
 	const debouncedCompile = debounce(compile_component_code, 100)
 	// Debounced recompile specifically for data changes while in error state
@@ -152,13 +120,17 @@
 
 	let channel
 	onMount(() => {
-		channel = new BroadcastChannel('component_preview')
+		channel = new BroadcastChannel(`preview-${id}`)
 		channel.onmessage = ({ data }) => {
 			const { event, payload } = data
-			if (event === 'BEGIN') {
+			if (event === 'INITIALIZED') {
+				iframe_loaded = true
+			} else if (event === 'BEGIN') {
 				// reset log & runtime error
 				consoleLog = null
 				compilation_error = null
+			} else if (event === 'MOUNTED') {
+				component_mounted = true
 			} else if (event === 'SET_CONSOLE_LOGS') {
 				consoleLog = data.payload.logs
 			} else if (event === 'SET_ERROR') {
@@ -167,11 +139,14 @@
 				$highlightedElement = payload.loc
 			}
 		}
+		return () => {
+			channel?.close()
+		}
 	})
 
 	let consoleLog = $state()
 
-	let iframe = $state()
+	let iframe = <HTMLIFrameElement>$state()
 
 	function append_to_iframe(code) {
 		var container = document.createElement('div')
@@ -181,8 +156,32 @@
 		})
 	}
 
+	// inject updated component CSS to avoid having to recompile the whole thing on each style change
+	// NOTE: this introduces a bug where writing bare styles will target generated HTML (ie from Markdown/RichText) since injected styles aren't scoped
+	// but that's an acceptable tradeoff atm for the better UX
+	async function update_css(raw_css) {
+		if (!iframe || !iframe.contentDocument || !componentApp) return
+		const doc = iframe.contentDocument
+
+		// if css contains any :global styles, just recompile everything
+		if (/:global/.test(raw_css)) {
+			debouncedCompile()
+		} else {
+			const final_css = await processCSS(raw_css)
+			console.log({ final_css })
+			let styleTag = doc.querySelector('style[id^="svelte-"]')
+			styleTag!.textContent = final_css
+		}
+	}
+	watch(
+		() => code.css,
+		(css) => {
+			update_css(css)
+		}
+	)
+
 	let container = $state()
-	let iframeLoaded = $state(false)
+	let iframe_loaded = $state(false)
 
 	let scale = $state()
 	let height = $state()
@@ -223,16 +222,14 @@
 		}
 	}
 
-	function setIframeApp({ iframeLoaded, componentApp }) {
-		if (iframeLoaded) {
-			channel.postMessage({
-				event: 'SET_APP',
-				payload: { componentApp, data }
-			})
-		}
+	async function setIframeApp() {
+		channel.postMessage({
+			event: 'SET_APP',
+			payload: { componentApp, data }
+		})
 	}
 
-	function setIframeData(data) {
+	function setIframeData() {
 		// When there's a compile error, field edits can spam recompiles and cause flicker.
 		// Debounce a quiet recompile attempt, and avoid touching the iframe until success.
 		if (compilation_error && $auto_refresh) {
@@ -240,27 +237,15 @@
 			return
 		}
 		// reload the app if it crashed from an error
-		const div = iframe?.contentDocument?.querySelector('div.component')
+		const div = iframe?.contentDocument?.querySelector('#page')
 		if (div?.innerHTML === '') {
-			setIframeApp({
-				iframeLoaded,
-				componentApp
-			})
-		} else if (iframeLoaded) {
+			setIframeApp()
+		} else if (iframe_loaded) {
 			channel.postMessage({
 				event: 'SET_APP_DATA',
 				payload: { data }
 			})
 		}
-	}
-
-	function setLoading() {
-		if (!iframeLoaded) {
-			iframeLoaded = true
-			return
-		}
-		iframeLoaded = false
-		iframe.srcdoc = dynamic_iframe_srcdoc(component_head_html)
 	}
 
 	let previewWidth = $state()
@@ -293,11 +278,18 @@
 		}
 	}
 
-	$effect(() => {
-		if ($auto_refresh && (code.html || code.css || code.js)) {
+	let last_signature = `${code.html}--${code.js}`
+	watch(
+		() => [code.html, code.js, $auto_refresh],
+		([html, js, refresh]) => {
+			if (!refresh) return
+			const new_signature = `${html}--${js}`
+			if (new_signature === last_signature) return
 			debouncedCompile()
+			last_signature = new_signature
 		}
-	})
+	)
+
 	$effect(() => {
 		if (iframe) {
 			// open clicked links in browser
@@ -307,21 +299,25 @@
 			append_to_iframe(append)
 		}
 	})
-	$effect(() => {
-		if (componentApp) {
-			iframeLoaded
-			untrack(() => {
-				setIframeApp({
-					iframeLoaded,
-					componentApp
-				})
-			})
+
+	watch(
+		() => [componentApp, iframe_loaded],
+		() => {
+			if (!componentApp || !iframe_loaded) return
+			setIframeApp()
 		}
-	})
-	$effect(() => {
-		if (!data) return
-		untrack(() => setIframeData(data))
-	})
+	)
+
+	let last_data = _.cloneDeep(data)
+	watch(
+		() => data,
+		(data) => {
+			if (!data || _.isEqual(last_data, data)) return
+			setIframeData()
+			last_data = _.cloneDeep(data)
+		}
+	)
+
 	$effect(() => {
 		;(previewWidth, resizePreview())
 	})
@@ -342,29 +338,16 @@
 		</div>
 	{/if}
 	<div in:fade class="preview-container" class:loading bind:this={container} bind:clientWidth={previewWidth}>
-		{#if componentApp}
-			<iframe
-				tabindex="-1"
-				style:transform={view === 'large' ? scale : ''}
-				style:height={view === 'large' ? height : '100%'}
-				style:width={view === 'large' ? `${active_static_width}px` : '100%'}
-				onload={setLoading}
-				title="Preview HTML"
-				srcdoc={dynamic_iframe_srcdoc(component_head_html)}
-				bind:this={iframe}
-			></iframe>
-		{:else}
-			<iframe
-				tabindex="-1"
-				style:transform={view === 'large' ? scale : ''}
-				style:height={view === 'large' ? height : '100%'}
-				style:width={view === 'large' ? `${active_static_width}px` : '100%'}
-				onload={() => (iframeLoaded = true)}
-				title="Preview"
-				srcdoc={preview}
-				bind:this={iframe}
-			></iframe>
-		{/if}
+		<iframe
+			tabindex="-1"
+			style:transform={view === 'large' ? scale : ''}
+			style:height={view === 'large' ? height : '100%'}
+			class:fadein={component_mounted}
+			style:width={view === 'large' ? `${active_static_width}px` : '100%'}
+			title="Preview HTML"
+			srcdoc={dynamic_iframe_srcdoc($site_html, `preview-${id}`)}
+			bind:this={iframe}
+		></iframe>
 	</div>
 	{#if !hideControls}
 		<div class="footer-buttons">
@@ -436,13 +419,16 @@
 		}
 	}
 	iframe {
+		opacity: 0;
 		border: 0;
-		transition: opacity 0.4s;
+		transition: opacity 0.2s;
 		background: var(--primo-color-white);
 		height: 100%;
 		width: 100%;
-		opacity: 1;
 		transform-origin: top left;
+	}
+	.fadein {
+		opacity: 1;
 	}
 	.preview-container {
 		background: var(--primo-color-white);
