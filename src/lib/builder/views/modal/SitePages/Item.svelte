@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Item from './Item.svelte'
 	import Icon from '@iconify/svelte'
-	import { onMount } from 'svelte'
+	import { onMount, tick } from 'svelte'
 	import { get, set } from 'idb-keyval'
 	import { slide } from 'svelte/transition'
 	import { content_editable, validate_url } from '$lib/builder/utilities'
@@ -217,6 +217,8 @@
 	})
 
 	let is_dragging = $state(false)
+
+	let name_input_el
 </script>
 
 <div class="Item" bind:this={element} class:contains-child={parent} class:dragging={is_dragging}>
@@ -226,30 +228,18 @@
 				<div class="details">
 					<div
 						class="name"
+						bind:this={name_input_el}
 						use:content_editable={{
-							autofocus: true,
-							on_change: (val) => (page.name = val),
-							on_submit: () => (editing_page = false)
+							on_change: (val) => {},
+							on_submit: (val) => {
+								Pages.update(page.id, { name: val })
+								manager.commit()
+								editing_page = false
+							}
 						}}
 					>
 						{page.name}
 					</div>
-					{#if page.slug !== ''}
-						<div class="url">
-							<span>/</span>
-							<div
-								class="url"
-								use:content_editable={{
-									on_change: (val) => {
-										page.slug = validate_url(val)
-									},
-									on_submit: () => (editing_page = false)
-								}}
-							>
-								{page.slug}
-							</div>
-						</div>
-					{/if}
 				</div>
 			{:else}
 				<div class="details">
@@ -305,6 +295,9 @@
 						icon: 'clarity:edit-solid',
 						on_click: () => {
 							editing_page = !editing_page
+							tick().then(() => {
+								name_input_el.focus()
+							})
 						}
 					},
 					...(!!page.parent
