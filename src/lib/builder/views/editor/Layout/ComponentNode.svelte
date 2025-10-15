@@ -69,6 +69,7 @@
 	const rich_text_classes = {}
 
 	// Keep markdown locked when blur is caused by clicking editor UI buttons
+	// so that we don't hydrate the section while it's being edited (and lose focus)
 	let suppress_blur_unlock = $state(false)
 	let suppress_timer: ReturnType<typeof setTimeout>
 
@@ -287,6 +288,7 @@
 					...rich_text_extensions,
 					Extension.create({
 						onFocus() {
+							is_editing = true
 							active_editor = editor
 							update_formatting_state()
 						},
@@ -295,15 +297,12 @@
 							// Update menu positions when selection changes
 							update_menu_positions()
 						},
-						onBlur: async ({ event }) => {
+						onBlur: async () => {
 							// Only unlock when blur wasn't caused by clicking editor UI
 							if (!suppress_blur_unlock) {
 								is_editing = false
 							}
-							// Final save on blur
 							clearTimeout(field_save_timeout)
-							const json = editor.getJSON()
-							save_edited_value({ id, value: json })
 							setTimeout(() => {
 								// Hide floating menu on blur, timeout so click registers first
 								hide_menus()
@@ -1173,8 +1172,8 @@
 		}}
 		onDelete={() => {
 			if (image_editor_element) {
-				// Remove the image element from the DOM
-				// image_editor_element.remove()
+				// Remove the image element from the DOM, idk how this works to delete it from the tiptap editor but it does
+				image_editor_element.remove()
 				image_overlay_is_visible = false
 			}
 		}}
