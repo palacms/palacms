@@ -181,7 +181,7 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<nav aria-label="toolbar" id="primo-toolbar" class="primo-reset">
+<nav aria-label="toolbar" id="primo-toolbar">
 	<div class="menu-container">
 		<div class="left">
 			{#if $current_user?.serverRole}

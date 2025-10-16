@@ -558,7 +558,7 @@
 		flex-direction: column;
 		height: calc(100vh - 59px);
 		/* height: 100%; */
-		/* gap: 0.5rem; */
+		/* gap: 1rem; */
 		z-index: 9;
 		position: relative;
 		overflow: auto;
@@ -597,6 +597,7 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
+		padding-top: 0.5rem;
 
 		.block {
 			padding-block: 0.5rem;
