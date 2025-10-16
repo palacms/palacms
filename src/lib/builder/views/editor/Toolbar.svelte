@@ -6,15 +6,14 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu'
 	import { LayoutTemplate, Trash2, ChevronDown } from 'lucide-svelte'
 	import ToolbarButton from './ToolbarButton.svelte'
-	import Letter from '$lib/builder/ui/Letter.svelte'
 	import { PalaButton } from '$lib/builder/components/buttons'
 	import { mod_key_held } from '$lib/builder/stores/app/misc'
 	import { onNavigate, goto } from '$app/navigation'
-	import { active_users } from '$lib/builder/stores/app/misc'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { page as pageState } from '$app/state'
-	import { PageTypes, Pages, manager } from '$lib/pocketbase/collections'
+	import { PageTypes, manager } from '$lib/pocketbase/collections'
 	import { onModKey } from '$lib/builder/utils/keyboard'
-
+	import * as Popover from '$lib/components/ui/popover/index.js'
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
 	import SitePages from '$lib/builder/views/modal/SitePages/SitePages.svelte'
 	import PageTypeModal from '$lib/builder/views/modal/PageTypeModal/PageTypeModal.svelte'
@@ -250,11 +249,45 @@
 			{/if}
 		</div>
 		<div class="right">
-			{#if $active_users.length > 0}
-				<div class="active-editors flex gap-1">
-					{#each $active_users as user}
-						<div class="editor" transition:fade={{ duration: 200 }}>
-							<Letter letter={user.email.slice(0, 1)} />
+			{#if true}
+				<div class="flex -space-x-2">
+					{#each [{ page: { name: 'About', slug: 'about', page_type: { name: 'Default', icon: 'iconoir:page' } }, user: { avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287', name: 'Matthew Morris' } }, { page_type: { id: 'thepagetypeid', name: 'Blog Post', icon: 'flowbite:newspaper-outline' }, user: { avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8ZmFjZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&q=60&w=900', name: 'Jesse' } }, { symbol: { name: 'Hero' }, user: { avatar: 'https://images.unsplash.com/photo-1499996860823-5214fcc65f8f?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGZhY2V8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&q=60&w=900', name: 'Bryan' } }] as { page, page_type, symbol, user }}
+						<div class="flex" transition:fade>
+							<Popover.Root>
+								<Popover.Trigger>
+									<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
+										<Avatar.Image src={user.avatar} alt={user.name} class="grayscale hover:grayscale-0 object-cover object-center" />
+										<Avatar.Fallback>{user.name.slice(0, 2)}</Avatar.Fallback>
+									</Avatar.Root>
+								</Popover.Trigger>
+								<Popover.Content class="w-auto z-[99]">
+									<div class="flex space-x-4">
+										<Avatar.Root class="data-[status=loaded]:border-foreground bg-muted text-muted-foreground h-12 w-12 rounded-full border border-transparent text-[17px] font-medium uppercase">
+											<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
+												<Avatar.Image src={user.avatar} alt={user.name} class="object-cover object-center" />
+												<Avatar.Fallback class="border-muted border">{user.name.slice(0, 2)}</Avatar.Fallback>
+											</div>
+										</Avatar.Root>
+										<div class="space-y-1 text-sm">
+											<h4 class="font-medium">{user.name}</h4>
+											<div class="flex items-center gap-1">
+												{#if page}
+													{@const url = build_cms_page_url(page, pageState.url)}
+													<Icon icon={page.page_type.icon} />
+													<a href={url} class="underline">{page.name}</a>
+												{:else if page_type}
+													{@const url = `${pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}/page-type--${page_type.id}`}
+													<Icon icon={page_type.icon} />
+													<a href={url} class="underline">{page_type.name}</a>
+												{:else if symbol}
+													<Icon icon="lucide:cuboid" />
+													<p>{symbol.name}</p>
+												{/if}
+											</div>
+										</div>
+									</div>
+								</Popover.Content>
+							</Popover.Root>
 						</div>
 					{/each}
 				</div>

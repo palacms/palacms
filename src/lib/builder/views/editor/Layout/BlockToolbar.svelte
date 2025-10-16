@@ -30,7 +30,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_mouse_events_have_key_events -->
-<div in:fade={{ duration: 100 }} class="BlockToolbar primo-reset" bind:this={node}>
+<div in:fade={{ duration: 100 }} class="BlockToolbar" bind:this={node}>
 	<div class="top">
 		<div class="component-button">
 			{#if $current_user?.siteRole === 'developer'}
@@ -44,9 +44,6 @@
 				</button>
 			{/if}
 			<button onclick={() => dispatch('edit-content')} aria-label="Edit Block Content">
-				<!-- {#if $mod_key_held}
-					<span class="key-hint">&#8984; 2</span>
-				{/if} -->
 				<span class="icon">
 					<Icon icon="material-symbols:edit-square-outline-rounded" />
 				</span>
