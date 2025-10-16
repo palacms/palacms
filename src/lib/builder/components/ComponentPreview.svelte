@@ -168,7 +168,6 @@
 			debouncedCompile()
 		} else {
 			const final_css = await processCSS(raw_css)
-			console.log({ final_css })
 			let styleTag = doc.querySelector('style[id^="svelte-"]')
 			styleTag!.textContent = final_css
 		}
