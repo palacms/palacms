@@ -32,15 +32,28 @@ import {
 	SiteUploads
 } from '../pocketbase/collections'
 import type { SiteUpload } from '../common/models/SiteUpload'
-import { self } from '../pocketbase/PocketBase'
 import type { Field } from '../common/models/Field'
 import { useSvelteWorker } from './Worker.svelte'
 import type { Entry } from '$lib/common/models/Entry'
 import type { CollectionMapping } from '$lib/pocketbase/CollectionMapping.svelte'
 import type { PageTypeSection } from '$lib/common/models/PageTypeSection'
 import type { PageSection } from '$lib/common/models/PageSection'
+import type Client from 'pocketbase'
+import { self } from '$lib/pocketbase/PocketBase'
 
-export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group_id }: { starter_site_id?: string; site_name?: string; site_host?: string; site_group_id?: string }) => {
+export const useCloneSite = ({
+	starter_instance = self,
+	starter_site_id,
+	site_name,
+	site_host,
+	site_group_id
+}: {
+	starter_instance?: Client
+	starter_site_id?: string
+	site_name?: string
+	site_host?: string
+	site_group_id?: string
+}) => {
 	const worker = useSvelteWorker(
 		() => !!starter_site_id || !!site_name || !site_host || !site_group_id,
 		() => !!starter_site && !!starter_site_pages && !!siteData.data,
@@ -64,7 +77,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 			const site_upload_map = new Map<string, SiteUpload>()
 			const create_site_uploads = async () => {
 				for (const starter_site_upload of data.site_uploads) {
-					const file = await fetch(`${self.baseURL}/api/files/site_uploads/${starter_site_upload.id}/${starter_site_upload.file}`)
+					const file = await fetch(`${starter_instance.baseURL}/api/files/site_uploads/${starter_site_upload.id}/${starter_site_upload.file}`)
 						.then((res) => res.blob())
 						.then((blob) => new File([blob], starter_site_upload.file.toString()))
 
@@ -556,9 +569,9 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 	)
 
 	const shouldLoad = $derived(['loading', 'working'].includes(worker.status))
-	const starter_site = $derived(shouldLoad && starter_site_id ? Sites.one(starter_site_id) : undefined)
+	const starter_site = $derived(shouldLoad && starter_site_id ? Sites.from(starter_instance).one(starter_site_id) : undefined)
 	const starter_site_pages = $derived(shouldLoad && starter_site ? starter_site.pages() : undefined)
-	const siteData = $derived(shouldLoad && starter_site && starter_site_pages ? usePageData(starter_site, starter_site_pages) : { data: undefined })
+	const siteData = $derived(shouldLoad && starter_site && starter_site_pages ? usePageData(starter_site, starter_site_pages, starter_instance) : { data: undefined })
 
 	return worker
 }
