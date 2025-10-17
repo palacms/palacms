@@ -504,11 +504,11 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 					}
 
 					let { value } = entry
-					if (field.type === 'image' && value.upload) {
+					if (field.type === 'image' && value?.upload) {
 						value = { ...value, upload: site_upload_map.get(value.upload)?.id }
-					} else if (field.type === 'link' && value.page) {
+					} else if (field.type === 'link' && value?.page) {
 						value = { ...value, page: page_map.get(value.page)?.id }
-					} else if (field.type === 'page') {
+					} else if (field.type === 'page' && value) {
 						value = page_map.get(value)?.id
 					} else {
 						// Field type has no references to update
