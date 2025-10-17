@@ -457,14 +457,53 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 			}
 			create_pages()
 
-			const update_entry_references = (entry_collection: CollectionMapping<any, any>, entry_map: Map<string, Entry>, field_map: Map<string, Field>) => {
+			const update_field_config_references = (field_collection: CollectionMapping<any, any>, field_map: Map<string, Field>) => {
+				for (const field of field_map.values()) {
+					let { config } = field
+					let do_update = true
+
+					// Per field type
+					if (field.type === 'page' && config?.page_type) {
+						config = { ...config, page_type: page_type_map.get(config.page_type)?.id }
+					} else if (field.type === 'page-field' && config?.field) {
+						config = { ...config, field: page_type_field_map.get(config.field)?.id }
+					} else if (field.type === 'page-list' && config?.page_type) {
+						config = { ...config, page_type: page_type_map.get(config.page_type)?.id }
+					} else if (field.type === 'site-field' && config?.field) {
+						config = { ...config, field: site_field_map.get(config.field)?.id }
+					} else {
+						do_update = false
+					}
+
+					// All fields can have conditions
+					if (config?.condition?.field) {
+						config = {
+							...config,
+							condition: {
+								...config.condition,
+								field: field_map.get(config.condition.field)?.id
+							}
+						}
+						do_update = true
+					}
+
+					if (do_update) {
+						field_collection.update(field.id, { config })
+					}
+				}
+			}
+			update_field_config_references(SiteFields, site_field_map)
+			update_field_config_references(SiteSymbolFields, symbol_field_map)
+			update_field_config_references(PageTypeFields, page_type_field_map)
+
+			const update_entry_value_references = (entry_collection: CollectionMapping<any, any>, entry_map: Map<string, Entry>, field_map: Map<string, Field>) => {
 				for (const entry of entry_map.values()) {
 					const field = field_map.values().find((field) => field.id === entry.field)
 					if (!field) {
-						throw new Error('No field for entry when updating entry references')
+						throw new Error('No field for entry when updating entry value references')
 					}
 
-					let value = entry.value
+					let { value } = entry
 					if (field.type === 'image' && value.upload) {
 						value = { ...value, upload: site_upload_map.get(value.upload)?.id }
 					} else if (field.type === 'link' && value.page) {
@@ -479,12 +518,12 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 					entry_collection.update(entry.id, { value })
 				}
 			}
-			update_entry_references(SiteEntries, site_entry_map, site_field_map)
-			update_entry_references(SiteSymbolEntries, symbol_entry_map, symbol_field_map)
-			update_entry_references(PageTypeEntries, page_type_entry_map, page_type_field_map)
-			update_entry_references(PageTypeSectionEntries, page_type_section_entry_map, symbol_field_map)
-			update_entry_references(PageEntries, page_entry_map, page_type_field_map)
-			update_entry_references(PageSectionEntries, page_section_entry_map, symbol_field_map)
+			update_entry_value_references(SiteEntries, site_entry_map, site_field_map)
+			update_entry_value_references(SiteSymbolEntries, symbol_entry_map, symbol_field_map)
+			update_entry_value_references(PageTypeEntries, page_type_entry_map, page_type_field_map)
+			update_entry_value_references(PageTypeSectionEntries, page_type_section_entry_map, symbol_field_map)
+			update_entry_value_references(PageEntries, page_entry_map, page_type_field_map)
+			update_entry_value_references(PageSectionEntries, page_section_entry_map, symbol_field_map)
 
 			await manager.commit()
 		}
