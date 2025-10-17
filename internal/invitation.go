@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"net/mail"
+	"net/url"
 
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -44,10 +45,11 @@ func sendInvitation(app core.App, roleAssignment *core.Record) error {
 
 		html = fmt.Sprintf(
 			"<p>You've been invited to collaborate on %s. Click the link below to create your password.</p>\n<p>\n"+
-				"<a href=\"%s/admin/auth?create=%s\" target=\"_blank\" rel=\"noopener\">Create password</a>\n</p>",
+				"<a href=\"%s/admin/auth?create=%s&email=%s\" target=\"_blank\" rel=\"noopener\">Create password</a>\n</p>",
 			site.GetString("name"),
 			"https://"+site.GetString("host"),
 			passwordResetToken,
+			url.QueryEscape(user.Email()),
 		)
 	} else {
 		html = fmt.Sprintf(

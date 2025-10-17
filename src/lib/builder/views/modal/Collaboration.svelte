@@ -374,10 +374,15 @@
 			}
 
 			input {
+				height: 100%;
 				flex: 1;
 				padding: 0.25rem 0.5rem;
 				border-right: 1px solid var(--color-gray-8);
 				background: transparent;
+
+				&:focus-visible {
+					outline: none;
+				}
 			}
 
 			select {

@@ -6,11 +6,9 @@
 	import ImageField from '$lib/builder/field-types/ImageField.svelte'
 	import LinkField from '$lib/builder/field-types/Link.svelte'
 	import VideoModal from '$lib/builder/views/modal/VideoModal.svelte'
-	import Icon from '@iconify/svelte'
 	import { tick, createEventDispatcher } from 'svelte'
 	import { createUniqueID } from '$lib/builder/utils'
 	import { processCode, compare_urls } from '$lib/builder/utils'
-	import { hovering_outside } from '$lib/builder/utilities'
 	import { locale } from '$lib/builder/stores/app/misc'
 	import { site_html } from '$lib/builder/stores/app/page'
 	import RichTextButton from './RichTextButton.svelte'
@@ -71,6 +69,7 @@
 	const rich_text_classes = {}
 
 	// Keep markdown locked when blur is caused by clicking editor UI buttons
+	// so that we don't hydrate the section while it's being edited (and lose focus)
 	let suppress_blur_unlock = $state(false)
 	let suppress_timer: ReturnType<typeof setTimeout>
 
@@ -108,15 +107,6 @@
 
 	let field_save_timeout: ReturnType<typeof setTimeout>
 
-	function handle_lock() {
-		is_editing = true
-	}
-
-	function handle_unlock() {
-		is_editing = false
-		dispatch('unlock')
-	}
-
 	function update_formatting_state() {
 		if (active_editor) {
 			formatting_state = {
@@ -142,12 +132,29 @@
 	async function make_content_editable() {
 		if (!node?.contentDocument || !entries || !fields) return
 
+		// Wait for content to load, then get valid elements
+		const valid_elements: HTMLElement[] = await (async () => {
+			const doc = node.contentDocument!
+			const component = doc.querySelector('#component')
+
+			// Poll every 200ms for up to 10 seconds
+			for (let i = 0; i < 50; i++) {
+				await new Promise((resolve) => setTimeout(resolve, 200))
+
+				// Check if component container has content
+				if (component && component.children.length > 0) {
+					// Now get the actual editable elements
+					const elements = Array.from(doc.querySelectorAll('img, a, p, span, h1, h2, h3, h4, h5, h6, div'))
+					return elements.filter((el): el is HTMLElement => el.tagName === 'IMG' || !!el.textContent?.trim())
+				}
+			}
+
+			// Return empty array if no content found after timeout
+			return []
+		})()
+
 		// Clean up previous event listeners before adding new ones
 		cleanup_event_listeners()
-
-		const valid_elements: HTMLElement[] = Array.from(node.contentDocument.querySelectorAll(`img, a, p, span, h1, h2, h3, h4, h5, h6, div`)).filter(
-			(el): el is HTMLElement => el.tagName === 'IMG' || !!el.textContent?.trim()
-		)
 
 		// loop over component_data and match to elements
 		const assigned_entry_ids = new Set() // elements that have been matched to a field ID
@@ -281,9 +288,8 @@
 					...rich_text_extensions,
 					Extension.create({
 						onFocus() {
+							is_editing = true
 							active_editor = editor
-							handle_lock()
-							dispatch('lock')
 							update_formatting_state()
 						},
 						onSelectionUpdate() {
@@ -291,15 +297,12 @@
 							// Update menu positions when selection changes
 							update_menu_positions()
 						},
-						onBlur: async ({ event }) => {
+						onBlur: async () => {
 							// Only unlock when blur wasn't caused by clicking editor UI
 							if (!suppress_blur_unlock) {
-								handle_unlock()
+								is_editing = false
 							}
-							// Final save on blur
 							clearTimeout(field_save_timeout)
-							const json = editor.getJSON()
-							save_edited_value({ id, value: json })
 							setTimeout(() => {
 								// Hide floating menu on blur, timeout so click registers first
 								hide_menus()
@@ -466,7 +469,7 @@
 			}
 
 			const blur_handler = (e: Event) => {
-				handle_unlock()
+				is_editing = false
 				// Final save on blur
 				clearTimeout(field_save_timeout)
 				const target = e.target as HTMLElement
@@ -474,8 +477,7 @@
 			}
 
 			const focus_handler = () => {
-				handle_lock()
-				dispatch('lock')
+				is_editing = true
 			}
 
 			element.addEventListener('keydown', keydown_handler)
@@ -534,7 +536,8 @@
 
 	// Reroute non-entry links to open in a new tab
 	async function reroute_links() {
-		node.contentDocument!.querySelectorAll<HTMLLinkElement>('a:not([data-entry] a):not([data-key] a):not([data-entry]):not([data-key])').forEach((link) => {
+		if (!node.contentDocument) return
+		node.contentDocument.querySelectorAll<HTMLLinkElement>('a:not([data-entry] a):not([data-key] a):not([data-entry]):not([data-key])').forEach((link) => {
 			link.addEventListener('click', (e) => {
 				e.preventDefault()
 				window.open(link.href, '_blank')
@@ -574,10 +577,15 @@
 
 		// Resize component iframe wrapper on resize to match content height (message set from `setup_component_iframe`)
 		window_message_handler = (event: MessageEvent) => {
-			if (node && event.data?.type === 'resize') {
-				if (event.data.id === section.id) {
-					node.style.height = event.data.height + 'px'
-				}
+			if (!node || event.source !== node.contentWindow) return
+
+			const message = event.data
+			if (!message) return
+
+			if (message.type === 'component-error') {
+				const incoming_error = typeof message.error === 'string' ? message.error : (message.error?.toString?.() ?? 'Unknown error')
+				error = incoming_error
+				dispatch_mount()
 			}
 		}
 		window.addEventListener('message', window_message_handler)
@@ -607,6 +615,7 @@
 	})
 
 	function update_menu_positions() {
+		if (!node.contentDocument) return
 		if (editing_link || editing_image || editing_video) {
 			hide_menus()
 			return
@@ -634,7 +643,7 @@
 
 		const range = selection.getRangeAt(0)
 		const common_ancestor = range.commonAncestorContainer
-		const element = common_ancestor instanceof Text ? common_ancestor.parentElement : common_ancestor
+		const element = common_ancestor.nodeName === '#text' ? common_ancestor.parentElement : common_ancestor
 		const rich_text_container = (element as Element)?.closest('[data-rich-text-id]')
 
 		if (rich_text_container) {
@@ -713,7 +722,9 @@
 
 			const update_height = () => {
 				const height = doc.body.clientHeight
-				window.postMessage({ type: 'resize', height, id: section.id }, '*')
+				if (node) {
+					node.style.height = height + 'px'
+				}
 				dispatch('resize')
 			}
 
@@ -753,7 +764,7 @@
 
 			// Store a snapshot to avoid mutation side-effects
 			last_sent_data = _.cloneDeep(updated_data)
-			last_sent_js = updated_js
+			last_sent_js = updated_js as string
 			send_component_to_iframe(updated_js, updated_data)
 		}
 	)
@@ -761,7 +772,7 @@
 	async function send_component_to_iframe(js, data) {
 		try {
 			node.contentWindow!.postMessage({ type: 'component', payload: { js, data } }, '*')
-			setTimeout(make_content_editable, 200) // wait for component to mount within iframe
+			make_content_editable()
 		} catch (e) {
 			console.error(e)
 			error = e
@@ -1103,7 +1114,7 @@
 					// Handle direct link editing (entry-based)
 					current_link_element.href = current_link_url || ''
 					current_link_element.innerText = current_link_value.label
-					save_edited_value({ id: current_link_entry_id, value: _.cloneDeep(current_link_value) })
+					save_edited_value({ id: current_link_entry_id as string, value: _.cloneDeep(current_link_value) })
 				}
 				editing_link = false
 				editing_existing_link = false
@@ -1131,7 +1142,7 @@
 	<Dialog.Content class="z-[999] sm:max-w-[500px] pt-12">
 		<VideoModal
 			onsave={(url) => {
-				if (url) {
+				if (url && active_editor) {
 					active_editor.commands.setYoutubeVideo({
 						src: url,
 						width: '100%'
@@ -1161,8 +1172,8 @@
 		}}
 		onDelete={() => {
 			if (image_editor_element) {
-				// Remove the image element from the DOM
-				// image_editor_element.remove()
+				// Remove the image element from the DOM, idk how this works to delete it from the tiptap editor but it does
+				image_editor_element.remove()
 				image_overlay_is_visible = false
 			}
 		}}
@@ -1202,9 +1213,10 @@
 {/if}
 
 {#if error}
-	<pre>
-    {@html error}
-  </pre>
+	<div class="component-error">
+		<pre>{@html error}</pre>
+		<p class="component-error__hint">Check console for full error.</p>
+	</div>
 {/if}
 
 {#if floating_menu_state.visible}
@@ -1385,10 +1397,19 @@
 	}
 	pre {
 		margin: 0;
+	}
+	.component-error {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
 		padding: 1rem;
 		background: var(--primo-color-black);
 		color: var(--color-gray-3);
-		border: 1px solid var(--color-gray-6);
+		border: 2px solid red;
+	}
+	.component-error__hint {
+		font-size: 0.875rem;
+		color: var(--color-gray-5);
 	}
 	.menu {
 		font-size: var(--font-size-1);

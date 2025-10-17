@@ -1,6 +1,6 @@
 import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
 
-export const dynamic_iframe_srcdoc = (head = '') => {
+export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
 	return `
   <!DOCTYPE html>
   <html>
@@ -14,7 +14,7 @@ export const dynamic_iframe_srcdoc = (head = '') => {
         let source;
         let c;
 
-        const channel = new BroadcastChannel('component_preview');
+        const channel = new BroadcastChannel('${broadcast_id}');
         channel.onmessage = ({data}) => {
           const { event, payload = {} } = data
           if (payload.componentApp) {
@@ -24,6 +24,7 @@ export const dynamic_iframe_srcdoc = (head = '') => {
             update(payload.data)
           }
         }
+        channel.postMessage({ event: 'INITIALIZED' });
 
         function update(props) {
           // Reset logs and runtime error display in parent
@@ -83,6 +84,7 @@ export const dynamic_iframe_srcdoc = (head = '') => {
                 target: document.querySelector('#page'),
                 props
               })
+              channel.postMessage({ event: 'MOUNTED' });
             } catch(e) {
               document.querySelector('#page').innerHTML = ''
               channel.postMessage({
@@ -128,33 +130,49 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
           let source;
           let c;
 
-          window.addEventListener('message', ({data}) => {
-            // handle the message here
-            const { payload } = data
-            if (payload?.js) {
+          window.addEventListener('message', ({ data }) => {
+            const payload = data && data.payload
+            if (!payload) return
+            if (payload.js) {
               source = payload.js
             }
-            if (payload?.data) {
+            if (payload && Object.prototype.hasOwnProperty.call(payload, 'data')) {
               update(payload.data)
             }
           })
 
           function update(props) {
-            const blob = new Blob([source], { type: 'text/javascript' });
-            const url = URL.createObjectURL(blob);
-            import(url).then(({ default: App }) => {
-              if (c) unmount(c)
-              try {
-                c = mount(App, {
-                  target: document.querySelector('#component'),
-                  props
-                })
-              } catch(e) {
-                document.querySelector('#component').innerHTML = ''
-                console.error(e.toString())
-              }
-              try { URL.revokeObjectURL(url) } catch (_) {}
-            })
+            if (!source) return
+            const target = document.querySelector('#component')
+            if (!target) return
+
+            const blob = new Blob([source], { type: 'text/javascript' })
+            const url = URL.createObjectURL(blob)
+            import(url)
+              .then(({ default: App }) => {
+                if (c) unmount(c)
+                try {
+                  c = mount(App, {
+                    target,
+                    props
+                  })
+                  window.parent.postMessage({ type: 'component-error', error: '' }, '*')
+                } catch (e) {
+                  target.innerHTML = ''
+                  console.error(e)
+                  const message = typeof e === 'string' ? e : e?.stack || e?.message || e?.toString?.() || 'Unknown error'
+                  window.parent.postMessage({ type: 'component-error', error: String(message).split('\\n')[0] }, '*')
+                }
+              })
+              .catch((e) => {
+                target.innerHTML = ''
+                console.error(e)
+                const message = typeof e === 'string' ? e : e?.stack || e?.message || e?.toString?.() || 'Unknown error'
+                window.parent.postMessage({ type: 'component-error', error: String(message).split('\\n')[0] }, '*')
+              })
+              .finally(() => {
+                try { URL.revokeObjectURL(url) } catch (_) {}
+              })
           }
         </script>
         ${head}

@@ -233,7 +233,7 @@
 		</Pane>
 		<PaneResizer class="PaneResizer" />
 		<Pane defaultSize={50}>
-			<ComponentPreview bind:orientation={$orientation} view="small" {loading} {code} data={component_data} head={$site_html} />
+			<ComponentPreview id={block.id} bind:orientation={$orientation} view="small" {loading} {code} data={component_data} head={$site_html} />
 		</Pane>
 	</PaneGroup>
 </main>

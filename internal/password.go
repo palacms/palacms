@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"net/url"
+
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -53,7 +55,7 @@ func RegisterPasswordLinkEndpoint(pb *pocketbase.PocketBase) error {
 			return requestEvent.JSON(200, struct {
 				Link string `json:"link"`
 			}{
-				Link: "https://" + site.GetString("host") + "/admin/auth?create=" + passwordResetToken,
+				Link: "https://" + site.GetString("host") + "/admin/auth?create=" + passwordResetToken + "&email=" + url.QueryEscape(user.Email()),
 			})
 		})
 

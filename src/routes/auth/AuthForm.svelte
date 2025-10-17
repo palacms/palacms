@@ -39,8 +39,23 @@
 			case 'confirm_password_reset':
 				loading = true
 				const token = page.url.searchParams.get('reset') || page.url.searchParams.get('create') || ''
+				email = page.url.searchParams.get('email') || null
 				await Users.confirmPasswordReset(token, password, confirm_password)
-					.then(() => goto('/admin/auth'))
+					.then(async () => {
+						// log invited users in immediately
+						if (email) {
+							await Users.authWithPassword(email, password)
+								.then(() => {
+									goto('/admin/site')
+								})
+								.catch(({ message }) => {
+									error = message
+								})
+						} else {
+							// users resetting pw have to use it to auth (to remember)
+							goto('/admin/auth')
+						}
+					})
 					.catch((err) => {
 						// Extract the actual error message from PocketBase
 						if (err.response?.data?.password) {

@@ -12,7 +12,7 @@
 	import { onNavigate, goto } from '$app/navigation'
 	import { active_users } from '$lib/builder/stores/app/misc'
 	import { page as pageState } from '$app/state'
-	import { PageTypes, Pages, manager } from '$lib/pocketbase/collections'
+	import { PageTypes, manager } from '$lib/pocketbase/collections'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'

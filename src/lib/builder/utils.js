@@ -29,7 +29,6 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		locale,
 		hydrated
 	})
-
 	return res
 }
 
@@ -39,9 +38,10 @@ export async function processCSS(raw) {
 	if (css_cache.has(raw)) {
 		return css_cache.get(raw)
 	} else if (requesting.has(raw)) {
-		await new Promise((resolve) => {
-			setTimeout(resolve, 200)
-		})
+		// idk what this was doing
+		// await new Promise((resolve) => {
+		// 	setTimeout(resolve, 200)
+		// })
 		if (css_cache.has(raw)) {
 			return css_cache.get(raw)
 		}
@@ -153,7 +153,7 @@ export function convert_rich_text_to_html(tiptap_obj) {
 		rich_text_cache.set(tiptap_obj, html)
 		return html
 	} catch (error) {
-		console.error('Failed to render rich text content', error)
+		console.error('Failed to render rich text content', { error, tiptap_obj })
 		return ''
 	}
 }
