@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"net/mail"
+	"net/url"
 
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -48,7 +49,7 @@ func sendInvitation(app core.App, roleAssignment *core.Record) error {
 			site.GetString("name"),
 			"https://"+site.GetString("host"),
 			passwordResetToken,
-			user.Email(),
+			url.QueryEscape(user.Email()),
 		)
 	} else {
 		html = fmt.Sprintf(
