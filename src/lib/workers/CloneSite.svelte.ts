@@ -36,6 +36,9 @@ import type { SiteUpload } from '../common/models/SiteUpload'
 import { self } from '../pocketbase/PocketBase'
 import type { Field } from '../common/models/Field'
 import { useSvelteWorker } from './Worker.svelte'
+import type { Entry } from '$lib/common/models/Entry'
+import type { CollectionMapping, CollectionMappingOptions, MappedObject } from '$lib/pocketbase/CollectionMapping.svelte'
+import type { ObjectWithId } from '$lib/pocketbase/Object'
 
 export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group_id }: { starter_site_id?: string; site_name?: string; site_host?: string; site_group_id?: string }) => {
 	const worker = useSvelteWorker(
@@ -71,14 +74,6 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 					site: site.id
 				})
 				site_upload_map.set(starter_site_upload.id, upload)
-			}
-
-			const map_entry_value = (value: any, field: Field): unknown => {
-				if (field.type === 'image' && value.upload) {
-					return { ...value, upload: site_upload_map.get(value.upload)?.id }
-				} else {
-					return value
-				}
 			}
 
 			const site_field_map = new Map<string, SiteField>()
@@ -127,7 +122,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 						id: undefined,
 						field: field.id,
 						parent: parent?.id,
-						value: map_entry_value(starter_site_entry.value, field)
+						value: starter_site_entry.value
 					})
 					site_entry_map.set(starter_site_entry.id, entry)
 					create_site_entries(starter_site_entry)
@@ -137,6 +132,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 
 			const symbol_map = new Map<string, SiteSymbol>()
 			const symbol_field_map = new Map<string, SiteSymbolField>()
+			const symbol_entry_map = new Map<string, SiteSymbolEntry>()
 			for (const starter_symbol of data.symbols) {
 				const symbol = SiteSymbols.create({
 					...starter_symbol.values(),
@@ -173,7 +169,6 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 				}
 				create_symbol_fields()
 
-				const symbol_entry_map = new Map<string, SiteSymbolEntry>()
 				const create_symbol_entries = (starter_parent_entry?: SiteSymbolEntry) => {
 					for (const starter_symbol_entry of data.symbol_entries) {
 						if (starter_parent_entry ? starter_symbol_entry.parent !== starter_parent_entry.id : starter_symbol_entry.parent) {
@@ -195,7 +190,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 							id: undefined,
 							field: field.id,
 							parent: parent?.id,
-							value: map_entry_value(starter_symbol_entry.value, field)
+							value: starter_symbol_entry.value
 						})
 						symbol_entry_map.set(starter_symbol_entry.id, entry)
 						create_symbol_entries(starter_symbol_entry)
@@ -206,6 +201,8 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 
 			const page_type_map = new Map<string, PageType>()
 			const page_type_field_map = new Map<string, PageTypeField>()
+			const page_type_entry_map = new Map<string, PageTypeEntry>()
+			const page_type_section_entry_map = new Map<string, PageTypeSectionEntry>()
 			for (const starter_page_type of data.page_types) {
 				const page_type = PageTypes.create({
 					...starter_page_type.values(),
@@ -241,7 +238,6 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 				}
 				create_page_type_fields()
 
-				const page_type_entry_map = new Map<string, PageTypeEntry>()
 				const create_page_type_entries = (starter_parent_entry?: PageTypeEntry) => {
 					for (const starter_page_type_entry of data.page_type_entries) {
 						if (starter_parent_entry ? starter_page_type_entry.parent !== starter_parent_entry.id : starter_page_type_entry.parent) {
@@ -263,7 +259,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 							id: undefined,
 							field: field.id,
 							parent: parent?.id,
-							value: map_entry_value(starter_page_type_entry.value, field)
+							value: starter_page_type_entry.value
 						})
 						page_type_entry_map.set(starter_page_type_entry.id, entry)
 						create_page_type_entries(starter_page_type_entry)
@@ -306,7 +302,6 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 						symbol: symbol.id
 					})
 
-					const page_type_section_entry_map = new Map<string, PageTypeSectionEntry>()
 					const create_page_type_section_entries = (starter_parent_entry?: PageTypeSectionEntry) => {
 						for (const starter_page_type_section_entry of data.page_type_section_entries) {
 							if (starter_parent_entry ? starter_page_type_section_entry.parent !== starter_parent_entry.id : starter_page_type_section_entry.parent) {
@@ -333,7 +328,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 								section: section.id,
 								field: field.id,
 								parent: parent?.id,
-								value: map_entry_value(starter_page_type_section_entry.value, field)
+								value: starter_page_type_section_entry.value
 							})
 							page_type_section_entry_map.set(starter_page_type_section_entry.id, entry)
 							create_page_type_section_entries(starter_page_type_section_entry)
@@ -344,6 +339,8 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 			}
 
 			const page_map = new Map<string, Page>()
+			const page_entry_map = new Map<string, PageEntry>()
+			const page_section_entry_map = new Map<string, PageSectionEntry>()
 			const create_pages = (starter_parent_page?: Page) => {
 				for (const starter_page of data.pages) {
 					if (starter_parent_page ? starter_page.parent !== starter_parent_page.id : starter_page.parent) {
@@ -370,7 +367,6 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 					})
 					page_map.set(starter_page.id, page)
 
-					const page_entry_map = new Map<string, PageEntry>()
 					const create_page_entries = (starter_parent_entry?: PageEntry) => {
 						for (const starter_page_entry of data.page_entries) {
 							if (starter_parent_entry ? starter_page_entry.parent !== starter_parent_entry.id : starter_page_entry.parent) {
@@ -396,7 +392,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 								id: undefined,
 								page: page.id,
 								field: field.id,
-								value: map_entry_value(starter_page_entry.value, field)
+								value: starter_page_entry.value
 							})
 							page_entry_map.set(starter_page_entry.id, entry)
 							create_page_entries(starter_page_entry)
@@ -421,7 +417,6 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 							symbol: symbol.id
 						})
 
-						const page_section_entry_map = new Map<string, PageSectionEntry>()
 						const create_page_section_entries = (starter_parent_entry?: PageSectionEntry) => {
 							for (const starter_page_section_entry of data.page_section_entries) {
 								if (starter_parent_entry ? starter_page_section_entry.parent !== starter_parent_entry.id : starter_page_section_entry.parent) {
@@ -448,7 +443,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 									section: section.id,
 									field: field.id,
 									parent: parent?.id,
-									value: map_entry_value(starter_page_section_entry.value, field)
+									value: starter_page_section_entry.value
 								})
 								page_section_entry_map.set(starter_page_section_entry.id, entry)
 								create_page_section_entries(starter_page_section_entry)
@@ -461,6 +456,35 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 				}
 			}
 			create_pages()
+
+			const update_entry_references = (entry_collection: CollectionMapping<any, any>, entry_map: Map<string, Entry>, field_map: Map<string, Field>) => {
+				for (const entry of entry_map.values()) {
+					const field = field_map.values().find((field) => field.id === entry.field)
+					if (!field) {
+						throw new Error('No field for entry when updating entry references')
+					}
+
+					let value = entry.value
+					if (field.type === 'image' && value.upload) {
+						value = { ...value, upload: site_upload_map.get(value.upload)?.id }
+					} else if (field.type === 'link' && value.page) {
+						value = { ...value, page: page_map.get(value.page)?.id }
+					} else if (field.type === 'page') {
+						value = page_map.get(value)?.id
+					} else {
+						// Field type has no references to update
+						continue
+					}
+
+					entry_collection.update(entry.id, { value })
+				}
+			}
+			update_entry_references(SiteEntries, site_entry_map, site_field_map)
+			update_entry_references(SiteSymbolEntries, symbol_entry_map, symbol_field_map)
+			update_entry_references(PageTypeEntries, page_type_entry_map, page_type_field_map)
+			update_entry_references(PageTypeSectionEntries, page_type_section_entry_map, symbol_field_map)
+			update_entry_references(PageEntries, page_entry_map, page_type_field_map)
+			update_entry_references(PageSectionEntries, page_section_entry_map, symbol_field_map)
 
 			await manager.commit()
 		}
