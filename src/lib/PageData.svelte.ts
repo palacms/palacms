@@ -10,14 +10,15 @@ export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<type
 	const page_type_symbols = $derived(
 		page_types?.every((page_type) => page_type.symbols() !== undefined) ? page_types.flatMap((page_type) => page_type.symbols() ?? []).filter(deduplicate('id')) : undefined
 	)
+	const sections = $derived(page_sections && page_type_sections && [...page_sections, ...page_type_sections])
 	const symbols = $derived(
-		page_sections &&
-			page_type_sections &&
-			[...page_sections, ...page_type_sections]
-				.map((section) => SiteSymbols.one(section.symbol))
-				.filter((symbol) => symbol !== undefined)
-				.filter((symbol) => symbol !== null)
-				.filter(deduplicate('id'))
+		sections?.map((section) => SiteSymbols.one(section.symbol)).every((symbol) => symbol !== undefined)
+			? sections
+					.map((section) => SiteSymbols.one(section.symbol))
+					.filter((symbol) => symbol !== undefined)
+					.filter((symbol) => symbol !== null)
+					.filter(deduplicate('id'))
+			: undefined
 	)
 	const site_uploads = $derived(site?.uploads())
 	const site_fields = $derived(site?.fields())

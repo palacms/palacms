@@ -50,6 +50,7 @@ export const useCloneSite = ({ starter_site_id, site_name, site_host, site_group
 				throw new Error('Not loaded')
 			}
 
+			console.log(data)
 			const site = Sites.create({
 				...starter_site.values(),
 				id: undefined,
