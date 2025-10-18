@@ -4,12 +4,13 @@
 	import PageForm from './PageTypeForm.svelte'
 	import MenuPopup from '$lib/builder/ui/Dropdown.svelte'
 	import type { PageType } from '$lib/common/models/PageType'
-	import { Sites, PageTypes, Pages, manager } from '$lib/pocketbase/collections'
+	import { PageTypes, Pages, manager } from '$lib/pocketbase/collections'
 	import { self as pb } from '$lib/pocketbase/PocketBase'
 	import { page } from '$app/state'
 	import * as AlertDialog from '$lib/components/ui/alert-dialog'
 	import { Loader } from 'lucide-svelte'
 	import { site_context } from '$lib/builder/stores/context'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
 
 	let { active, page_type }: { active: boolean; page_type: PageType } = $props()
 
@@ -78,6 +79,14 @@
 				<a class="name" href={full_url()}>
 					{page_type.name}
 				</a>
+				<div class="flex -space-x-4">
+					{#each [{ avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287', name: 'Matthew Morris' }, { avatar: 'https://images.unsplash.com/photo-1760497925596-a6462350c583?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHx0b3BpYy1mZWVkfDE3fHRvd0paRnNrcEdnfHxlbnwwfHx8fHw%3D&auto=format&fit=crop&q=60&w=900', name: 'Jesse' }] as { avatar, name }}
+						<Avatar.Root class="ring-background ring-2 size-5 ml-4">
+							<Avatar.Image src={avatar} alt={name.slice(0, 2)} class="object-cover object-center" />
+							<Avatar.Fallback>{name.slice(0, 2)}</Avatar.Fallback>
+						</Avatar.Root>
+					{/each}
+				</div>
 			</div>
 			<div class="options">
 				<MenuPopup

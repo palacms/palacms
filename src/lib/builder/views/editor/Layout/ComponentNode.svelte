@@ -1,16 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import * as _ from 'lodash-es'
-	import { fade } from 'svelte/transition'
 	import * as Dialog from '$lib/components/ui/dialog'
 	import ImageField from '$lib/builder/field-types/ImageField.svelte'
 	import LinkField from '$lib/builder/field-types/Link.svelte'
 	import VideoModal from '$lib/builder/views/modal/VideoModal.svelte'
-	import Icon from '@iconify/svelte'
-	import { tick, createEventDispatcher } from 'svelte'
+	import { createEventDispatcher } from 'svelte'
 	import { createUniqueID } from '$lib/builder/utils'
 	import { processCode, compare_urls } from '$lib/builder/utils'
-	import { hovering_outside } from '$lib/builder/utilities'
 	import { locale } from '$lib/builder/stores/app/misc'
 	import { site_html } from '$lib/builder/stores/app/page'
 	import RichTextButton from './RichTextButton.svelte'
@@ -27,6 +24,7 @@
 	import { convert_markdown_to_html, convert_rich_text_to_html } from '$lib/builder/utils'
 	import { useContent } from '$lib/Content.svelte'
 	import { build_live_page_url } from '$lib/pages'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
 
 	const { value: site } = site_context.getOr({ value: null })
 
@@ -40,6 +38,17 @@
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
 	const data = $derived(useContent(section, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
+
+	// const active_user = $derived(block.active_user())
+	const active_user = $derived(
+		block.id === 'cchxh9zsc1smwjp'
+			? {
+					avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287',
+					name: 'Matthew'
+				}
+			: null
+	)
+	$inspect({ block })
 
 	let bubble_menu_state = $state({ visible: false, top: 0, left: 0 })
 	let floating_menu_state = $state({ visible: false, top: 0, left: 0 })
@@ -1188,6 +1197,17 @@
 		<MarkdownCodeMirror bind:value={current_markdown_value} autofocus on:save={handle_markdown_save} />
 	</Dialog.Content>
 </Dialog.Root>
+
+{#if active_user}
+	<div class="pointer-events-none flex justify-center items-start absolute inset-0 ring-inset ring-8 ring-[var(--color-gray-8)]">
+		<div class="bg-[var(--color-gray-8)] rounded-bl-lg rounded-br-lg p-2">
+			<Avatar.Root class="ring-background ring-2 size-8">
+				<Avatar.Image src={active_user.avatar} alt={active_user.name.slice(0, 2)} class="object-cover object-center" />
+				<Avatar.Fallback>{active_user.name.slice(0, 2)}</Avatar.Fallback>
+			</Avatar.Root>
+		</div>
+	</div>
+{/if}
 
 {#if $site_html && generated_js}
 	<iframe

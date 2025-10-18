@@ -5,7 +5,7 @@ go 1.24.5
 require (
 	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994
 	github.com/pocketbase/dbx v1.11.0
-	github.com/pocketbase/pocketbase v0.30.1
+	github.com/pocketbase/pocketbase v0.30.2
 )
 
 require (

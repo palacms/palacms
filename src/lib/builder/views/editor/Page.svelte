@@ -882,19 +882,6 @@
 			pointer-events: none;
 		}
 	}
-
-	[data-type='palette'] {
-		.empty-state {
-			background: var(--color-gray-1);
-			display: flex;
-			justify-content: center;
-			padding-block: 5rem;
-			border: 1px dotted;
-			&.page_is_empty {
-				height: 100%;
-			}
-		}
-	}
 	.spinner {
 		position: absolute;
 		top: 0;
@@ -936,14 +923,6 @@
 		color: var(--color-gray-7);
 		z-index: 1;
 		text-align: center;
-	}
-	.button {
-		background: var(--color-gray-1);
-		padding: 0.5rem 1rem;
-		border-radius: var(--primo-border-radius);
-		font-size: 0.875rem;
-		text-decoration: none;
-		color: var(--color-gray-7);
 	}
 	.site-foot {
 		color: black;

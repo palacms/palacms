@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
+	import { fade } from 'svelte/transition'
 	import Icon from '@iconify/svelte'
 	import Toggle from 'svelte-toggle'
 	import { Button } from '$lib/components/ui/button'
@@ -21,6 +22,7 @@
 	import { page_context, page_type_context } from '$lib/builder/stores/context'
 	import { PageTypes, PageTypeFields } from '$lib/pocketbase/collections'
 	import { Unlink } from 'lucide-svelte'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
 
 	const dispatch = createEventDispatcher()
 
@@ -31,12 +33,25 @@
 		toggled = false,
 		head = '',
 		active_page_type_id = null
-	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; head?: string; active_page_type_id?: string | null } = $props()
+	}: {
+		symbol: ObjectOf<typeof SiteSymbols>
+		controls_enabled?: boolean
+		show_toggle?: boolean
+		toggled?: boolean
+		head?: string
+		active_page_type_id?: string | null
+	} = $props()
 
 	let name_el = $state()
 
 	let renaming = $state(false)
 	let new_name = $state(symbol.name)
+
+	// const active_user = $derived(symbol.active_user())
+	const active_user = $derived({
+		avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287',
+		name: 'Matthew'
+	})
 
 	async function save_rename() {
 		if (!symbol || !new_name.trim()) return
@@ -52,11 +67,6 @@
 
 	let height = $state(0)
 
-	const code = $derived({
-		html: symbol.html,
-		css: symbol.css,
-		js: symbol.js
-	})
 	const _data = $derived(useContent(symbol, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
 
@@ -284,6 +294,14 @@
 				<Icon icon="eos-icons:three-dots-loading" />
 			</div>
 		{:else if componentCode}
+			{#if active_user}
+				<div transition:fade class="absolute z-10 bg-[#222] p-1 right-0 top-0 rounded-bl-lg flex justify-center -space-x-1">
+					<Avatar.Root class="ring-background ring-2 size-5">
+						<Avatar.Image src={active_user.avatar} alt={active_user.name.slice(0, 2)} class="object-cover object-center" />
+						<Avatar.Fallback>{active_user.name.slice(0, 2)}</Avatar.Fallback>
+					</Avatar.Root>
+				</div>
+			{/if}
 			<div class="symbol">
 				<IFrame bind:height {head} {componentCode} />
 			</div>
@@ -334,13 +352,11 @@
 	}
 	.symbol-container {
 		width: 100%;
-		border-radius: 0.25rem;
-		overflow: hidden;
 		position: relative;
+		overflow: hidden;
 		cursor: grab;
-		min-height: 4rem;
+		min-height: 2rem;
 		transition: box-shadow 0.2s;
-		background: var(--color-gray-8);
 
 		&:after {
 			content: '';
@@ -351,6 +367,10 @@
 		&.disabled {
 			pointer-events: none;
 		}
+	}
+	.symbol {
+		border-radius: 0.25rem;
+		overflow: hidden;
 	}
 	.error {
 		display: flex;
@@ -374,8 +394,5 @@
 			height: 1rem;
 			width: 1rem;
 		}
-	}
-	[contenteditable] {
-		outline: 0 !important;
 	}
 </style>
