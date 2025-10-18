@@ -3,7 +3,7 @@
 	import { page } from '$app/state'
 	import { Users } from '$lib/pocketbase/collections'
 	import { self } from '$lib/pocketbase/PocketBase'
-	import { Loader } from 'lucide-svelte'
+	import { Loader, User } from 'lucide-svelte'
 
 	type AuthAction = 'sign_in' | 'reset_password' | 'confirm_password_reset' | 'create_account'
 
@@ -15,6 +15,17 @@
 	let error = $state('')
 	let name = $state('')
 	let avatar = $state('')
+	let avatarFile = $state<File | null>(null)
+
+	const handleAvatarChange = (event: Event) => {
+		const target = event.target as HTMLInputElement
+		const file = target.files?.[0]
+		if (file) {
+			avatarFile = file
+			// Create a preview URL
+			avatar = URL.createObjectURL(file)
+		}
+	}
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault()
@@ -41,24 +52,9 @@
 				break
 			case 'confirm_password_reset':
 				loading = true
-				const token = page.url.searchParams.get('reset') || page.url.searchParams.get('create') || ''
-				email = page.url.searchParams.get('email') || null
+				const token = page.url.searchParams.get('reset') || ''
 				await Users.confirmPasswordReset(token, password, confirm_password)
-					.then(async () => {
-						// log invited users in immediately
-						if (email) {
-							await Users.authWithPassword(email, password)
-								.then(() => {
-									goto('/admin/site')
-								})
-								.catch(({ message }) => {
-									error = message
-								})
-						} else {
-							// users resetting pw have to use it to auth (to remember)
-							goto('/admin/auth')
-						}
-					})
+					.then(() => goto('/admin/auth'))
 					.catch((err) => {
 						// Extract the actual error message from PocketBase
 						if (err.response?.data?.password) {
@@ -74,15 +70,30 @@
 			case 'create_account':
 				loading = true
 				const createToken = page.url.searchParams.get('create') || ''
+				const invitedEmail = page.url.searchParams.get('email')
 				await Users.confirmPasswordReset(createToken, password, confirm_password)
-					.then(() => {
+					.then(async () => {
 						// Update user with name and avatar if provided
 						const userId = self.authStore.record?.id
-						if ((name || avatar) && userId) {
-							return Users.update(userId, { name, avatar })
+						if ((name || avatarFile) && userId) {
+							const updateData: any = {}
+							if (name) updateData.name = name
+
+							// Handle avatar file upload using PocketBase
+							// if (avatarFile) {
+							// 	updateData.avatar = avatarFile
+							// }
+
+							await Users.update(userId, updateData)
+						}
+						// Auto-login invited users
+						if (invitedEmail) {
+							await Users.authWithPassword(invitedEmail, password)
+							goto('/admin/site')
+						} else {
+							goto('/admin/auth')
 						}
 					})
-					.then(() => goto('/admin/site'))
 					.catch((err) => {
 						// Extract the actual error message from PocketBase
 						if (err.response?.data?.password) {
@@ -123,14 +134,22 @@
 				<span>Email</span>
 				<input data-test-id="email" bind:value={email} type="text" name="email" disabled />
 			</label>
-			<label>
-				<span>Name</span>
-				<input data-test-id="name" bind:value={name} type="text" name="name" />
-			</label>
-			<label>
-				<span>Photo URL (optional)</span>
-				<input data-test-id="avatar-url" bind:value={avatar} type="url" name="avatar-url" />
-			</label>
+			<div class="grid grid-cols-[1fr_auto] gap-2 items-end">
+				<label class="grid gap-2">
+					<span>Name & Avatar</span>
+					<input data-test-id="name" bind:value={name} type="text" name="name" />
+				</label>
+				<div class="relative">
+					{#if avatar}
+						<img src={avatar} alt="Avatar preview" class="h-[50px] w-[50px] rounded-lg object-cover border border-gray-600 bg-gray-800" />
+					{:else}
+						<div class="h-[50px] w-[50px] rounded-lg border border-gray-600 bg-gray-800 flex items-center justify-center text-gray-600">
+							<User size={20} />
+						</div>
+					{/if}
+					<input type="file" accept="image/*" onchange={handleAvatarChange} class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+				</div>
+			</div>
 		{/if}
 		{#if action !== 'reset_password'}
 			<label>
@@ -200,6 +219,10 @@
 			padding: 0.75rem;
 			background-color: #1c1c1c;
 			font-size: 1rem;
+		}
+
+		::file-selector-button {
+			display: none;
 		}
 
 		.button {
