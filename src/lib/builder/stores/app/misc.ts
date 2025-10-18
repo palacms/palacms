@@ -14,6 +14,7 @@ export const locale = writable('en')
 export const highlightedElement = writable(null)
 
 export const locked_blocks = writable<string[]>([])
+export const active_users = writable([])
 
 export const page_loaded = writable(false)
 

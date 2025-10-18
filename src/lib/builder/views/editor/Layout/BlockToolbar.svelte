@@ -7,57 +7,73 @@
 	import { click_to_copy } from '../../../utilities'
 	import Icon from '@iconify/svelte'
 	import { current_user } from '$lib/pocketbase/user'
+	import * as Tooltip from '$lib/components/ui/tooltip'
+	import { site_context } from '$lib/builder/stores/context'
+	import { page as pageState } from '$app/state'
 
 	const dispatch = createEventDispatcher()
+	const { value: site } = site_context.getOr({ value: null })
 
 	/**
 	 * @typedef {Object} Props
 	 * @property {any} id
 	 * @property {any} i
 	 * @property {any} [node]
-	 * @property {boolean} [is_instance_block]
+	 * @property {boolean} [immovable]
+	 * @property {null|string} [layout_zone]
 	 * @property {boolean} [is_last]
+	 * @property {'page' | 'page-type'} [context]
+	 * @property {any} [page_type]
 	 */
 
 	/** @type {Props} */
-	let { id, i, node = $bindable(), is_instance_block = false, is_last = false } = $props()
+	let { id, i, node = $bindable(), layout_zone = null, immovable = false, is_last = false, page_type } = $props()
 
 	let isFirst = $derived(i === 0)
 
 	let DEBUGGING = $state()
 	if (browser) DEBUGGING = debugging_context.getOr(false)
+
+	const base_path = $state(pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site')
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_mouse_events_have_key_events -->
-<div in:fade={{ duration: 100 }} class="BlockToolbar" bind:this={node}>
+<div in:fade={{ duration: 100 }} class="BlockToolbar primo-reset" bind:this={node}>
 	<div class="top">
-		<div class="component-button">
-			{#if $current_user?.siteRole === 'developer'}
-				<button class:showing_key_hint={$mod_key_held} onclick={() => dispatch('edit-code')} aria-label="Edit Block Code">
-					{#if $mod_key_held}
-						<span class="key-hint">&#8984; E</span>
-					{/if}
-					<span class="icon">
-						<Icon icon="ph:code-bold" />
-					</span>
-				</button>
-			{/if}
-			<button onclick={() => dispatch('edit-content')} aria-label="Edit Block Content">
-				<span class="icon">
-					<Icon icon="material-symbols:edit-square-outline-rounded" />
-				</span>
-				{#if $current_user?.siteRole !== 'developer'}
-					<span>Edit Content</span>
-				{/if}
-			</button>
-			{#if DEBUGGING}
-				<button class="block-id" use:click_to_copy>
-					{id}
-				</button>
-			{/if}
-		</div>
-		{#if !is_instance_block}
+		{#if layout_zone}
+			<Tooltip.Provider delayDuration={100} disableHoverableContent={true}>
+				<Tooltip.Root>
+					<Tooltip.Trigger class="h-full">
+						<div class="component-button">
+							{@render EditingButtons()}
+
+							<svelte:element
+								this={$current_user?.siteRole === 'developer' ? 'a' : 'div'}
+								href="{base_path}/page-type--{page_type.id}"
+								class="{$current_user?.siteRole === 'developer'
+									? 'hover:bg-[#292929] hover:color-[#E7E7E7l]'
+									: ''} pointer-events-auto cursor-auto h-full flex items-center gap-2 bg-[var(--primo-color-codeblack)] px-3 py-1 border-l border-[#111] rounded-br-lg"
+							>
+								<div class="rounded-full p-1" style="background: {page_type.color}">
+									<Icon icon={page_type.icon} />
+								</div>
+								<span class="text-xs font-normal">{layout_zone === 'header' ? 'Header' : 'Footer'}</span>
+							</svelte:element>
+						</div>
+					</Tooltip.Trigger>
+					<Tooltip.Content side="bottom" align="start">
+						Content changes will apply to all <strong>{page_type.name}</strong>
+						pages
+					</Tooltip.Content>
+				</Tooltip.Root>
+			</Tooltip.Provider>
+		{:else}
+			<div class="component-button">
+				{@render EditingButtons()}
+			</div>
+		{/if}
+		{#if !immovable}
 			<div class="top-right">
 				<button onclick={() => dispatch('delete')} class="button-delete">
 					<Icon icon="ion:trash" />
@@ -70,7 +86,7 @@
 			</div>
 		{/if}
 	</div>
-	{#if !is_instance_block}
+	{#if !immovable}
 		<div class="bottom">
 			{#if !is_last}
 				<button class="bottom-right" onclick={() => dispatch('moveDown')}>
@@ -81,6 +97,38 @@
 	{/if}
 </div>
 
+{#snippet EditingButtons()}
+	{#if $current_user?.siteRole === 'developer'}
+		<button
+			class:showing_key_hint={$mod_key_held}
+			onclick={() => {
+				dispatch('edit-code')
+			}}
+			aria-label="Edit Block Code"
+		>
+			{#if $mod_key_held}
+				<span class="key-hint">&#8984; E</span>
+			{/if}
+			<span class="icon">
+				<Icon icon="ph:code-bold" />
+			</span>
+		</button>
+	{/if}
+	<button onclick={() => dispatch('edit-content')} aria-label="Edit Block Content">
+		<span class="icon">
+			<Icon icon="material-symbols:edit-square-outline-rounded" />
+		</span>
+		{#if $current_user?.siteRole !== 'developer'}
+			<span class="text-xs font-normal">Edit Content</span>
+		{/if}
+	</button>
+	{#if DEBUGGING}
+		<button class="block-id" use:click_to_copy>
+			{id}
+		</button>
+	{/if}
+{/snippet}
+
 <style lang="postcss">
 	.BlockToolbar {
 		box-shadow: inset 0 0 0 4px var(--color-gray-8);
@@ -88,18 +136,19 @@
 		position: fixed;
 		pointer-events: none;
 		display: flex;
-		justify-content: space-between;
 		flex-direction: column;
+		justify-content: space-between;
 		font-size: 0.875rem;
 	}
 	.component-button {
+		height: 100%;
 		display: flex;
 		left: 0px;
 
 		button {
 			display: flex;
 			font-size: 0.875rem;
-			gap: 0.5rem;
+			gap: 0.25rem;
 		}
 
 		button:last-child {

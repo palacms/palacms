@@ -16,7 +16,7 @@
 
 	const { value: site } = site_context.get()
 
-	let editing_page = $state(false)
+	let editing_page_type = $state(false)
 	let is_delete_open = $state(false)
 	let deleting_page_type = $state(false)
 
@@ -58,15 +58,15 @@
 	const pages_to_delete = $derived(is_delete_open && site ? (Pages.list({ filter: { page_type: page_type.id, site: site.id }, sort: 'index' }) ?? undefined) : undefined)
 </script>
 
-{#if editing_page}
+{#if editing_page_type}
 	<PageForm
-		page={page_type}
 		new_page_name={page_type.name}
 		new_color={page_type.color}
 		new_icon={page_type.icon}
 		on:create={({ detail: modified_page }) => {
-			editing_page = false
-			Object.assign(page_type, modified_page)
+			editing_page_type = false
+			PageTypes.update(page_type.id, modified_page)
+			manager.commit()
 		}}
 	/>
 {:else}
@@ -93,10 +93,10 @@
 					icon="carbon:overflow-menu-vertical"
 					options={[
 						{
-							label: 'Change name/icon/color',
+							label: 'Edit Page Type',
 							icon: 'clarity:edit-solid',
 							on_click: () => {
-								editing_page = !editing_page
+								editing_page_type = !editing_page_type
 							}
 						},
 						...(page_type.name !== 'Default'
@@ -168,7 +168,6 @@
 {#if creating_page}
 	<div style="border-left: 0.5rem solid #111;">
 		<PageForm
-			page={page_type}
 			on:create={({ detail: page }) => {
 				if (!site) return
 				creating_page = false

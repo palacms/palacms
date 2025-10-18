@@ -2,9 +2,10 @@
 	import { goto } from '$app/navigation'
 	import { page } from '$app/state'
 	import { Users } from '$lib/pocketbase/collections'
+	import { self } from '$lib/pocketbase/PocketBase'
 	import { Loader } from 'lucide-svelte'
 
-	type AuthAction = 'sign_in' | 'reset_password' | 'confirm_password_reset'
+	type AuthAction = 'sign_in' | 'reset_password' | 'confirm_password_reset' | 'create_account'
 
 	let { title, email = $bindable(), password = $bindable(null), action, footer = null }: { action: AuthAction } & Record<string, any> = $props()
 
@@ -12,6 +13,8 @@
 	let passwordResetRequested = $state(false)
 	let loading = $state(false)
 	let error = $state('')
+	let name = $state('')
+	let avatar = $state('')
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault()
@@ -39,8 +42,47 @@
 			case 'confirm_password_reset':
 				loading = true
 				const token = page.url.searchParams.get('reset') || page.url.searchParams.get('create') || ''
+				email = page.url.searchParams.get('email') || null
 				await Users.confirmPasswordReset(token, password, confirm_password)
-					.then(() => goto('/admin/auth'))
+					.then(async () => {
+						// log invited users in immediately
+						if (email) {
+							await Users.authWithPassword(email, password)
+								.then(() => {
+									goto('/admin/site')
+								})
+								.catch(({ message }) => {
+									error = message
+								})
+						} else {
+							// users resetting pw have to use it to auth (to remember)
+							goto('/admin/auth')
+						}
+					})
+					.catch((err) => {
+						// Extract the actual error message from PocketBase
+						if (err.response?.data?.password) {
+							error = err.response.data.password.message
+						} else if (err.response?.message) {
+							error = err.response.message
+						} else {
+							error = err.message || 'An error occurred'
+						}
+					})
+				loading = false
+				break
+			case 'create_account':
+				loading = true
+				const createToken = page.url.searchParams.get('create') || ''
+				await Users.confirmPasswordReset(createToken, password, confirm_password)
+					.then(() => {
+						// Update user with name and avatar if provided
+						const userId = self.authStore.record?.id
+						if ((name || avatar) && userId) {
+							return Users.update(userId, { name, avatar })
+						}
+					})
+					.then(() => goto('/admin/site'))
 					.catch((err) => {
 						// Extract the actual error message from PocketBase
 						if (err.response?.data?.password) {
@@ -70,10 +112,24 @@
 {/if}
 <form class="form" onsubmit={submit}>
 	<div class="fields">
-		{#if action !== 'confirm_password_reset'}
+		{#if action !== 'confirm_password_reset' && action !== 'create_account'}
 			<label>
 				<span>Email</span>
 				<input data-test-id="email" bind:value={email} type="text" name="email" disabled={passwordResetRequested} />
+			</label>
+		{/if}
+		{#if action === 'create_account'}
+			<label>
+				<span>Email</span>
+				<input data-test-id="email" bind:value={email} type="text" name="email" disabled />
+			</label>
+			<label>
+				<span>Name</span>
+				<input data-test-id="name" bind:value={name} type="text" name="name" />
+			</label>
+			<label>
+				<span>Photo URL (optional)</span>
+				<input data-test-id="avatar-url" bind:value={avatar} type="url" name="avatar-url" />
 			</label>
 		{/if}
 		{#if action !== 'reset_password'}
@@ -82,7 +138,7 @@
 				<input data-test-id="password" bind:value={password} type="password" name="password" />
 			</label>
 		{/if}
-		{#if action === 'confirm_password_reset'}
+		{#if action === 'confirm_password_reset' || action === 'create_account'}
 			<label>
 				<span>Confirm Password</span>
 				<input data-test-id="confirm-password" bind:value={confirm_password} type="password" name="confirm-password" />

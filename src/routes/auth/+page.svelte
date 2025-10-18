@@ -34,7 +34,7 @@
 			{:else if stage === 'confirm_reset'}
 				<AuthForm action="confirm_password_reset" title="Reset Password" />
 			{:else if stage === 'create_password'}
-				<AuthForm action="confirm_password_reset" title="Create Password" />
+				<AuthForm action="create_account" title="Create Account" bind:email />
 			{/if}
 		</div>
 	</div>

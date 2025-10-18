@@ -3,6 +3,7 @@
 	import Icon from '@iconify/svelte'
 	import { PaneGroup, Pane, PaneResizer } from 'paneforge'
 	import Fields, { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
+	import Content from '$lib/builder/components/Content.svelte'
 	import * as _ from 'lodash-es'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
 	import { site_context, hide_dynamic_field_types_context } from '$lib/builder/stores/context'
@@ -158,7 +159,23 @@
 				</Pane>
 			</PaneGroup>
 		{:else}
-			<!-- <Fields id="site-{site.id}" fields={site.data.fields} /> -->
+			<Content
+				entity={site}
+				{fields}
+				{entries}
+				oninput={(values) => {
+					setFieldEntries({
+						fields,
+						entries,
+						updateEntry: SiteEntries.update,
+						createEntry: SiteEntries.create,
+						values
+					})
+				}}
+				ondelete={(entry_id) => {
+					SiteEntries.delete(entry_id)
+				}}
+			/>
 		{/if}
 	</main>
 {/if}

@@ -563,7 +563,7 @@
 		<h1 class="text-md leading-none tracking-tight text-center">Create Site</h1>
 
 		<!-- Stepper -->
-		<div class="max-w-[900px] justify-self-center mt-4 flex items-center gap-4 overflow-x-auto whitespace-nowrap w-full">
+		<div class="max-w-[900px] mx-auto mt-4 flex items-center gap-4 overflow-x-auto whitespace-nowrap w-full">
 			<!-- Step 1 -->
 			<button class="flex items-center gap-3 focus:outline-none whitespace-nowrap" onclick={() => (step = 'name')}>
 				<div

@@ -6,7 +6,9 @@ export const User = z.object({
 	password: z.string().optional(),
 	passwordConfirm: z.string().optional(),
 	serverRole: z.enum(['editor', 'developer', '']).optional(),
-	invite: z.enum(['pending', 'sent', '']).optional()
+	invite: z.enum(['pending', 'sent', '']).optional(),
+	name: z.string().optional(),
+	avatar: z.string().optional()
 })
 
 export type User = z.infer<typeof User>
