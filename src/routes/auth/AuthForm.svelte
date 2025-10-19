@@ -137,7 +137,7 @@
 			<div class="grid grid-cols-[1fr_auto] gap-2 items-end">
 				<label class="grid gap-2">
 					<span>Name & Avatar</span>
-					<input data-test-id="name" bind:value={name} type="text" name="name" />
+					<input data-test-id="name" bind:value={name} type="text" name="name" placeholder="John Doe" />
 				</label>
 				<div class="relative">
 					{#if avatar}
