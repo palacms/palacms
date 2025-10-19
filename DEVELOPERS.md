@@ -145,7 +145,7 @@ const newPage = Pages.create({
 Pages.update(pageId, { name: 'Updated Name' })
 
 // Commit all locally made changes to the server
-await manager.commit()
+await self.commit()
 ```
 
 ### State Management

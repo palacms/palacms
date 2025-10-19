@@ -12,12 +12,13 @@
 	import * as Tabs from '$lib/components/ui/tabs'
 	import { Cuboid, SquarePen, ExternalLink } from 'lucide-svelte'
 	import { page as pageState } from '$app/state'
-	import { PageTypes, Sites, Pages, PageEntries, manager } from '$lib/pocketbase/collections'
+	import { PageTypes, Sites, Pages, PageEntries } from '$lib/pocketbase/collections'
 	import { SiteSymbols } from '$lib/pocketbase/collections'
 	import { site_context } from '$lib/builder/stores/context'
 	import { setFieldEntries } from '../Fields/FieldsContent.svelte'
 	import { current_user } from '$lib/pocketbase/user'
 	import { resolve_page } from '$lib/pages'
+	import { self } from '$lib/pocketbase/managers'
 
 	const { value: site } = site_context.getOr({ value: null })
 	const path = $derived(pageState.params.page?.split('/'))
@@ -143,12 +144,12 @@
 						values
 					})
 					clearTimeout(commit_task)
-					commit_task = setTimeout(() => manager.commit(), 500)
+					commit_task = setTimeout(() => self.commit(), 500)
 				}}
 				ondelete={(entry_id) => {
 					PageEntries.delete(entry_id)
 					clearTimeout(commit_task)
-					commit_task = setTimeout(() => manager.commit(), 500)
+					commit_task = setTimeout(() => self.commit(), 500)
 				}}
 			/>
 		</div>

@@ -1,7 +1,8 @@
+import { self } from '$lib/pocketbase/managers'
 import { get_empty_value } from '../builder/utils'
 import type { Entry } from '../common/models/Entry'
 import type { Field } from '../common/models/Field'
-import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbols, manager, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '../pocketbase/collections'
+import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbols, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '../pocketbase/collections'
 import { useSvelteWorker } from './Worker.svelte'
 
 const createImportWorker =
@@ -206,10 +207,10 @@ const createImportWorker =
 					}
 					create_symbol_entries()
 
-					await manager.commit()
+					await self.commit()
 					console.log('Symbol imported successfully:', finalName)
 				} catch (error) {
-					manager.discard()
+					self.discard()
 					throw error
 				}
 			}

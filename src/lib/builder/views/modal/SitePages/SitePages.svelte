@@ -4,7 +4,7 @@
 	import Item from './Item.svelte'
 	import PageForm from './PageForm.svelte'
 	import Icon from '@iconify/svelte'
-	import { Pages, PageTypes, PageSections, PageSectionEntries, manager } from '$lib/pocketbase/collections'
+	import { Pages, PageTypes, PageSections, PageSectionEntries } from '$lib/pocketbase/collections'
 	import { resolve_page } from '$lib/pages'
 	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
@@ -12,6 +12,7 @@
 	import { flip } from 'svelte/animate'
 	import { quintOut } from 'svelte/easing'
 	import type { Page } from '$lib/common/models/Page'
+	import { self } from '$lib/pocketbase/managers'
 
 	let hover_position = $state(null)
 
@@ -73,7 +74,7 @@
 		}
 
 		new_page = undefined
-		manager.commit()
+		self.commit()
 		building_page = false
 	})
 

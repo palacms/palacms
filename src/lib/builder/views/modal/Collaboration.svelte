@@ -6,8 +6,8 @@
 	import * as Dialog from '$lib/components/ui/dialog'
 	import { instance } from '$lib/instance'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { manager, SiteRoleAssignments, Users, type Sites } from '$lib/pocketbase/collections'
-	import { self } from '$lib/pocketbase/PocketBase'
+	import { SiteRoleAssignments, Users, type Sites } from '$lib/pocketbase/collections'
+	import { self } from '$lib/pocketbase/managers'
 	import Icon from '@iconify/svelte'
 	import { Loader } from 'lucide-svelte'
 	import { nanoid } from 'nanoid'
@@ -54,7 +54,7 @@
 				role
 			})
 
-			await manager.commit()
+			await self.commit()
 			email = ''
 			role = 'developer'
 		} catch (e) {
@@ -92,7 +92,7 @@
 					role
 				})
 
-				await manager.commit()
+				await self.commit()
 				email = ''
 				role = 'developer'
 				link = location.protocol + '//' + site.host + '/admin'
@@ -110,15 +110,15 @@
 					role
 				})
 
-				await manager.commit()
+				await self.commit()
 				email = ''
 				role = 'developer'
 
-				const response = await fetch(`${self.baseURL}/api/palacms/password-link`, {
+				const response = await fetch(`${self.instance.baseURL}/api/palacms/password-link`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						Authorization: `Bearer ${self.authStore.token}`
+						Authorization: `Bearer ${self.instance.authStore.token}`
 					},
 					body: JSON.stringify({
 						site_id: site.id,
@@ -146,7 +146,7 @@
 		if (!collaborator_to_remove) return
 		removing_collaborator = true
 		SiteRoleAssignments.delete(collaborator_to_remove.assignment.id)
-		await manager.commit()
+		await self.commit()
 		is_remove_collaborator_open = false
 		removing_collaborator = false
 		collaborator_to_remove = undefined

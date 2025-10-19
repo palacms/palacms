@@ -16,8 +16,8 @@
 	import { watch } from 'runed'
 	import { component_iframe_srcdoc } from '$lib/builder/components/misc'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, manager, Sites, SiteUploads, LibraryUploads, Pages } from '$lib/pocketbase/collections'
-	import { self } from '$lib/pocketbase/PocketBase'
+	import { SiteSymbols, type PageSections, type PageTypeSections, PageSectionEntries, PageTypeSectionEntries, Sites, SiteUploads, LibraryUploads, Pages } from '$lib/pocketbase/collections'
+	import { self } from '$lib/pocketbase/managers'
 	import { site_context } from '$lib/builder/stores/context'
 	import { Editor, Extension } from '@tiptap/core'
 	import { rich_text_extensions } from '$lib/builder/rich-text/extensions'
@@ -521,7 +521,7 @@
 
 		// Commit changes with a delay to batch multiple edits
 		clearTimeout(commit_task)
-		commit_task = setTimeout(() => manager.commit(), 500)
+		commit_task = setTimeout(() => self.commit(), 500)
 	}
 
 	let commit_task: ReturnType<typeof setTimeout>
@@ -827,7 +827,7 @@
 						// Get upload URL from the upload record
 						const upload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
 						if (upload) {
-							const baseURL = self.baseURL
+							const baseURL = self.instance.baseURL
 							const collection = site ? 'site_uploads' : 'library_uploads'
 
 							// Only use the PocketBase URL if the file is saved server-side (string)
@@ -837,15 +837,17 @@
 							} else {
 								try {
 									// Force commit the upload to save it server-side
-									await manager.commit()
+									await self.commit()
 
 									// Refresh the upload record to get the server-side filename
-									const refreshedUpload = site ? await self.collection('site_uploads').getOne(current_image_value.upload) : await self.collection('library_uploads').getOne(current_image_value.upload)
+									const refreshedUpload = site
+										? await self.instance.collection('site_uploads').getOne(current_image_value.upload)
+										: await self.collection('library_uploads').getOne(current_image_value.upload)
 
 									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
 										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
 									} else {
-										console.error('Upload still not committed after manager.commit()')
+										console.error('Upload still not committed after self.commit()')
 										alert('Upload failed to complete. Please try again.')
 										editing_image = false
 										return
@@ -883,7 +885,7 @@
 						// Get upload URL from the upload record
 						const upload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
 						if (upload) {
-							const baseURL = self.baseURL
+							const baseURL = self.instance.baseURL
 							const collection = site ? 'site_uploads' : 'library_uploads'
 
 							// Only use the PocketBase URL if the file is saved server-side (string)
@@ -893,15 +895,17 @@
 							} else {
 								try {
 									// Force commit the upload to save it server-side
-									await manager.commit()
+									await self.commit()
 
 									// Refresh the upload record to get the server-side filename
-									const refreshedUpload = site ? await self.collection('site_uploads').getOne(current_image_value.upload) : await self.collection('library_uploads').getOne(current_image_value.upload)
+									const refreshedUpload = site
+										? await self.instance.collection('site_uploads').getOne(current_image_value.upload)
+										: await self.collection('library_uploads').getOne(current_image_value.upload)
 
 									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
 										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
 									} else {
-										console.error('Upload still not committed after manager.commit()')
+										console.error('Upload still not committed after self.commit()')
 										alert('Upload failed to complete. Please try again.')
 										editing_image = false
 										return
@@ -1002,9 +1006,9 @@
 							// If file is not yet saved to server, commit first
 							if (typeof upload.file !== 'string') {
 								try {
-									await manager.commit()
+									await self.commit()
 									if (typeof upload.file === 'string') {
-										const baseURL = self.baseURL
+										const baseURL = self.instance.baseURL
 										const collection = site ? 'site_uploads' : 'library_uploads'
 										newValue.url = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
 									}
@@ -1012,7 +1016,7 @@
 									console.error('Failed to commit upload in onchange:', error)
 								}
 							} else {
-								const baseURL = self.baseURL
+								const baseURL = self.instance.baseURL
 								const collection = site ? 'site_uploads' : 'library_uploads'
 								newValue.url = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
 							}

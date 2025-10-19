@@ -7,11 +7,12 @@
 	import * as _ from 'lodash-es'
 	import CodeEditor from '$lib/builder/components/CodeEditor/CodeMirror.svelte'
 	import { site_context, hide_dynamic_field_types_context } from '$lib/builder/stores/context'
-	import { Sites, SiteFields, SiteEntries, manager } from '$lib/pocketbase/collections'
+	import { Sites, SiteFields, SiteEntries } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
 	import { browser } from '$app/environment'
 	import { useContent } from '$lib/Content.svelte'
 	import { locale } from '$lib/builder/stores/app/misc.js'
+	import { self } from '$lib/pocketbase/managers'
 
 	let { onClose, has_unsaved_changes = $bindable(false) } = $props()
 
@@ -65,7 +66,7 @@
 				foot
 			})
 
-			await manager.commit()
+			await self.commit()
 
 			console.log('Site saved successfully')
 			if (onClose) onClose()

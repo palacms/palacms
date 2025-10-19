@@ -10,9 +10,9 @@
 	import * as Collapsible from '$lib/components/ui/collapsible'
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu'
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js'
-	import { self } from '$lib/pocketbase/PocketBase'
+	import { marketplace, self } from '$lib/pocketbase/managers'
 	import type { Component } from 'svelte'
-	import { LibrarySymbolGroups, MarketplaceSymbolGroups, MarketplaceSiteGroups, manager, SiteGroups } from '$lib/pocketbase/collections'
+	import { LibrarySymbolGroups, SiteGroups } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
 
 	const sidebar = useSidebar()
@@ -45,7 +45,7 @@
 		const userId = $current_user?.id
 		if (!userId) return
 		const newGroup = SiteGroups.create({ name: new_site_group_name, index: 0 })
-		await manager.commit()
+		await self.commit()
 		new_site_group_name = ''
 		is_creating_site_group = false
 		// Navigate to the newly created group
@@ -59,7 +59,7 @@
 		const userId = $current_user?.id
 		if (!userId) return
 		const newGroup = LibrarySymbolGroups.create({ name: new_symbol_group_name, index: 0 })
-		await manager.commit()
+		await self.commit()
 		new_symbol_group_name = ''
 		is_creating_symbol_group = false
 		// Navigate to the newly created group
@@ -210,7 +210,7 @@
 							<DropdownMenu.Separator />
 							<DropdownMenu.Item
 								onclick={async () => {
-									self.authStore.clear()
+									self.instance.authStore.clear()
 									await goto('/admin/auth')
 								}}
 							>
@@ -316,7 +316,7 @@
 								<Collapsible.Content>
 									<Sidebar.GroupContent>
 										<Sidebar.Menu>
-											{#each MarketplaceSiteGroups.list({ sort: 'index' }) ?? [] as group}
+											{#each SiteGroups.from(marketplace).list({ sort: 'index' }) ?? [] as group}
 												{@const url = `/admin/dashboard/marketplace/starters?group=${group.id}`}
 												<Sidebar.MenuItem>
 													<Sidebar.MenuButton isActive={$page.url.pathname + $page.url.search === url}>
@@ -350,7 +350,7 @@
 								<Collapsible.Content>
 									<Sidebar.GroupContent>
 										<Sidebar.Menu>
-											{#each MarketplaceSymbolGroups.list() ?? [] as group}
+											{#each LibrarySymbolGroups.from(marketplace).list() ?? [] as group}
 												{@const url = `/admin/dashboard/marketplace/blocks?group=${group.id}`}
 												<Sidebar.MenuItem>
 													<Sidebar.MenuButton isActive={$page.url.pathname + $page.url.search === url}>

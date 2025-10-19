@@ -5,37 +5,13 @@
 	import { Input } from '$lib/components/ui/input/index.js'
 	import { Label } from '$lib/components/ui/label/index.js'
 	import { Site } from '$lib/common/models/Site'
-	import {
-		Sites,
-		Pages,
-		SiteSymbols,
-		SiteSymbolFields,
-		SiteSymbolEntries,
-		SiteGroups,
-		SiteFields,
-		SiteEntries,
-		SiteUploads,
-		manager,
-		LibrarySymbols,
-		MarketplaceSymbols,
-		MarketplaceSiteGroups,
-		MarketplaceSites,
-		PageTypes,
-		PageEntries,
-		PageSections,
-		PageSectionEntries,
-		PageTypeFields,
-		PageTypeEntries,
-		PageTypeSymbols,
-		PageTypeSections,
-		PageTypeSectionEntries
-	} from '$lib/pocketbase/collections'
+	import { Sites, SiteSymbols, SiteSymbolFields, SiteSymbolEntries, SiteGroups, LibrarySymbols } from '$lib/pocketbase/collections'
 	import { page as pageState } from '$app/state'
 	import Button from './ui/button/button.svelte'
-	import { useCloneSite } from '$lib/workers/CloneSite.svelte'
+	import { create_site_symbol_entries, create_site_symbol_fields, create_site_symbols, useCloneSite } from '$lib/workers/CloneSite.svelte'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js'
-	import { self as pb, marketplace } from '$lib/pocketbase/PocketBase'
+	import { self as pb, marketplace, self } from '$lib/pocketbase/managers'
 	import { watch } from 'runed'
 	import BlockPickerPanel from '$lib/components/BlockPickerPanel.svelte'
 
@@ -44,7 +20,7 @@
   - Steps: name → starter → blocks
   - Flow: clone the selected starter, then optionally copy selected blocks.
   - Data sources: local PocketBase (manager/self) and marketplace (marketplace).
-  - Commit: aggregate creates and call manager.commit() once per creation.
+  - Commit: aggregate creates and call self.commit() once per creation.
 */
 
 	const { oncreated }: { oncreated?: () => void } = $props()
@@ -70,7 +46,7 @@
 	const active_starters_group_sites = $derived(starter_sites ? (active_starters_group_id ? starter_sites.filter((s) => s.group === active_starters_group_id) : starter_sites) : undefined)
 
 	// Marketplace (Starters) - site groups and sites
-	const marketplace_site_groups = $derived(MarketplaceSiteGroups.list({ sort: 'index' }) ?? [])
+	const marketplace_site_groups = $derived(SiteGroups.from(marketplace).list({ sort: 'index' }) ?? [])
 	let active_marketplace_starters_group_id = $state(marketplace_site_groups?.find((g) => g.name === 'Featured')?.id ?? marketplace_site_groups?.[0]?.id ?? '')
 	watch(
 		() => (marketplace_site_groups ?? []).map((g) => g.id),
@@ -84,8 +60,8 @@
 
 	const marketplace_starter_sites = $derived(
 		active_marketplace_starters_group_id
-			? (MarketplaceSites.list({ filter: { group: active_marketplace_starters_group_id }, sort: 'index' }) ?? undefined)
-			: (MarketplaceSites.list({ sort: 'index' }) ?? undefined)
+			? (Sites.from(marketplace).list({ filter: { group: active_marketplace_starters_group_id }, sort: 'index' }) ?? undefined)
+			: (Sites.from(marketplace).list({ sort: 'index' }) ?? undefined)
 	)
 
 	let site_name = $state(``)
@@ -135,111 +111,32 @@
 
 	// Optional blocks selection; keep resolved symbol pointers only.
 	let selected_block_ids = $state<{ id: string; source: 'library' | 'marketplace' }[]>([])
-	const selected_blocks = $derived(selected_block_ids.map(({ id, source }) => (source === 'library' ? LibrarySymbols.one(id) : MarketplaceSymbols.one(id))).filter(Boolean) || [])
+	const selected_blocks = $derived(selected_block_ids.map(({ id, source }) => (source === 'library' ? LibrarySymbols.one(id) : LibrarySymbols.from(marketplace).one(id))).filter(Boolean) || [])
+	const selected_block_fields = $derived(selected_blocks.flatMap((symbol) => symbol?.fields()))
+	const selected_block_entries = $derived(selected_blocks.flatMap((symbol) => symbol?.entries()))
 
-	// Copy selected blocks into a new site:
-	// - Create site_symbol, then fields (parent-first), then entries (parent-first)
-	// - Preserve ordering/index and parent relationships
-	// - Do not commit here; the caller commits once at the end
-	async function copy_selected_blocks_to_site(site_id: string) {
-		if (!selected_block_ids.length) return
-		for (const block of selected_block_ids) {
-			// Copy marketplace symbols to library symbols
-			try {
-				const symbol = selected_blocks.find((b) => b?.id === block.id)
-				if (!symbol) continue
+	async function copy_selected_blocks_to_site() {
+		try {
+			if (!selected_block_ids.length) return
 
-				const server = block.source === 'library' ? pb : marketplace
+			const site = created_site
+			const source_symbols = selected_blocks.filter((symbol) => !!symbol)
+			const source_symbol_fields = selected_block_fields.filter((field) => !!field)
+			const source_symbol_entries = selected_block_entries.filter((entry) => !!entry)
 
-				// Create library symbol from marketplace symbol
-				const site_symbol = SiteSymbols.create({
-					name: symbol.name,
-					html: symbol.html,
-					css: symbol.css,
-					js: symbol.js,
-					site: site_id
-				})
-
-				// Get marketplace fields using pb directly to avoid effect context issues
-				const source_symbol_fields = await server.collection('library_symbol_fields').getFullList({
-					filter: `symbol = "${symbol.id}"`,
-					sort: 'index'
-				})
-
-				if (source_symbol_fields?.length > 0) {
-					const field_map = new Map()
-
-					// Create fields in order, handling parent relationships
-					const sorted_fields = [...source_symbol_fields].sort((a, b) => {
-						// Fields without parents come first
-						if (!a.parent && b.parent) return -1
-						if (a.parent && !b.parent) return 1
-						return (a.index || 0) - (b.index || 0)
-					})
-
-					for (const field of sorted_fields) {
-						const parent_library_field = field.parent ? field_map.get(field.parent) : undefined
-
-						const library_field = SiteSymbolFields.create({
-							key: field.key,
-							label: field.label,
-							type: field.type,
-							config: field.config,
-							index: field.index,
-							symbol: site_symbol.id,
-							parent: parent_library_field?.id || undefined
-						})
-						field_map.set(field.id, library_field)
-					}
-
-					// Get library entries using pb directly
-					const field_ids = source_symbol_fields.map((f) => f.id)
-					const source_entries =
-						field_ids.length > 0
-							? await server.collection('library_symbol_entries').getFullList({
-									filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
-									sort: 'index'
-								})
-							: []
-
-					if (source_entries?.length > 0) {
-						const entry_map = new Map()
-
-						// Create entries in order, handling parent relationships
-						const sorted_entries = [...source_entries].sort((a, b) => {
-							// Entries without parents come first
-							if (!a.parent && b.parent) return -1
-							if (a.parent && !b.parent) return 1
-							return (a.index || 0) - (b.index || 0)
-						})
-
-						for (const entry of sorted_entries) {
-							const library_field = field_map.get(entry.field)
-							const parent_library_entry = entry.parent ? entry_map.get(entry.parent) : undefined
-
-							if (library_field) {
-								const site_entry = SiteSymbolEntries.create({
-									field: library_field.id,
-									value: entry.value,
-									index: entry.index,
-									locale: entry.locale,
-									parent: parent_library_entry?.id || undefined
-								})
-								entry_map.set(entry.id, site_entry)
-							}
-						}
-					}
-				}
-			} catch (error) {
-				console.error('Error copying marketplace symbol:', error)
-				throw error
-			}
+			const site_symbol_map = create_site_symbols({ source_symbols, site })
+			const site_symbol_field_map = create_site_symbol_fields({ source_symbol_fields, site_symbol_map })
+			const site_symbol_entry_map = create_site_symbol_entries({ source_symbol_entries, site_symbol_field_map })
+		} catch (error) {
+			console.error('Error copying marketplace symbols:', error)
+			throw error
 		}
 	}
 
 	const cloneSite = $derived(
 		useCloneSite({
-			starter_site_id: selected_starter_id,
+			source_manager: selected_starter_source === 'local' ? self : marketplace,
+			source_site_id: selected_starter_id,
 			site_name: site_name,
 			site_host: pageState.url.host,
 			site_group_id: site_group?.id
@@ -248,290 +145,20 @@
 
 	let completed = $derived(Boolean(site_name && selected_starter_id))
 	let loading = $state(false)
-	// Clone a remote (marketplace) starter into a new local site.
-	async function clone_marketplace_starter(remote_site_id: string, name: string, host: string, group_id: string) {
-		const remote_site = await marketplace.collection('sites').getOne(remote_site_id)
-
-		const site = Sites.create({
-			name,
-			description: '',
-			host,
-			group: group_id,
-			index: 0,
-			head: remote_site.head || '',
-			foot: remote_site.foot || ''
-		})
-
-		// Uploads: copy files to local
-		const remote_uploads = await marketplace.collection('site_uploads').getFullList({ filter: `site = "${remote_site_id}"` })
-		const site_upload_map = new Map<string, any>()
-		for (const remote_upload of remote_uploads) {
-			const file = await fetch(`${marketplace.baseURL}/api/files/site_uploads/${remote_upload.id}/${remote_upload.file}`)
-				.then((res) => res.blob())
-				.then((blob) => new File([blob], remote_upload.file.toString()))
-			const upload = SiteUploads.create({ file, site: site.id })
-			site_upload_map.set(remote_upload.id, upload)
-		}
-
-		const map_entry_value = (value: any, field: any): unknown => {
-			if (field?.type === 'image' && value?.upload) {
-				return { ...value, upload: site_upload_map.get(value.upload)?.id }
-			} else {
-				return value
-			}
-		}
-
-		// Site fields + entries
-		const remote_site_fields = await marketplace.collection('site_fields').getFullList({ filter: `site = "${remote_site_id}"` })
-		const remote_site_entries = await marketplace.collection('site_entries').getFullList({ filter: `field.site = "${remote_site_id}"` })
-		const site_field_map = new Map<string, any>()
-		const site_entry_map = new Map<string, any>()
-		const create_site_fields = (parent_remote_id?: string) => {
-			for (const rf of remote_site_fields) {
-				const is_child = !!rf.parent
-				if (parent_remote_id ? rf.parent !== parent_remote_id : is_child) continue
-				const parent = rf.parent ? site_field_map.get(rf.parent) : undefined
-				const field = SiteFields.create({ ...rf, id: undefined, site: site.id, parent: parent?.id })
-				site_field_map.set(rf.id, field)
-				create_site_fields(rf.id)
-			}
-		}
-		create_site_fields()
-
-		const create_site_entries = (parent_remote_id?: string) => {
-			for (const re of remote_site_entries) {
-				const is_child = !!re.parent
-				if (parent_remote_id ? re.parent !== parent_remote_id : is_child) continue
-				const field = site_field_map.get(re.field)
-				const parent = re.parent ? site_entry_map.get(re.parent) : undefined
-				const entry = SiteEntries.create({
-					locale: re.locale,
-					value: map_entry_value(re.value, field),
-					field: field.id,
-					parent: parent?.id,
-					index: re.index
-				})
-				site_entry_map.set(re.id, entry)
-				create_site_entries(re.id)
-			}
-		}
-		create_site_entries()
-
-		// Symbols + fields + entries
-		const remote_symbols = await marketplace.collection('site_symbols').getFullList({ filter: `site = "${remote_site_id}"` })
-		const symbol_map = new Map<string, any>()
-		const symbol_field_map = new Map<string, any>()
-		for (const rs of remote_symbols) {
-			const symbol = SiteSymbols.create({ ...rs, id: undefined, site: site.id, compiled_js: undefined })
-			symbol_map.set(rs.id, symbol)
-
-			const remote_symbol_fields = await marketplace.collection('site_symbol_fields').getFullList({ filter: `symbol = "${rs.id}"` })
-			const create_symbol_fields = (parent_remote_id?: string) => {
-				for (const rf of remote_symbol_fields) {
-					const is_child = !!rf.parent
-					if (parent_remote_id ? rf.parent !== parent_remote_id : is_child) continue
-					const parent = rf.parent ? symbol_field_map.get(rf.parent) : undefined
-					const field = SiteSymbolFields.create({ ...rf, id: undefined, symbol: symbol.id, parent: parent?.id })
-					symbol_field_map.set(rf.id, field)
-					create_symbol_fields(rf.id)
-				}
-			}
-			create_symbol_fields()
-
-			const remote_symbol_entries = await marketplace.collection('site_symbol_entries').getFullList({ filter: `field.symbol = "${rs.id}"` })
-			const symbol_entry_map = new Map<string, any>()
-			const create_symbol_entries = (parent_remote_id?: string) => {
-				for (const re of remote_symbol_entries) {
-					const is_child = !!re.parent
-					if (parent_remote_id ? re.parent !== parent_remote_id : is_child) continue
-					const field = symbol_field_map.get(re.field)
-					const parent = re.parent ? symbol_entry_map.get(re.parent) : undefined
-					const entry = SiteSymbolEntries.create({
-						locale: re.locale,
-						value: map_entry_value(re.value, field),
-						field: field.id,
-						parent: parent?.id,
-						index: re.index
-					})
-					symbol_entry_map.set(re.id, entry)
-					create_symbol_entries(re.id)
-				}
-			}
-			create_symbol_entries()
-		}
-
-		// Page types + fields + entries + symbols/sections
-		const remote_page_types = await marketplace.collection('page_types').getFullList({ filter: `site = "${remote_site_id}"` })
-		const page_type_map = new Map<string, any>()
-		const page_type_field_map = new Map<string, any>()
-		for (const rpt of remote_page_types) {
-			const page_type = PageTypes.create({ ...rpt, id: undefined, site: site.id })
-			page_type_map.set(rpt.id, page_type)
-
-			const remote_page_type_fields = await marketplace.collection('page_type_fields').getFullList({ filter: `page_type = "${rpt.id}"` })
-			const create_page_type_fields = (parent_remote_id?: string) => {
-				for (const rf of remote_page_type_fields) {
-					const is_child = !!rf.parent
-					if (parent_remote_id ? rf.parent !== parent_remote_id : is_child) continue
-					const parent = rf.parent ? page_type_field_map.get(rf.parent) : undefined
-					const field = PageTypeFields.create({ ...rf, id: undefined, page_type: page_type.id, parent: parent?.id })
-					page_type_field_map.set(rf.id, field)
-					create_page_type_fields(rf.id)
-				}
-			}
-			create_page_type_fields()
-
-			const remote_page_type_entries = await marketplace.collection('page_type_entries').getFullList({ filter: `field.page_type = "${rpt.id}"` })
-			const page_type_entry_map = new Map<string, any>()
-			const create_page_type_entries = (parent_remote_id?: string) => {
-				for (const re of remote_page_type_entries) {
-					const is_child = !!re.parent
-					if (parent_remote_id ? re.parent !== parent_remote_id : is_child) continue
-					const field = page_type_field_map.get(re.field)
-					const parent = re.parent ? page_type_entry_map.get(re.parent) : undefined
-					const entry = PageTypeEntries.create({
-						locale: re.locale,
-						value: map_entry_value(re.value, field),
-						field: field.id,
-						parent: parent?.id,
-						index: re.index
-					})
-					page_type_entry_map.set(re.id, entry)
-					create_page_type_entries(re.id)
-				}
-			}
-			create_page_type_entries()
-
-			const remote_page_type_symbols = await marketplace.collection('page_type_symbols').getFullList({ filter: `page_type = "${rpt.id}"` })
-			for (const rpts of remote_page_type_symbols) {
-				const symbol = symbol_map.get(rpts.symbol)
-				if (!symbol) continue
-				PageTypeSymbols.create({ page_type: page_type.id, symbol: symbol.id })
-			}
-
-			const remote_page_type_sections = await marketplace.collection('page_type_sections').getFullList({ filter: `page_type = "${rpt.id}"` })
-			for (const rpts of remote_page_type_sections) {
-				const symbol = symbol_map.get(rpts.symbol)
-				if (!symbol) continue
-				const section = PageTypeSections.create({ page_type: page_type.id, symbol: symbol.id, index: rpts.index, zone: rpts.zone })
-
-				const remote_page_type_section_entries = await marketplace.collection('page_type_section_entries').getFullList({ filter: `section = "${rpts.id}"` })
-				const page_type_section_entry_map = new Map<string, any>()
-				const create_page_type_section_entries = (parent_remote_id?: string) => {
-					for (const re of remote_page_type_section_entries) {
-						const is_child = !!re.parent
-						if (parent_remote_id ? re.parent !== parent_remote_id : is_child) continue
-						const field = symbol_field_map.get(re.field)
-						const parent = re.parent ? page_type_section_entry_map.get(re.parent) : undefined
-						const entry = PageTypeSectionEntries.create({
-							section: section.id,
-							field: field.id,
-							parent: parent?.id,
-							locale: re.locale,
-							value: map_entry_value(re.value, field),
-							index: re.index
-						})
-						page_type_section_entry_map.set(re.id, entry)
-						create_page_type_section_entries(re.id)
-					}
-				}
-				create_page_type_section_entries()
-			}
-		}
-
-		// Pages + entries + sections
-		const remote_pages = await marketplace.collection('pages').getFullList({ filter: `site = "${remote_site_id}"` })
-		const page_map = new Map<string, any>()
-		const create_pages = async (parent_remote_id?: string) => {
-			for (const rp of remote_pages) {
-				const is_child = !!rp.parent
-				if (parent_remote_id ? rp.parent !== parent_remote_id : is_child) continue
-				const page_type = page_type_map.get(rp.page_type)
-				if (!page_type) continue
-				const parent = rp.parent ? page_map.get(rp.parent) : undefined
-				const page = Pages.create({
-					name: rp.name,
-					slug: rp.slug,
-					compiled_html: undefined,
-					page_type: page_type.id,
-					parent: parent?.id ?? '',
-					site: site.id,
-					index: rp.index
-				})
-				page_map.set(rp.id, page)
-
-				const remote_page_entries = await marketplace.collection('page_entries').getFullList({ filter: `page = "${rp.id}"` })
-				const page_entry_map = new Map<string, any>()
-				const create_page_entries = (parent_remote_id?: string) => {
-					for (const re of remote_page_entries) {
-						const is_child = !!re.parent
-						if (parent_remote_id ? re.parent !== parent_remote_id : is_child) continue
-						const field = page_type_field_map.get(re.field)
-						const parent = re.parent ? page_entry_map.get(re.parent) : undefined
-						const entry = PageEntries.create({
-							page: page.id,
-							field: field.id,
-							locale: re.locale,
-							value: map_entry_value(re.value, field),
-							index: re.index
-						})
-						page_entry_map.set(re.id, entry)
-						create_page_entries(re.id)
-					}
-				}
-				create_page_entries()
-
-				const remote_page_sections = await marketplace.collection('page_sections').getFullList({ filter: `page = "${rp.id}"` })
-				for (const rps of remote_page_sections) {
-					const symbol = symbol_map.get(rps.symbol)
-					if (!symbol) continue
-					const section = PageSections.create({ page: page.id, symbol: symbol.id, index: rps.index })
-
-					const remote_page_section_entries = await marketplace.collection('page_section_entries').getFullList({ filter: `section = "${rps.id}"` })
-					const page_section_entry_map = new Map<string, any>()
-					const create_page_section_entries = (parent_remote_id?: string) => {
-						for (const re of remote_page_section_entries) {
-							const is_child = !!re.parent
-							if (parent_remote_id ? re.parent !== parent_remote_id : is_child) continue
-							const field = symbol_field_map.get(re.field)
-							const parent = re.parent ? page_section_entry_map.get(re.parent) : undefined
-							const entry = PageSectionEntries.create({
-								section: section.id,
-								field: field.id,
-								parent: parent?.id,
-								locale: re.locale,
-								value: map_entry_value(re.value, field),
-								index: re.index
-							})
-							page_section_entry_map.set(re.id, entry)
-							create_page_section_entries(re.id)
-						}
-					}
-					create_page_section_entries()
-				}
-
-				await create_pages(rp.id)
-			}
-		}
-		await create_pages()
-
-		return site
-	}
 
 	// Clone the selected starter
 	async function create_site() {
 		if (!selected_starter_id) return
 		loading = true
 		try {
-			if (selected_starter_source === 'local') {
-				await cloneSite.run()
-			} else {
-				const group_id = site_group?.id ?? SiteGroups.create({ name: 'Default', index: 0 }).id
-				await clone_marketplace_starter(selected_starter_id, site_name, pageState.url.host, group_id)
+			if (!site_group) {
+				SiteGroups.create({ name: 'Default', index: 0 })
 			}
+			await cloneSite.run()
 			done_creating_site = true
 		} catch (e) {
 			console.error(e)
+			loading = false
 		}
 	}
 
@@ -546,8 +173,8 @@
 	$effect(() => {
 		if (!finalized && done_creating_site && created_site) {
 			finalized = true
-			copy_selected_blocks_to_site(created_site.id)
-				.then(() => manager.commit())
+			copy_selected_blocks_to_site()
+				.then(() => self.commit())
 				.then(() => oncreated?.())
 				.catch((e) => console.error(e))
 				.finally(() => {

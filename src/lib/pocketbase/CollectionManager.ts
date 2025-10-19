@@ -1,6 +1,7 @@
 import type { ObjectWithId } from './Object'
 import type { RecordService } from 'pocketbase'
 import { OrderedSvelteMap } from './OrderedSvelteMap'
+import type Client from 'pocketbase'
 
 export type Change<T extends ObjectWithId> =
 	| { collection: RecordService<T>; operation: 'create'; committed: boolean; data: Omit<T, 'id'> }
@@ -18,7 +19,7 @@ export type TrackedList = {
 
 export type CollectionManager = ReturnType<typeof createCollectionManager>
 
-export const createCollectionManager = () => {
+export const createCollectionManager = (instance: Client) => {
 	const changes = new OrderedSvelteMap<string, Change<ObjectWithId>>()
 	const records = new OrderedSvelteMap<string, TrackedRecord | undefined | null>()
 	const lists = new OrderedSvelteMap<string, TrackedList | undefined | null>()
@@ -26,6 +27,7 @@ export const createCollectionManager = () => {
 	let promise = Promise.resolve()
 
 	return {
+		instance,
 		changes,
 		records,
 		lists,

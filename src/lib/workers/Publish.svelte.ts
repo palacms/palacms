@@ -6,7 +6,7 @@ import { useContent } from '$lib/Content.svelte'
 import { processors } from '../builder/component'
 import { usePageData } from '../PageData.svelte'
 import { Sites } from '../pocketbase/collections'
-import { self } from '../pocketbase/PocketBase'
+import { self } from '../pocketbase/managers'
 import { useSvelteWorker } from './Worker.svelte'
 import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
 
@@ -44,7 +44,7 @@ export const usePublishSite = (site_id?: string) => {
 							throw new Error('Compiling symbol not successful')
 						}
 
-						await self.collection('site_symbols').update(symbol.id, {
+						await self.instance.collection('site_symbols').update(symbol.id, {
 							compiled_js: new File([res.js], 'symbol.js', { type: 'text/javascript' })
 						})
 					})
@@ -62,7 +62,7 @@ export const usePublishSite = (site_id?: string) => {
 							throw new Error('No site')
 						}
 
-						await self.collection('sites').update(site.id, {
+						await self.instance.collection('sites').update(site.id, {
 							preview: new File([html], 'index.html')
 						})
 					})
@@ -75,7 +75,7 @@ export const usePublishSite = (site_id?: string) => {
 							throw new Error('Generating page not successful')
 						}
 
-						await self.collection('pages').update(page.id, {
+						await self.instance.collection('pages').update(page.id, {
 							compiled_html: new File([html], 'index.html', { type: 'text/html' })
 						})
 					})
@@ -87,11 +87,11 @@ export const usePublishSite = (site_id?: string) => {
 			}
 
 			await Promise.all(promises)
-			await fetch(new URL('/api/palacms/generate', self.baseURL), {
+			await fetch(new URL('/api/palacms/generate', self.instance.baseURL), {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${self.authStore.token}`
+					Authorization: `Bearer ${self.instance.authStore.token}`
 				},
 				body: JSON.stringify({ site_id })
 			}).then((res) => {
