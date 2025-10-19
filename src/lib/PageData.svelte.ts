@@ -1,13 +1,12 @@
 import type Client from 'pocketbase'
 import type { ObjectOf } from './pocketbase/CollectionMapping.svelte'
 import { Pages, PageTypes, Sites, SiteSymbols } from './pocketbase/collections'
-import { self } from './pocketbase/PocketBase'
+import { self } from './pocketbase/managers'
+import type { CollectionManager } from './pocketbase/CollectionManager'
 
-export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<typeof Pages>[], instance: Client = self) => {
+export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<typeof Pages>[], manager: CollectionManager = self) => {
 	const page_types = $derived(
-		pages?.every((page) => PageTypes.from(instance).one(page.page_type) !== undefined)
-			? pages.flatMap((page) => PageTypes.from(instance).one(page.page_type) ?? []).filter(deduplicate('id'))
-			: undefined
+		pages?.every((page) => PageTypes.from(manager).one(page.page_type) !== undefined) ? pages.flatMap((page) => PageTypes.from(manager).one(page.page_type) ?? []).filter(deduplicate('id')) : undefined
 	)
 	const page_sections = $derived(pages?.every((page) => page.sections() !== undefined) ? pages.flatMap((page) => page.sections() ?? []).filter(deduplicate('id')) : undefined)
 	const page_type_sections = $derived(
@@ -18,9 +17,9 @@ export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<type
 	)
 	const sections = $derived(page_sections && page_type_sections && [...page_sections, ...page_type_sections])
 	const symbols = $derived(
-		sections?.map((section) => SiteSymbols.from(instance).one(section.symbol)).every((symbol) => symbol !== undefined)
+		sections?.map((section) => SiteSymbols.from(manager).one(section.symbol)).every((symbol) => symbol !== undefined)
 			? sections
-					.map((section) => SiteSymbols.from(instance).one(section.symbol))
+					.map((section) => SiteSymbols.from(manager).one(section.symbol))
 					.filter((symbol) => symbol !== undefined)
 					.filter((symbol) => symbol !== null)
 					.filter(deduplicate('id'))

@@ -7,18 +7,19 @@
 	import MarketplaceStarterButton from '$lib/components/MarketplaceStarterButton.svelte'
 	import { Button } from '$lib/components/ui/button'
 	import { page } from '$app/state'
-	import { MarketplaceSiteGroups, MarketplaceSites } from '$lib/pocketbase/collections'
 	import { Skeleton } from '$lib/components/ui/skeleton'
 	import { goto } from '$app/navigation'
+	import { marketplace } from '$lib/pocketbase/managers'
+	import { SiteGroups, Sites } from '$lib/pocketbase/collections'
 
 	const group_id = $derived(page.url.searchParams.get('group') ?? undefined)
-	const starters = $derived(group_id ? (MarketplaceSites.list({ filter: { group: group_id }, sort: 'index' }) ?? undefined) : undefined)
+	const starters = $derived(group_id ? (Sites.from(marketplace).list({ filter: { group: group_id }, sort: 'index' }) ?? undefined) : undefined)
 
 	let is_info_dialog_open = $state(false)
 
 	// Auto-select first group if none is selected
 	$effect(() => {
-		const groups = MarketplaceSiteGroups.list({ sort: 'index' }) ?? []
+		const groups = SiteGroups.from(marketplace).list({ sort: 'index' }) ?? []
 		if (!group_id && groups.length > 0) {
 			const url = new URL(page.url)
 			url.searchParams.set('group', groups[0].id)

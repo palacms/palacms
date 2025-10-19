@@ -3,7 +3,6 @@ import {
 	LibrarySymbolEntries,
 	LibrarySymbolFields,
 	LibrarySymbols,
-	manager,
 	PageEntries,
 	Pages,
 	PageSectionEntries,
@@ -26,17 +25,17 @@ import type { Field } from '../common/models/Field'
 import { useSvelteWorker } from './Worker.svelte'
 import type { Entry } from '$lib/common/models/Entry'
 import type { CollectionMapping, MappedObject, ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-import Client from 'pocketbase'
-import { self } from '$lib/pocketbase/PocketBase'
+import { self } from '$lib/pocketbase/managers'
+import type { CollectionManager } from '$lib/pocketbase/CollectionManager'
 
 export const useCloneSite = ({
-	source_instance = self,
+	source_manager = self,
 	source_site_id,
 	site_name,
 	site_host,
 	site_group_id
 }: {
-	source_instance?: Client
+	source_manager?: CollectionManager
 	source_site_id?: string
 	site_name?: string
 	site_host?: string
@@ -80,14 +79,14 @@ export const useCloneSite = ({
 			update_entry_value_references({ entry_collection: PageEntries, entry_map: page_entry_map, field_map: page_type_field_map, page_map, site_upload_map })
 			update_entry_value_references({ entry_collection: PageSectionEntries, entry_map: page_section_entry_map, field_map: site_symbol_field_map, page_map, site_upload_map })
 
-			await manager.commit()
+			await self.commit()
 		}
 	)
 
 	const shouldLoad = $derived(['loading', 'working'].includes(worker.status))
-	const source_site = $derived(shouldLoad && source_site_id ? Sites.from(source_instance).one(source_site_id) : undefined)
+	const source_site = $derived(shouldLoad && source_site_id ? Sites.from(source_manager).one(source_site_id) : undefined)
 	const source_site_pages = $derived(shouldLoad && source_site ? source_site.pages() : undefined)
-	const source_site_data = $derived(shouldLoad && source_site && source_site_pages ? usePageData(source_site, source_site_pages, source_instance) : { data: undefined })
+	const source_site_data = $derived(shouldLoad && source_site && source_site_pages ? usePageData(source_site, source_site_pages, source_manager) : { data: undefined })
 
 	return worker
 }
@@ -126,7 +125,7 @@ export const create_site_uploads = async ({
 	site: ObjectOf<typeof Sites>
 }): Promise<Map<string, ObjectOf<typeof SiteUploads>>> => {
 	for (const source_upload of source_site_uploads) {
-		const file = await fetch(`${source_upload.collection.instance.baseURL}/api/files/site_uploads/${source_upload.id}/${source_upload.file}`)
+		const file = await fetch(`${source_upload.collection.manager.instance.baseURL}/api/files/site_uploads/${source_upload.id}/${source_upload.file}`)
 			.then((res) => res.blob())
 			.then((blob) => new File([blob], source_upload.file.toString()))
 

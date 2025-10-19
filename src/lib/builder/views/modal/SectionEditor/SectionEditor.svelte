@@ -16,12 +16,13 @@
 	import { watch } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { browser } from '$app/environment'
-	import { PageSectionEntries, PageSections, PageEntries, PageTypeSectionEntries, SiteSymbolFields, SiteSymbols, SiteSymbolEntries, SiteEntries, manager, Sites } from '$lib/pocketbase/collections'
+	import { PageSectionEntries, PageSections, PageEntries, PageTypeSectionEntries, SiteSymbolFields, SiteSymbols, SiteSymbolEntries, SiteEntries, Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import type { PageTypeSection } from '$lib/common/models/PageTypeSection'
 	import { current_user } from '$lib/pocketbase/user'
 	import * as _ from 'lodash-es'
 	import { useContent } from '$lib/Content.svelte'
+	import { self } from '$lib/pocketbase/managers'
 
 	let {
 		component,
@@ -139,7 +140,7 @@
 			}
 
 			SiteSymbols.update(symbol.id, { html, css, js })
-			await manager.commit()
+			await self.commit()
 			loading = false
 
 			header.button.onclick()

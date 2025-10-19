@@ -17,8 +17,8 @@
 	import * as Tabs from '$lib/components/ui/tabs'
 	import { Cuboid, SquarePen, Loader } from 'lucide-svelte'
 	import { page } from '$app/state'
-	import { PageTypes, SiteSymbols, SiteSymbolFields, SiteSymbolEntries, PageTypeSymbols, PageTypeFields, PageTypeEntries, manager } from '$lib/pocketbase/collections'
-	import { self as pb, marketplace } from '$lib/pocketbase/PocketBase'
+	import { PageTypes, SiteSymbols, SiteSymbolFields, SiteSymbolEntries, PageTypeSymbols, PageTypeFields, PageTypeEntries } from '$lib/pocketbase/collections'
+	import { self as pb, marketplace, self } from '$lib/pocketbase/managers'
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { dragging_symbol } from '$lib/builder/stores/app/misc'
 	import DropZone from '$lib/components/DropZone.svelte'
@@ -160,7 +160,7 @@
 					return
 				}
 				// User confirmed, discard changes
-				manager.discard()
+				self.discard()
 			}
 		}
 	}}
@@ -195,7 +195,7 @@
 					return
 				}
 				// User confirmed, discard changes
-				manager.discard()
+				self.discard()
 			}
 		}
 	}}
@@ -219,7 +219,7 @@
 	bind:open={adding_block}
 	onOpenChange={(open) => {
 		if (!open) {
-			manager.discard()
+			self.discard()
 		}
 	}}
 >
@@ -239,7 +239,7 @@
 
 						const server = source === 'library' ? pb : marketplace
 
-						const source_fields = await server.collection('library_symbol_fields').getFullList({
+						const source_fields = await server.instance.collection('library_symbol_fields').getFullList({
 							filter: `symbol = "${source_symbol.id}"`,
 							sort: 'index'
 						})
@@ -271,7 +271,7 @@
 							const field_ids = source_fields.map((f) => f.id)
 							const source_entries =
 								field_ids.length > 0
-									? await server.collection('library_symbol_entries').getFullList({
+									? await server.instance.collection('library_symbol_entries').getFullList({
 											filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
 											sort: 'index'
 										})
@@ -308,7 +308,7 @@
 					}
 				}
 
-				await manager.commit()
+				await self.commit()
 				adding_block = false
 			}}
 		/>
@@ -338,7 +338,7 @@
 				onclick={() => {
 					if (pending_symbol_toggle) {
 						PageTypeSymbols.delete(pending_symbol_toggle.relation.id)
-						manager.commit()
+						self.commit()
 					}
 					static_transition_dialog = false
 					pending_symbol_toggle = null
@@ -408,17 +408,17 @@
 												static_transition_dialog = true
 											} else {
 												PageTypeSymbols.delete(relation.id)
-												manager.commit()
+												self.commit()
 											}
 										} else {
 											PageTypeSymbols.create({ page_type: page_type.id, symbol: symbol.id })
-											manager.commit()
+											self.commit()
 										}
 									}}
 									on:edit={() => edit_block(symbol, symbol.id)}
 									on:delete={() => {
 										SiteSymbols.delete(symbol.id)
-										manager.commit()
+										self.commit()
 									}}
 									controls_enabled={$current_user?.siteRole === 'developer'}
 								/>
@@ -487,7 +487,7 @@
 								values
 							})
 							clearTimeout(commit_task)
-							commit_task = setTimeout(() => manager.commit(), 500)
+							commit_task = setTimeout(() => self.commit(), 500)
 						}}
 						onchange={({ id, data }) => {
 							PageTypeFields.update(id, data)
@@ -496,18 +496,18 @@
 							if (field?.key) {
 								console.log('commiting ONCHANGE - maybe it commits without a key?', field?.key)
 								clearTimeout(commit_task)
-								commit_task = setTimeout(() => manager.commit(), 500)
+								commit_task = setTimeout(() => self.commit(), 500)
 							}
 						}}
 						ondelete={async (field) => {
 							PageTypeFields.delete(field.id)
 							toast.success(`Deleted ${field.type} field${field.label ? `: ${field.label}` : ``}`)
-							await manager.commit()
+							await self.commit()
 						}}
 						ondelete_entry={(entry_id) => {
 							PageTypeEntries.delete(entry_id)
 							clearTimeout(commit_task)
-							commit_task = setTimeout(() => manager.commit(), 500)
+							commit_task = setTimeout(() => self.commit(), 500)
 						}}
 					/>
 				{/if}

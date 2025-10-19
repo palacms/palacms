@@ -12,11 +12,12 @@
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import { beforeNavigate } from '$app/navigation'
-	import { Pages, Sites, SiteSymbols, PageSections, PageTypes, PageSectionEntries, manager } from '$lib/pocketbase/collections'
+	import { Pages, Sites, SiteSymbols, PageSections, PageTypes, PageSectionEntries } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { page_context } from '$lib/builder/stores/context'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { watch } from 'runed'
+	import { self } from '$lib/pocketbase/managers'
 
 	let { page }: { page: ObjectOf<typeof Pages> } = $props()
 
@@ -114,7 +115,7 @@
 			PageSections.update(section.id, { index: section.index + 1 })
 		}
 
-		await manager.commit()
+		await self.commit()
 
 		return new_section.id
 	}
@@ -131,7 +132,7 @@
 
 		// Delete the section
 		PageSections.delete(section_id)
-		await manager.commit()
+		await self.commit()
 	}
 
 	let page_el = $state()
@@ -547,7 +548,7 @@
 						return
 					}
 					// User confirmed, discard changes
-					manager.discard()
+					self.discard()
 				}
 			}
 		}}
@@ -643,7 +644,7 @@
 
 				PageSections.update(section_to_move.id, { index: section_to_move.index - 1 })
 				PageSections.update(section_above.id, { index: section_to_move.index })
-				await manager.commit()
+				await self.commit()
 
 				setTimeout(() => {
 					moving = false
@@ -664,7 +665,7 @@
 
 				PageSections.update(section_to_move.id, { index: section_to_move.index + 1 })
 				PageSections.update(section_below.id, { index: section_to_move.index })
-				await manager.commit()
+				await self.commit()
 
 				setTimeout(() => {
 					moving = false

@@ -3,9 +3,10 @@
 	import Item from './Item.svelte'
 	import Button from '$lib/builder/ui/Button.svelte'
 	import PageForm from './PageTypeForm.svelte'
-	import { PageTypes, manager } from '$lib/pocketbase/collections'
+	import { PageTypes } from '$lib/pocketbase/collections'
 	import { site_context } from '$lib/builder/stores/context'
 	import { page as pageState } from '$app/state'
+	import { self } from '$lib/pocketbase/managers'
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const { value: site } = site_context.get()
@@ -20,7 +21,7 @@
 		}
 
 		PageTypes.create(page_type_data)
-		manager.commit()
+		self.commit()
 	}
 
 	let creating_page_type = $state(false)

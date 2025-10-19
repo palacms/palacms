@@ -14,8 +14,8 @@
 	import { locale, dragging_symbol } from '../../stores/app/misc.js'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
-	import { manager, PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
-	import { self as pb } from '$lib/pocketbase/PocketBase'
+	import { PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
+	import { self as pb, self } from '$lib/pocketbase/managers'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
@@ -45,7 +45,7 @@
 	async function save_page_type_code() {
 		if (!page_type) return
 		PageTypes.update(page_type.id, { head, foot })
-		await manager.commit()
+		await self.commit()
 	}
 
 	// Auto-save with delay
@@ -314,7 +314,7 @@
 						await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
 					}
 
-					await manager.commit()
+					await self.commit()
 				} catch (error) {
 					console.error('Database insertion error (empty zone):', error)
 					throw error
@@ -416,7 +416,7 @@
 						await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
 					}
 
-					await manager.commit()
+					await self.commit()
 				} catch (error) {
 					console.error('Database insertion error:', error)
 					throw error
@@ -441,7 +441,7 @@
 	async function copy_symbol_entries_to_section(symbol_id: string, section_id: string) {
 		try {
 			// Get all symbol entries (not just root-level ones)
-			const symbol_entries = await pb.collection('site_symbol_entries').getFullList({
+			const symbol_entries = await pb.instance.collection('site_symbol_entries').getFullList({
 				filter: `field.symbol = "${symbol_id}"`,
 				expand: 'field',
 				sort: 'index'
@@ -492,7 +492,7 @@
 					return
 				}
 				// User confirmed, discard changes
-				manager.discard()
+				self.discard()
 			}
 		}
 	}}
@@ -570,7 +570,7 @@
 					PageTypeSections.update(section.id, { index: section.index - 1 })
 				}
 
-				await manager.commit()
+				await self.commit()
 			}}
 			on:edit-code={() => edit_component('code')}
 			on:edit-content={() => edit_component('content')}
@@ -598,15 +598,15 @@
 
 					// Step 1: Move current section to temp position and commit
 					PageTypeSections.update(section.id, { index: temp_index })
-					await manager.commit()
+					await self.commit()
 
 					// Step 2: Move above section to current position and commit
 					PageTypeSections.update(section_above.id, { index: section_index })
-					await manager.commit()
+					await self.commit()
 
 					// Step 3: Move current section to above position and commit
 					PageTypeSections.update(section.id, { index: above_index })
-					await manager.commit()
+					await self.commit()
 				}
 
 				setTimeout(() => {
@@ -637,15 +637,15 @@
 
 					// Step 1: Move current section to temp position and commit
 					PageTypeSections.update(section.id, { index: temp_index })
-					await manager.commit()
+					await self.commit()
 
 					// Step 2: Move below section to current position and commit
 					PageTypeSections.update(section_below.id, { index: section_index })
-					await manager.commit()
+					await self.commit()
 
 					// Step 3: Move current section to below position and commit
 					PageTypeSections.update(section.id, { index: below_index })
-					await manager.commit()
+					await self.commit()
 				}
 
 				setTimeout(() => {

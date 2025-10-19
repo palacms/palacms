@@ -3,7 +3,7 @@ import type { locales } from './common'
 import { SiteFields, Sites, Pages, PageTypeFields, PageTypes, SiteSymbols, LibrarySymbols, PageTypeSections, PageSections, LibraryUploads } from './pocketbase/collections'
 import type { Field } from './common/models/Field'
 import { get_empty_value, convert_markdown_to_html, convert_rich_text_to_html } from '$lib/builder/utils'
-import { self } from './pocketbase/PocketBase'
+import { self } from './pocketbase/managers'
 import type { ObjectOf } from './pocketbase/CollectionMapping.svelte'
 import { build_live_page_url } from './pages'
 import { page_context, page_type_context, site_context } from './builder/stores/context'
@@ -322,7 +322,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 					const data = getContent({ entity, fields, entries, parentField: field, parentEntry: entry })
 					if (!data) continue
-						; (content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
+					;(content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
 				}
 			}
 
@@ -359,7 +359,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					(options.target === 'live'
 						? `/_uploads/${upload.file}`
 						: typeof upload.file === 'string'
-							? `${self.baseURL}/api/files/${'group' in entity ? 'library_uploads' : 'site_uploads'}/${upload.id}/${upload.file}`
+							? `${self.instance.baseURL}/api/files/${'group' in entity ? 'library_uploads' : 'site_uploads'}/${upload.id}/${upload.file}`
 							: URL.createObjectURL(upload.file))
 				const input_url: string | undefined = entry.value.url
 				const url = input_url || upload_url

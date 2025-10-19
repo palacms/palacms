@@ -5,24 +5,13 @@
 	import { Input } from '$lib/components/ui/input/index.js'
 	import { Label } from '$lib/components/ui/label/index.js'
 	import { Site } from '$lib/common/models/Site'
-	import {
-		Sites,
-		SiteSymbols,
-		SiteSymbolFields,
-		SiteSymbolEntries,
-		SiteGroups,
-		manager,
-		LibrarySymbols,
-		MarketplaceSymbols,
-		MarketplaceSiteGroups,
-		MarketplaceSites
-	} from '$lib/pocketbase/collections'
+	import { Sites, SiteSymbols, SiteSymbolFields, SiteSymbolEntries, SiteGroups, LibrarySymbols } from '$lib/pocketbase/collections'
 	import { page as pageState } from '$app/state'
 	import Button from './ui/button/button.svelte'
 	import { useCloneSite } from '$lib/workers/CloneSite.svelte'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js'
-	import { self as pb, marketplace, self } from '$lib/pocketbase/PocketBase'
+	import { self as pb, marketplace, self } from '$lib/pocketbase/managers'
 	import { watch } from 'runed'
 	import BlockPickerPanel from '$lib/components/BlockPickerPanel.svelte'
 
@@ -31,7 +20,7 @@
   - Steps: name → starter → blocks
   - Flow: clone the selected starter, then optionally copy selected blocks.
   - Data sources: local PocketBase (manager/self) and marketplace (marketplace).
-  - Commit: aggregate creates and call manager.commit() once per creation.
+  - Commit: aggregate creates and call self.commit() once per creation.
 */
 
 	const { oncreated }: { oncreated?: () => void } = $props()
@@ -57,7 +46,7 @@
 	const active_starters_group_sites = $derived(starter_sites ? (active_starters_group_id ? starter_sites.filter((s) => s.group === active_starters_group_id) : starter_sites) : undefined)
 
 	// Marketplace (Starters) - site groups and sites
-	const marketplace_site_groups = $derived(MarketplaceSiteGroups.list({ sort: 'index' }) ?? [])
+	const marketplace_site_groups = $derived(SiteGroups.from(marketplace).list({ sort: 'index' }) ?? [])
 	let active_marketplace_starters_group_id = $state(marketplace_site_groups?.find((g) => g.name === 'Featured')?.id ?? marketplace_site_groups?.[0]?.id ?? '')
 	watch(
 		() => (marketplace_site_groups ?? []).map((g) => g.id),
@@ -71,8 +60,8 @@
 
 	const marketplace_starter_sites = $derived(
 		active_marketplace_starters_group_id
-			? (MarketplaceSites.list({ filter: { group: active_marketplace_starters_group_id }, sort: 'index' }) ?? undefined)
-			: (MarketplaceSites.list({ sort: 'index' }) ?? undefined)
+			? (Sites.from(marketplace).list({ filter: { group: active_marketplace_starters_group_id }, sort: 'index' }) ?? undefined)
+			: (Sites.from(marketplace).list({ sort: 'index' }) ?? undefined)
 	)
 
 	let site_name = $state(``)
@@ -122,7 +111,7 @@
 
 	// Optional blocks selection; keep resolved symbol pointers only.
 	let selected_block_ids = $state<{ id: string; source: 'library' | 'marketplace' }[]>([])
-	const selected_blocks = $derived(selected_block_ids.map(({ id, source }) => (source === 'library' ? LibrarySymbols.one(id) : MarketplaceSymbols.one(id))).filter(Boolean) || [])
+	const selected_blocks = $derived(selected_block_ids.map(({ id, source }) => (source === 'library' ? LibrarySymbols.one(id) : LibrarySymbols.from(marketplace).one(id))).filter(Boolean) || [])
 
 	// Copy selected blocks into a new site:
 	// - Create site_symbol, then fields (parent-first), then entries (parent-first)
@@ -148,7 +137,7 @@
 				})
 
 				// Get marketplace fields using pb directly to avoid effect context issues
-				const source_symbol_fields = await server.collection('library_symbol_fields').getFullList({
+				const source_symbol_fields = await server.instance.collection('library_symbol_fields').getFullList({
 					filter: `symbol = "${symbol.id}"`,
 					sort: 'index'
 				})
@@ -183,7 +172,7 @@
 					const field_ids = source_symbol_fields.map((f) => f.id)
 					const source_entries =
 						field_ids.length > 0
-							? await server.collection('library_symbol_entries').getFullList({
+							? await server.instance.collection('library_symbol_entries').getFullList({
 									filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
 									sort: 'index'
 								})
@@ -226,7 +215,7 @@
 
 	const cloneSite = $derived(
 		useCloneSite({
-			source_instance: selected_starter_source === 'local' ? self : marketplace,
+			source_manager: selected_starter_source === 'local' ? self : marketplace,
 			source_site_id: selected_starter_id,
 			site_name: site_name,
 			site_host: pageState.url.host,
@@ -265,7 +254,7 @@
 		if (!finalized && done_creating_site && created_site) {
 			finalized = true
 			copy_selected_blocks_to_site(created_site.id)
-				.then(() => manager.commit())
+				.then(() => self.commit())
 				.then(() => oncreated?.())
 				.catch((e) => console.error(e))
 				.finally(() => {
