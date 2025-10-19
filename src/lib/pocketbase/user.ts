@@ -5,11 +5,13 @@ import { writable, readonly } from 'svelte/store'
 
 let current_user_store = writable<
 	| {
-			id: string
-			email: string
-			serverRole: '' | 'editor' | 'developer' | undefined
-			siteRole: 'editor' | 'developer' | null
-	  }
+		id: string
+		email: string
+		serverRole: '' | 'editor' | 'developer' | undefined
+		siteRole: 'editor' | 'developer' | null
+		name: string | undefined,
+		avatar: string | undefined
+	}
 	| null
 	| undefined
 >()
@@ -20,5 +22,5 @@ export const set_current_user = (site?: Site) => {
 	const user = self.authStore.record && Users.one(self.authStore.record.id)
 	const assignments = site && user && SiteRoleAssignments.list({ filter: { site: site.id, user: user.id } })
 	const siteRole = user?.serverRole || assignments?.[0].role || null
-	current_user_store.set(user && { id: user.id, email: user.email, serverRole: user.serverRole, siteRole })
+	current_user_store.set(user && { id: user.id, email: user.email, serverRole: user.serverRole, siteRole, name: user.name, avatar: user.avatar })
 }
