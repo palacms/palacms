@@ -48,7 +48,6 @@
 				}
 			: null
 	)
-	$inspect({ block })
 
 	let bubble_menu_state = $state({ visible: false, top: 0, left: 0 })
 	let floating_menu_state = $state({ visible: false, top: 0, left: 0 })
