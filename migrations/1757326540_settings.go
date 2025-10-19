@@ -44,7 +44,7 @@ func init() {
 				record := core.NewRecord(collection)
 				record.Set("email", userEmail)
 				record.Set("password", userPassword)
-				record.Set("name", "Test User")
+				record.Set("name", "PalaCMS Admin")
 				record.Set("serverRole", "developer")
 				record.SetVerified(true)
 				app.Save(record)
