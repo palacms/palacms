@@ -1,15 +1,16 @@
 <script lang="ts">
 	import * as Dialog from '$lib/components/ui/dialog'
 	import BlockPickerPanel from '$lib/components/BlockPickerPanel.svelte'
-	import { LibrarySymbols } from '$lib/pocketbase/collections'
+	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbols } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { marketplace } from '$lib/pocketbase/managers'
 
 	type BlockSource = 'library' | 'marketplace'
 	type SelectedBlock = { id: string; source: BlockSource }
 	type SelectedSymbol = {
-		source: BlockSource
 		symbol: ObjectOf<typeof LibrarySymbols>
+		fields: ObjectOf<typeof LibrarySymbolFields>[]
+		entries: ObjectOf<typeof LibrarySymbolEntries>[]
 	}
 
 	let { onsave }: { onsave: (symbols: SelectedSymbol[]) => Promise<void> | void } = $props()
@@ -21,9 +22,11 @@
 		selected
 			.map(({ id, source }) => {
 				const symbol = source === 'library' ? LibrarySymbols.one(id) : LibrarySymbols.from(marketplace).one(id)
-				return symbol ? { source, symbol } : null
+				const fields = symbol?.fields()
+				const entries = symbol?.entries()
+				return symbol && fields && entries ? { symbol, fields, entries } : null
 			})
-			.filter(Boolean) as SelectedSymbol[]
+			.filter((symbol) => !!symbol)
 	)
 
 	async function handleSave() {

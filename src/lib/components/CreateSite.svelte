@@ -8,7 +8,7 @@
 	import { Sites, SiteSymbols, SiteSymbolFields, SiteSymbolEntries, SiteGroups, LibrarySymbols } from '$lib/pocketbase/collections'
 	import { page as pageState } from '$app/state'
 	import Button from './ui/button/button.svelte'
-	import { useCloneSite } from '$lib/workers/CloneSite.svelte'
+	import { create_site_symbol_entries, create_site_symbol_fields, create_site_symbols, useCloneSite } from '$lib/workers/CloneSite.svelte'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js'
 	import { self as pb, marketplace, self } from '$lib/pocketbase/managers'
@@ -112,104 +112,24 @@
 	// Optional blocks selection; keep resolved symbol pointers only.
 	let selected_block_ids = $state<{ id: string; source: 'library' | 'marketplace' }[]>([])
 	const selected_blocks = $derived(selected_block_ids.map(({ id, source }) => (source === 'library' ? LibrarySymbols.one(id) : LibrarySymbols.from(marketplace).one(id))).filter(Boolean) || [])
+	const selected_block_fields = $derived(selected_blocks.flatMap((symbol) => symbol?.fields()))
+	const selected_block_entries = $derived(selected_blocks.flatMap((symbol) => symbol?.entries()))
 
-	// Copy selected blocks into a new site:
-	// - Create site_symbol, then fields (parent-first), then entries (parent-first)
-	// - Preserve ordering/index and parent relationships
-	// - Do not commit here; the caller commits once at the end
-	async function copy_selected_blocks_to_site(site_id: string) {
-		if (!selected_block_ids.length) return
-		for (const block of selected_block_ids) {
-			// Copy marketplace symbols to library symbols
-			try {
-				const symbol = selected_blocks.find((b) => b?.id === block.id)
-				if (!symbol) continue
+	async function copy_selected_blocks_to_site() {
+		try {
+			if (!selected_block_ids.length) return
 
-				const server = block.source === 'library' ? pb : marketplace
+			const site = created_site
+			const source_symbols = selected_blocks.filter((symbol) => !!symbol)
+			const source_symbol_fields = selected_block_fields.filter((field) => !!field)
+			const source_symbol_entries = selected_block_entries.filter((entry) => !!entry)
 
-				// Create library symbol from marketplace symbol
-				const site_symbol = SiteSymbols.create({
-					name: symbol.name,
-					html: symbol.html,
-					css: symbol.css,
-					js: symbol.js,
-					site: site_id
-				})
-
-				// Get marketplace fields using pb directly to avoid effect context issues
-				const source_symbol_fields = await server.instance.collection('library_symbol_fields').getFullList({
-					filter: `symbol = "${symbol.id}"`,
-					sort: 'index'
-				})
-
-				if (source_symbol_fields?.length > 0) {
-					const field_map = new Map()
-
-					// Create fields in order, handling parent relationships
-					const sorted_fields = [...source_symbol_fields].sort((a, b) => {
-						// Fields without parents come first
-						if (!a.parent && b.parent) return -1
-						if (a.parent && !b.parent) return 1
-						return (a.index || 0) - (b.index || 0)
-					})
-
-					for (const field of sorted_fields) {
-						const parent_library_field = field.parent ? field_map.get(field.parent) : undefined
-
-						const library_field = SiteSymbolFields.create({
-							key: field.key,
-							label: field.label,
-							type: field.type,
-							config: field.config,
-							index: field.index,
-							symbol: site_symbol.id,
-							parent: parent_library_field?.id || undefined
-						})
-						field_map.set(field.id, library_field)
-					}
-
-					// Get library entries using pb directly
-					const field_ids = source_symbol_fields.map((f) => f.id)
-					const source_entries =
-						field_ids.length > 0
-							? await server.instance.collection('library_symbol_entries').getFullList({
-									filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
-									sort: 'index'
-								})
-							: []
-
-					if (source_entries?.length > 0) {
-						const entry_map = new Map()
-
-						// Create entries in order, handling parent relationships
-						const sorted_entries = [...source_entries].sort((a, b) => {
-							// Entries without parents come first
-							if (!a.parent && b.parent) return -1
-							if (a.parent && !b.parent) return 1
-							return (a.index || 0) - (b.index || 0)
-						})
-
-						for (const entry of sorted_entries) {
-							const library_field = field_map.get(entry.field)
-							const parent_library_entry = entry.parent ? entry_map.get(entry.parent) : undefined
-
-							if (library_field) {
-								const site_entry = SiteSymbolEntries.create({
-									field: library_field.id,
-									value: entry.value,
-									index: entry.index,
-									locale: entry.locale,
-									parent: parent_library_entry?.id || undefined
-								})
-								entry_map.set(entry.id, site_entry)
-							}
-						}
-					}
-				}
-			} catch (error) {
-				console.error('Error copying marketplace symbol:', error)
-				throw error
-			}
+			const site_symbol_map = create_site_symbols({ source_symbols, site })
+			const site_symbol_field_map = create_site_symbol_fields({ source_symbol_fields, site_symbol_map })
+			const site_symbol_entry_map = create_site_symbol_entries({ source_symbol_entries, site_symbol_field_map })
+		} catch (error) {
+			console.error('Error copying marketplace symbols:', error)
+			throw error
 		}
 	}
 
@@ -253,7 +173,7 @@
 	$effect(() => {
 		if (!finalized && done_creating_site && created_site) {
 			finalized = true
-			copy_selected_blocks_to_site(created_site.id)
+			copy_selected_blocks_to_site()
 				.then(() => self.commit())
 				.then(() => oncreated?.())
 				.catch((e) => console.error(e))

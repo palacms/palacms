@@ -17,7 +17,18 @@
 	import * as Tabs from '$lib/components/ui/tabs'
 	import { Cuboid, SquarePen, Loader } from 'lucide-svelte'
 	import { page } from '$app/state'
-	import { PageTypes, SiteSymbols, SiteSymbolFields, SiteSymbolEntries, PageTypeSymbols, PageTypeFields, PageTypeEntries } from '$lib/pocketbase/collections'
+	import {
+		PageTypes,
+		SiteSymbols,
+		SiteSymbolFields,
+		SiteSymbolEntries,
+		PageTypeSymbols,
+		PageTypeFields,
+		PageTypeEntries,
+		LibrarySymbols,
+		LibrarySymbolEntries,
+		LibrarySymbolFields
+	} from '$lib/pocketbase/collections'
 	import { self as pb, marketplace, self } from '$lib/pocketbase/managers'
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { dragging_symbol } from '$lib/builder/stores/app/misc'
@@ -29,6 +40,7 @@
 	import { page_type_context, site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
+	import { create_site_symbol_entries, create_site_symbol_fields, create_site_symbols } from '$lib/workers/CloneSite.svelte'
 
 	const { value: site } = site_context.getOr({ value: null })
 	const page_type_id = $derived(page.params.page_type)
@@ -227,85 +239,27 @@
 		<BlockPicker
 			{site}
 			onsave={async (blocks) => {
-				for (const { source, symbol: source_symbol } of blocks) {
-					try {
-						const site_symbol = SiteSymbols.create({
-							name: source_symbol.name,
-							html: source_symbol.html,
-							css: source_symbol.css,
-							js: source_symbol.js,
-							site: site.id
-						})
+				try {
+					const {
+						symbols: source_symbols,
+						fields: source_symbol_fields,
+						entries: source_symbol_entries
+					} = blocks.reduce<{
+						symbols: ObjectOf<typeof LibrarySymbols>[]
+						fields: ObjectOf<typeof LibrarySymbolFields>[]
+						entries: ObjectOf<typeof LibrarySymbolEntries>[]
+					}>(
+						(o, { symbol, fields, entries }) => {
+							return { symbols: [...(o.symbols ?? []), symbol], fields: [...(o.fields ?? []), ...fields], entries: [...(o.entries ?? []), ...entries] }
+						},
+						{ symbols: [], fields: [], entries: [] }
+					)
 
-						const server = source === 'library' ? pb : marketplace
-
-						const source_fields = await server.instance.collection('library_symbol_fields').getFullList({
-							filter: `symbol = "${source_symbol.id}"`,
-							sort: 'index'
-						})
-
-						if (source_fields?.length > 0) {
-							const field_map = new Map()
-
-							const sorted_fields = [...source_fields].sort((a, b) => {
-								if (!a.parent && b.parent) return -1
-								if (a.parent && !b.parent) return 1
-								return (a.index || 0) - (b.index || 0)
-							})
-
-							for (const source_field of sorted_fields) {
-								const parent_site_field = source_field.parent ? field_map.get(source_field.parent) : undefined
-
-								const site_field = SiteSymbolFields.create({
-									key: source_field.key,
-									label: source_field.label,
-									type: source_field.type,
-									config: source_field.config,
-									index: source_field.index,
-									symbol: site_symbol.id,
-									parent: parent_site_field?.id || undefined
-								})
-								field_map.set(source_field.id, site_field)
-							}
-
-							const field_ids = source_fields.map((f) => f.id)
-							const source_entries =
-								field_ids.length > 0
-									? await server.instance.collection('library_symbol_entries').getFullList({
-											filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
-											sort: 'index'
-										})
-									: []
-
-							if (source_entries?.length > 0) {
-								const entry_map = new Map()
-
-								const sorted_entries = [...source_entries].sort((a, b) => {
-									if (!a.parent && b.parent) return -1
-									if (a.parent && !b.parent) return 1
-									return (a.index || 0) - (b.index || 0)
-								})
-
-								for (const source_entry of sorted_entries) {
-									const site_field = field_map.get(source_entry.field)
-									const parent_site_entry = source_entry.parent ? entry_map.get(source_entry.parent) : undefined
-
-									if (site_field) {
-										const site_entry = SiteSymbolEntries.create({
-											field: site_field.id,
-											value: source_entry.value,
-											index: source_entry.index,
-											locale: source_entry.locale,
-											parent: parent_site_entry?.id || undefined
-										})
-										entry_map.set(source_entry.id, site_entry)
-									}
-								}
-							}
-						}
-					} catch (error) {
-						console.error('Error copying symbol:', error)
-					}
+					const site_symbol_map = create_site_symbols({ source_symbols, site })
+					const site_symbol_field_map = create_site_symbol_fields({ source_symbol_fields, site_symbol_map })
+					const site_symbol_entry_map = create_site_symbol_entries({ source_symbol_entries, site_symbol_field_map })
+				} catch (error) {
+					console.error('Error copying symbols:', error)
 				}
 
 				await self.commit()
