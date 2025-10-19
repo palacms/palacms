@@ -197,13 +197,13 @@
 						<DropdownMenu.Content class="w-(--bits-dropdown-menu-anchor-width) min-w-56 rounded-lg" side={sidebar.isMobile ? 'bottom' : 'right'} align="end" sideOffset={4}>
 							<DropdownMenu.Label class="p-0 font-normal">
 								<div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-									<Avatar.Root class="h-8 w-8 rounded-lg">
-										<!-- <Avatar.Image src={user.avatar} alt={user.name} /> -->
+									<Avatar.Root class="h-10 w-10 rounded-lg">
+										<Avatar.Image src={$current_user?.avatar} alt={$current_user?.name} />
 										<Avatar.Fallback class="rounded-lg uppercase">{$current_user?.email.slice(0, 2)}</Avatar.Fallback>
 									</Avatar.Root>
 									<div class="grid flex-1 text-left text-sm leading-tight">
-										<span class="truncate font-semibold">{$current_user?.email}</span>
-										<!-- <span class="truncate text-xs">{user.email}</span> -->
+										{#if $current_user?.name}<span class="truncate font-semibold">{$current_user.name}</span>{/if}
+										<span class="truncate text-xs">{$current_user?.email}</span>
 									</div>
 								</div>
 							</DropdownMenu.Label>
