@@ -81,12 +81,12 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
             if (c) unmount(c)
             try {
               c = mount(App, {
-                target: document.querySelector('#page'),
+                target: document.body,
                 props
               })
               channel.postMessage({ event: 'MOUNTED' });
             } catch(e) {
-              document.querySelector('#page').innerHTML = ''
+              document.body.innerHTML = ''
               channel.postMessage({
                 event: 'SET_ERROR',
                 payload: {
@@ -99,7 +99,7 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
         }
 		  </script>
     </head>
-    <body id="page"></body>
+    <body></body>
   </html>
 `
 }
