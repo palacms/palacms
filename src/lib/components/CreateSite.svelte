@@ -7,28 +7,15 @@
 	import { Site } from '$lib/common/models/Site'
 	import {
 		Sites,
-		Pages,
 		SiteSymbols,
 		SiteSymbolFields,
 		SiteSymbolEntries,
 		SiteGroups,
-		SiteFields,
-		SiteEntries,
-		SiteUploads,
 		manager,
 		LibrarySymbols,
 		MarketplaceSymbols,
 		MarketplaceSiteGroups,
-		MarketplaceSites,
-		PageTypes,
-		PageEntries,
-		PageSections,
-		PageSectionEntries,
-		PageTypeFields,
-		PageTypeEntries,
-		PageTypeSymbols,
-		PageTypeSections,
-		PageTypeSectionEntries
+		MarketplaceSites
 	} from '$lib/pocketbase/collections'
 	import { page as pageState } from '$app/state'
 	import Button from './ui/button/button.svelte'
@@ -239,8 +226,8 @@
 
 	const cloneSite = $derived(
 		useCloneSite({
-			starter_instance: selected_starter_source === 'local' ? self : marketplace,
-			starter_site_id: selected_starter_id,
+			source_instance: selected_starter_source === 'local' ? self : marketplace,
+			source_site_id: selected_starter_id,
 			site_name: site_name,
 			site_host: pageState.url.host,
 			site_group_id: site_group?.id
