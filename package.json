@@ -29,7 +29,7 @@
 		"@tiptap/core": "^3.2.0",
 		"@tiptap/extension-code-block-lowlight": "^3.6.1",
 		"@tiptap/extension-highlight": "^3.6.1",
-		"@tiptap/extension-image": "^3.4.4",
+		"@tiptap/extension-image": "^3.7.2",
 		"@tiptap/extension-link": "^3.4.2",
 		"@tiptap/extension-typography": "^3.6.1",
 		"@tiptap/extension-youtube": "^3.6.1",
