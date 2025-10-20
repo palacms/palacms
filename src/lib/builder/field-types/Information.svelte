@@ -26,8 +26,8 @@
 	}
 	svg {
 		position: absolute;
-		top: -0.5rem;
-		left: -0.5rem;
+		top: 0;
+		left: 0;
 		width: 1rem;
 		height: 1rem;
 		opacity: 0.75;
