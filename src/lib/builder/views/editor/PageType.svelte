@@ -17,8 +17,11 @@
 	import { manager, PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
 	import { self as pb } from '$lib/pocketbase/PocketBase'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { useUserActivity } from '$lib/UserActivity.svelte'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
+
+	useUserActivity({ page_type: page_type.id })
 
 	// Set context so child components can access the page type
 	const context = $state({ value: page_type })

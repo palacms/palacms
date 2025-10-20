@@ -23,12 +23,14 @@ import { PageEntry } from './PageEntry'
 import { SiteRoleAssignment } from './SiteRoleAssignment'
 import { SiteUpload } from './SiteUpload'
 import { LibraryUpload } from './LibraryUpload'
+import { UserActivity } from './UserActivity'
 
 /**
  * Model for each collection. Used in a PocketBase hook to validate records.
  */
 export const models = {
 	users: User,
+	user_presence: UserActivity,
 	library_symbol_entries: LibrarySymbolEntry,
 	library_symbol_fields: LibrarySymbolField,
 	library_symbol_groups: LibrarySymbolGroup,

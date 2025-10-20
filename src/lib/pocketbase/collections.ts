@@ -23,6 +23,7 @@ import { SiteSymbolEntry } from '$lib/common/models/SiteSymbolEntry'
 import { SiteSymbolField } from '$lib/common/models/SiteSymbolField'
 import { SiteUpload } from '$lib/common/models/SiteUpload'
 import { User } from '$lib/common/models/User'
+import { UserActivity } from '$lib/common/models/UserActivity'
 import { createCollectionManager } from './CollectionManager'
 import { createCollectionMapping } from './CollectionMapping.svelte'
 import { marketplace } from './PocketBase'
@@ -360,6 +361,11 @@ export const PageSectionEntries = createCollectionMapping('page_section_entries'
 })
 
 export const SiteUploads = createCollectionMapping('site_uploads', SiteUpload, manager, {
+	subscribe: true,
+	links: {}
+})
+
+export const UserActivities = createCollectionMapping('user_presence', UserActivity, manager, {
 	subscribe: true,
 	links: {}
 })
