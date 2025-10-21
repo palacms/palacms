@@ -10,7 +10,7 @@
 	import * as Dialog from '$lib/components/ui/dialog'
 	import { Button } from '$lib/components/ui/button'
 	import { page as pageState } from '$app/state'
-	import { manager, Pages, PageTypes, Sites } from '$lib/pocketbase/collections'
+	import { Pages, PageTypes, Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { site_context } from '$lib/builder/stores/context'
 	import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
@@ -19,6 +19,7 @@
 	import { build_cms_page_url } from '$lib/pages'
 	import { goto } from '$app/navigation'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
+	import { self as selfManager } from '$lib/pocketbase/managers'
 
 	let editing_page = $state(false)
 
@@ -210,7 +211,7 @@
 							}
 						}
 
-						manager.commit()
+						self.commit()
 					})
 				}
 			}
@@ -234,7 +235,7 @@
 							on_change: (val) => {},
 							on_submit: (val) => {
 								Pages.update(page.id, { name: val })
-								manager.commit()
+								selfManager.commit()
 								editing_page = false
 							}
 						}}
@@ -335,7 +336,7 @@
 													Pages.update(sibling_page.id, { index })
 												})
 
-												await manager.commit()
+												await selfManager.commit()
 
 												// If the deleted page was the one open, navigate to homepage
 												try {
@@ -361,7 +362,7 @@
 												Pages.update(sibling_page.id, { index })
 											})
 
-											await manager.commit()
+											await selfManager.commit()
 
 											// If the deleted page was the one open, navigate to homepage
 											try {

@@ -21,7 +21,6 @@
 		LibrarySymbolGroups,
 		LibrarySymbols,
 		LibraryUploads,
-		manager,
 		Sites,
 		SiteSymbolEntries,
 		SiteSymbolFields,
@@ -34,6 +33,7 @@
 	import { site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { useContent } from '$lib/Content.svelte'
+	import { self } from '$lib/pocketbase/managers'
 
 	hide_page_field_field_type_context.set(false)
 
@@ -106,7 +106,7 @@
 	async function save_component() {
 		if (!$has_error) {
 			loading = true
-			await manager.commit()
+			await self.commit()
 			// Reset baselines after successful save
 			initial_code = { html, css, js }
 			initial_data = _.cloneDeep(component_data)

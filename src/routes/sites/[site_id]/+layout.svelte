@@ -1,6 +1,6 @@
 <script>
 	import Pala from '$lib/builder/Pala.svelte'
-	import { checkSession } from '$lib/pocketbase/PocketBase'
+	import { check_session } from '$lib/pocketbase/user'
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
 	import { page } from '$app/state'
@@ -9,7 +9,7 @@
 	import { Loader } from 'lucide-svelte'
 
 	onMount(async () => {
-		if (!(await checkSession())) {
+		if (!(await check_session())) {
 			await goto('/admin/auth')
 		}
 	})

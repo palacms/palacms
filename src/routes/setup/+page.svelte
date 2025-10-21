@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
-	import { Users, manager } from '$lib/pocketbase/collections'
+	import { Users } from '$lib/pocketbase/collections'
 	import { Loader } from 'lucide-svelte'
 	import ServerLogo from '$lib/components/ui/ServerLogo.svelte'
-	import { self } from '$lib/pocketbase/PocketBase'
+	import { self } from '$lib/pocketbase/managers'
 
 	let current_step = $state(1)
 	let email = $state('')
@@ -15,8 +15,8 @@
 	let error = $state('')
 	const is_form_valid = $derived(email.trim() !== '' && password.length >= 8 && confirm_password !== '' && password === confirm_password)
 
-	const users = self.collection('users')
-	const superusers = self.collection('_superusers')
+	const users = self.instance.collection('users')
+	const superusers = self.instance.collection('_superusers')
 
 	// Check if setup is already complete and redirect if so
 	$effect(() => {

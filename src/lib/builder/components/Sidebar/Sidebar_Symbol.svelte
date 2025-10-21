@@ -14,7 +14,7 @@
 	import { watch } from 'runed'
 	import { block_html } from '$lib/builder/code_generators'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { manager, SiteSymbols } from '$lib/pocketbase/collections'
+	import { SiteSymbols } from '$lib/pocketbase/collections'
 	import { useExportSiteSymbol } from '$lib/workers/ExportSymbol.svelte'
 	import { useContent } from '$lib/Content.svelte'
 	import { Badge } from '$lib/components/ui/badge'
@@ -23,6 +23,7 @@
 	import { PageTypes, PageTypeFields } from '$lib/pocketbase/collections'
 	import { Unlink } from 'lucide-svelte'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
+	import { self } from '$lib/pocketbase/managers'
 
 	const dispatch = createEventDispatcher()
 
@@ -58,7 +59,7 @@
 
 		try {
 			SiteSymbols.update(symbol.id, { name: new_name.trim() })
-			await manager.commit()
+			await self.commit()
 			renaming = false
 		} catch (error) {
 			console.warn('Failed to rename symbol:', error)

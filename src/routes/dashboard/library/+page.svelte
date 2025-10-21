@@ -35,13 +35,14 @@
 	import { page } from '$app/state'
 	import { goto } from '$app/navigation'
 	import { useSidebar } from '$lib/components/ui/sidebar'
-	import { LibrarySymbolGroups, LibrarySymbols, LibrarySymbolFields, LibrarySymbolEntries, manager, SiteSymbols } from '$lib/pocketbase/collections'
+	import { LibrarySymbolGroups, LibrarySymbols, LibrarySymbolFields, LibrarySymbolEntries, SiteSymbols } from '$lib/pocketbase/collections'
 	import type { LibrarySymbol } from '$lib/common/models/LibrarySymbol'
 	import { useImportLibrarySymbol } from '$lib/workers/ImportSymbol.svelte'
 	import { tick } from 'svelte'
 	import { BlockEditor } from '$lib/builder/views/modal'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { useExportLibrarySymbol } from '$lib/workers/ExportSymbol.svelte'
+	import { self } from '$lib/pocketbase/managers'
 
 	const active_symbol_group_id = $derived(page.url.searchParams.get('group'))
 	const symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
@@ -71,7 +72,7 @@
 
 	async function create_first_group() {
 		const group = LibrarySymbolGroups.create({ name: 'Default', index: 0 })
-		await manager.commit()
+		await self.commit()
 		const url = new URL(page.url)
 		url.searchParams.set('group', group.id)
 		goto(url, { replaceState: true })
@@ -122,7 +123,7 @@
 		e.preventDefault()
 		if (!active_symbol_group_id) return
 		LibrarySymbolGroups.update(active_symbol_group_id, { name: new_name })
-		await manager.commit()
+		await self.commit()
 		is_rename_open = false
 	}
 
@@ -146,7 +147,7 @@
 		deleting = true
 		if (!active_symbol_group_id) return
 		LibrarySymbolGroups.delete(active_symbol_group_id)
-		await manager.commit()
+		await self.commit()
 		await goto('/admin/dashboard/library')
 		deleting = false
 		is_delete_open = false
@@ -175,7 +176,7 @@
 		e.preventDefault()
 		if (!symbol_being_renamed) return
 		LibrarySymbols.update(symbol_being_renamed.id, { name: symbol_new_name })
-		await manager.commit()
+		await self.commit()
 		is_symbol_renamer_open = false
 		symbol_being_renamed = null
 	}
@@ -195,7 +196,7 @@
 	async function move_symbol() {
 		if (!symbol_being_moved) return
 		LibrarySymbols.update(symbol_being_moved.id, { group: selected_group_id })
-		await manager.commit()
+		await self.commit()
 		is_symbol_move_open = false
 		symbol_being_moved = null
 	}
@@ -213,7 +214,7 @@
 		if (!symbol_being_deleted) return
 		deleting = true
 		LibrarySymbols.delete(symbol_being_deleted.id)
-		await manager.commit()
+		await self.commit()
 		is_delete_symbol_open = false
 		symbol_being_deleted = null
 		deleting = false
@@ -423,7 +424,7 @@
 					return
 				}
 				// User confirmed, discard changes
-				manager.discard()
+				self.discard()
 			}
 		}
 	}}
@@ -457,7 +458,7 @@
 					return
 				}
 				// User confirmed, discard changes
-				manager.discard()
+				self.discard()
 			}
 		}
 	}}

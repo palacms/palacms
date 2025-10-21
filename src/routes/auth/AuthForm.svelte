@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation'
 	import { page } from '$app/state'
 	import { Users } from '$lib/pocketbase/collections'
-	import { self } from '$lib/pocketbase/PocketBase'
+	import { self } from '$lib/pocketbase/managers'
 	import { Loader, User } from 'lucide-svelte'
 
 	type AuthAction = 'sign_in' | 'reset_password' | 'confirm_password_reset' | 'create_account'

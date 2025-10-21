@@ -1,10 +1,10 @@
 <script>
 	import { goto } from '$app/navigation'
-	import { checkSession } from '$lib/pocketbase/PocketBase'
+	import { check_session } from '$lib/pocketbase/user'
 	import { onMount } from 'svelte'
 
 	onMount(async () => {
-		if (await checkSession()) {
+		if (await check_session()) {
 			await goto('/admin/site')
 		}
 	})

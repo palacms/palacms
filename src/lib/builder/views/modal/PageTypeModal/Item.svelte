@@ -4,8 +4,8 @@
 	import PageForm from './PageTypeForm.svelte'
 	import MenuPopup from '$lib/builder/ui/Dropdown.svelte'
 	import type { PageType } from '$lib/common/models/PageType'
-	import { PageTypes, Pages, manager } from '$lib/pocketbase/collections'
-	import { self as pb } from '$lib/pocketbase/PocketBase'
+	import { PageTypes, Pages } from '$lib/pocketbase/collections'
+	import { self as pb, self } from '$lib/pocketbase/managers'
 	import { page } from '$app/state'
 	import * as AlertDialog from '$lib/components/ui/alert-dialog'
 	import { Loader } from 'lucide-svelte'
@@ -26,7 +26,7 @@
 			if (!site) return
 
 			// Delete all pages belonging to this page type (no cascade on pages.page_type)
-			const pages = await pb.collection('pages').getFullList({ filter: `page_type = \"${page_type.id}\" && site = \"${site.id}\"` })
+			const pages = await pb.instance.collection('pages').getFullList({ filter: `page_type = \"${page_type.id}\" && site = \"${site.id}\"` })
 
 			for (const p of pages) {
 				Pages.delete(p.id)
@@ -34,7 +34,7 @@
 
 			// Delete the page type (will cascade to related type records)
 			PageTypes.delete(page_type.id)
-			await manager.commit()
+			await self.commit()
 			is_delete_open = false
 		} catch (error) {
 			console.error('Error deleting page type:', error)
@@ -66,7 +66,7 @@
 		on:create={({ detail: modified_page }) => {
 			editing_page_type = false
 			PageTypes.update(page_type.id, modified_page)
-			manager.commit()
+			self.commit()
 		}}
 	/>
 {:else}
@@ -172,7 +172,7 @@
 				if (!site) return
 				creating_page = false
 				PageTypes.create(page)
-				manager.commit()
+				self.commit()
 				// TODO: test & configure navigating to new page type
 				// site.data.page_types.push(page)
 				// const [created_page_type] = site.data.page_types.slice(-1)

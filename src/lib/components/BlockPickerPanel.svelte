@@ -7,8 +7,9 @@
 	import Masonry from '$lib/components/Masonry.svelte'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import SymbolButton from '$lib/components/SymbolButton.svelte'
-	import { LibrarySymbolGroups, MarketplaceSymbolGroups, LibrarySymbols, MarketplaceSymbols } from '$lib/pocketbase/collections'
+	import { LibrarySymbolGroups, LibrarySymbols } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { marketplace } from '$lib/pocketbase/managers'
 
 	type BlockSource = 'library' | 'marketplace'
 	type SelectedBlock = { id: string; source: BlockSource }
@@ -18,7 +19,7 @@
 	let blocks_tab = $state('library')
 
 	const library_symbol_groups = $derived(LibrarySymbolGroups.list({ sort: 'index' }) ?? [])
-	const marketplace_symbol_groups = $derived(MarketplaceSymbolGroups.list({ sort: 'index' }) ?? [])
+	const marketplace_symbol_groups = $derived(LibrarySymbolGroups.from(marketplace).list({ sort: 'index' }) ?? [])
 
 	let active_library_blocks_group_id = $state('')
 	let active_marketplace_blocks_group_id = $state('')
@@ -45,13 +46,13 @@
 	const active_library_blocks_group = $derived(active_library_blocks_group_id ? LibrarySymbolGroups.one(active_library_blocks_group_id) : undefined)
 	const active_library_blocks_group_symbols = $derived(active_library_blocks_group?.symbols() ?? undefined)
 
-	const active_marketplace_blocks_group = $derived(active_marketplace_blocks_group_id ? MarketplaceSymbolGroups.one(active_marketplace_blocks_group_id) : undefined)
+	const active_marketplace_blocks_group = $derived(active_marketplace_blocks_group_id ? LibrarySymbolGroups.from(marketplace).one(active_marketplace_blocks_group_id) : undefined)
 	const active_marketplace_blocks_group_symbols = $derived(active_marketplace_blocks_group?.symbols() ?? undefined)
 
 	const selected_symbols = $derived(
 		selected
-			.map(({ id, source }) => (source === 'library' ? LibrarySymbols.one(id) : MarketplaceSymbols.one(id)))
-			.filter((symbol): symbol is ObjectOf<typeof LibrarySymbols> | ObjectOf<typeof MarketplaceSymbols> => Boolean(symbol))
+			.map(({ id, source }) => (source === 'library' ? LibrarySymbols.one(id) : LibrarySymbols.from(marketplace).one(id)))
+			.filter((symbol): symbol is ObjectOf<typeof LibrarySymbols> => Boolean(symbol))
 	)
 
 	async function toggle_block(id: string, source: BlockSource) {

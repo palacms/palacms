@@ -13,17 +13,18 @@
 	import { Label } from '$lib/components/ui/label'
 	import { page } from '$app/state'
 	import { goto } from '$app/navigation'
-	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, manager, MarketplaceSymbolGroups, MarketplaceSymbols } from '$lib/pocketbase/collections'
-	import { marketplace } from '$lib/pocketbase/PocketBase'
+	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols } from '$lib/pocketbase/collections'
+	import { marketplace, self } from '$lib/pocketbase/managers'
 	import { last_library_group_id } from '$lib/builder/stores/app/misc'
 	import { get } from 'svelte/store'
 	import { watch } from 'runed'
+	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 
 	const group_id = $derived(page.url.searchParams.get('group') ?? undefined)
-	const marketplace_symbol_group = $derived(group_id ? MarketplaceSymbolGroups.one(group_id) : undefined)
+	const marketplace_symbol_group = $derived(group_id ? LibrarySymbolGroups.from(marketplace).one(group_id) : undefined)
 	const marketplace_symbols = $derived(marketplace_symbol_group?.symbols() ?? undefined)
 	const library_symbol_groups = $derived(LibrarySymbolGroups.list() ?? [])
-	const marketplace_symbol_groups = $derived(MarketplaceSymbolGroups.list({ sort: 'index' }) ?? [])
+	const marketplace_symbol_groups = $derived(LibrarySymbolGroups.from(marketplace).list({ sort: 'index' }) ?? [])
 
 	// Auto-select first marketplace group if none is selected
 	$effect(() => {
@@ -37,10 +38,10 @@
 	// Prefer last-used group (persisted), fallback to first available
 	let selected_group_id = $state((get(last_library_group_id) || LibrarySymbolGroups.list()?.[0]?.id) ?? '')
 	let selected_symbol_id = $state<string>()
-	let selected_symbol = $derived(selected_symbol_id ? MarketplaceSymbols.one(selected_symbol_id) : null)
+	let selected_symbol = $derived(selected_symbol_id ? LibrarySymbols.from(marketplace).one(selected_symbol_id) : null)
 	let added_to_library = $state(false)
-	async function add_to_library(sym?: ReturnType<typeof MarketplaceSymbols.one> | string) {
-		const symbolToAdd = typeof sym === 'string' ? MarketplaceSymbols.one(sym) : sym || selected_symbol
+	async function add_to_library(sym?: ObjectOf<typeof LibrarySymbols> | string) {
+		const symbolToAdd = typeof sym === 'string' ? LibrarySymbols.from(marketplace).one(sym) : sym || selected_symbol
 		if (!symbolToAdd) {
 			throw new Error('Selected symbol not loaded')
 		}
@@ -57,7 +58,7 @@
 			})
 
 			// Get marketplace fields using pb directly to avoid effect context issues
-			const marketplace_fields = await marketplace.collection('library_symbol_fields').getFullList({
+			const marketplace_fields = await marketplace.instance.collection('library_symbol_fields').getFullList({
 				filter: `symbol = "${symbolToAdd.id}"`,
 				sort: 'index'
 			})
@@ -92,7 +93,7 @@
 				const field_ids = marketplace_fields.map((f) => f.id)
 				const marketplace_entries =
 					field_ids.length > 0
-						? await marketplace.collection('library_symbol_entries').getFullList({
+						? await marketplace.instance.collection('library_symbol_entries').getFullList({
 								filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
 								sort: 'index'
 							})
@@ -126,7 +127,7 @@
 					}
 				}
 			}
-			await manager.commit()
+			await self.commit()
 		} catch (error) {
 			console.error('Error copying marketplace symbol:', error)
 			throw error

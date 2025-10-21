@@ -1,6 +1,5 @@
 import type { default as PocketBase, RecordAuthResponse } from 'pocketbase'
 import type { z } from 'zod'
-import { self } from './PocketBase'
 import { customAlphabet } from 'nanoid'
 import { untrack } from 'svelte'
 import type { ObjectWithId } from './Object'
@@ -19,7 +18,6 @@ export type ListOptions = {
 }
 
 export type CollectionMappingOptions<T extends ObjectWithId> = {
-	instance?: PocketBase
 	links?: Record<string, (this: MappedObject<T, { links: {} }>) => unknown>
 
 	/**
@@ -39,8 +37,8 @@ export type CollectionMapping<T extends ObjectWithId, Options extends Collection
 	authWithPassword: (usernameOrEmail: string, password: string) => Promise<RecordAuthResponse<MappedObject<T, Options>>>
 	requestPasswordReset: (email: string) => Promise<void>
 	confirmPasswordReset: (passwordResetToken: string, password: string, passwordConfirm: string) => Promise<void>
-	from: (instance: PocketBase) => CollectionMapping<T, Options>
-	instance: PocketBase
+	from: (manager: CollectionManager) => CollectionMapping<T, { links: Options['links']; subscribe: false }>
+	manager: CollectionManager
 }
 
 const generateId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 15)
@@ -51,10 +49,8 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 	manager: CollectionManager,
 	options?: Options
 ): CollectionMapping<T, Options> => {
-	const instance = options?.instance ?? self
-	const instanceCache = new Map<PocketBase, CollectionMapping<T, Options>>()
+	const { instance, changes, records, lists } = manager
 	const collection = instance.collection(name)
-	const { changes, records, lists } = manager
 
 	if (options?.subscribe) {
 		collection.subscribe('*', (data) => {
@@ -259,18 +255,11 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 		confirmPasswordReset: async (passwordResetToken, password, passwordConfirm) => {
 			await collection.confirmPasswordReset(passwordResetToken, password, passwordConfirm)
 		},
-		from: (instance: PocketBase) => {
-			const cachedCollectionMapping = instanceCache.get(instance)
-			if (cachedCollectionMapping) {
-				return cachedCollectionMapping
-			}
-			const collectionMapping = createCollectionMapping(name, model, manager, { ...options, instance })
-			instanceCache.set(instance, collectionMapping)
-			return collectionMapping
+		from: (manager: CollectionManager) => {
+			return createCollectionMapping(name, model, manager, { links: options?.links, subscribe: false })
 		},
-		instance
+		manager
 	}
 
-	instanceCache.set(instance, collectionMapping)
 	return collectionMapping
 }

@@ -1,8 +1,13 @@
+import type Client from 'pocketbase'
 import type { ObjectOf } from './pocketbase/CollectionMapping.svelte'
 import { Pages, PageTypes, Sites, SiteSymbols } from './pocketbase/collections'
+import { self } from './pocketbase/managers'
+import type { CollectionManager } from './pocketbase/CollectionManager'
 
-export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<typeof Pages>[]) => {
-	const page_types = $derived(pages?.every((page) => PageTypes.one(page.page_type) !== undefined) ? pages.flatMap((page) => PageTypes.one(page.page_type) ?? []).filter(deduplicate('id')) : undefined)
+export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<typeof Pages>[], manager: CollectionManager = self) => {
+	const page_types = $derived(
+		pages?.every((page) => PageTypes.from(manager).one(page.page_type) !== undefined) ? pages.flatMap((page) => PageTypes.from(manager).one(page.page_type) ?? []).filter(deduplicate('id')) : undefined
+	)
 	const page_sections = $derived(pages?.every((page) => page.sections() !== undefined) ? pages.flatMap((page) => page.sections() ?? []).filter(deduplicate('id')) : undefined)
 	const page_type_sections = $derived(
 		page_types?.every((page_type) => page_type.sections() !== undefined) ? page_types.flatMap((page_type) => page_type.sections() ?? []).filter(deduplicate('id')) : undefined
@@ -10,14 +15,15 @@ export const usePageData = (site?: ObjectOf<typeof Sites>, pages?: ObjectOf<type
 	const page_type_symbols = $derived(
 		page_types?.every((page_type) => page_type.symbols() !== undefined) ? page_types.flatMap((page_type) => page_type.symbols() ?? []).filter(deduplicate('id')) : undefined
 	)
+	const sections = $derived(page_sections && page_type_sections && [...page_sections, ...page_type_sections])
 	const symbols = $derived(
-		page_sections &&
-			page_type_sections &&
-			[...page_sections, ...page_type_sections]
-				.map((section) => SiteSymbols.one(section.symbol))
-				.filter((symbol) => symbol !== undefined)
-				.filter((symbol) => symbol !== null)
-				.filter(deduplicate('id'))
+		sections?.map((section) => SiteSymbols.from(manager).one(section.symbol)).every((symbol) => symbol !== undefined)
+			? sections
+					.map((section) => SiteSymbols.from(manager).one(section.symbol))
+					.filter((symbol) => symbol !== undefined)
+					.filter((symbol) => symbol !== null)
+					.filter(deduplicate('id'))
+			: undefined
 	)
 	const site_uploads = $derived(site?.uploads())
 	const site_fields = $derived(site?.fields())

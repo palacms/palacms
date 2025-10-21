@@ -11,7 +11,7 @@
 	import { onNavigate, goto } from '$app/navigation'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { page as pageState } from '$app/state'
-	import { PageTypes, manager } from '$lib/pocketbase/collections'
+	import { PageTypes } from '$lib/pocketbase/collections'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import * as Popover from '$lib/components/ui/popover/index.js'
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
@@ -24,6 +24,7 @@
 	import { site_context } from '$lib/builder/stores/context'
 	import { current_user } from '$lib/pocketbase/user'
 	import { resolve_page, build_cms_page_url } from '$lib/pages'
+	import { self } from '$lib/pocketbase/managers'
 
 	let { children }: { children: Snippet } = $props()
 
@@ -130,7 +131,7 @@
 					return
 				}
 			}
-			manager.discard()
+			self.discard()
 		}
 	}}
 >
