@@ -1,51 +1,75 @@
 import { get, fromStore } from 'svelte/store'
-import { IsDocumentVisible } from 'runed'
+import { IsDocumentVisible, watch } from 'runed'
 import type { UserActivity } from './common/models/UserActivity'
 import { UserActivities } from './pocketbase/collections'
 import { current_user } from '$lib/pocketbase/user'
+import { self } from './pocketbase/managers'
+import { onDestroy } from 'svelte'
+import { site_context } from './builder/stores/context'
 
-export const useUserActivity = (data: Omit<UserActivity, 'id' | 'user'>) => {
-	const visible = new IsDocumentVisible()
-
+export const setUserActivity = (values: Omit<UserActivity, 'id' | 'user' | 'site'>) => {
+	const { value: site } = site_context.get()
 	const user = $derived(fromStore(current_user).current)
-
-	// let user: User | undefined
-	// const unsubscribe = current_user.subscribe((value) => {
-	// 	if (!value) return
-	// 	user = value
-	// })
-
 	if (!user) {
 		throw new Error('No current user')
 	}
 
 	const activities = $derived(UserActivities.list({ filter: { user: user.id } }))
-	const updateUserActivity = () => {
+	let task: number | undefined
+	let tracking = false
+	const track = async () => {
 		if (!activities) {
 			throw new Error('Activities not loaded')
 		}
 
-		const activity = activities.find((activity) => {
-			for (const [key, value] of Object.entries(data)) {
-				if (activity[key] !== value) {
-					return false
-				}
-			}
-			return true
-		})
+		tracking = true
+		const data = {
+			site: site.id,
+			user: user.id,
+			page: '',
+			page_type: '',
+			...values
+		}
+
+		// There's only one activity per user
+		const [activity] = activities
 		if (activity) {
-			UserActivities.update(activity.id, { ...data, user: user.id })
+			UserActivities.update(activity.id, data)
 		} else {
-			UserActivities.create({ ...data, user: user.id })
+			UserActivities.create(data)
+		}
+
+		await self.commit()
+		task = setTimeout(track, 5000)
+	}
+
+	const stopTracking = async () => {
+		tracking = false
+		clearTimeout(task)
+
+		if (activities?.length) {
+			// There's only one activity per user
+			const [activity] = activities
+			UserActivities.delete(activity.id)
+			await self.commit()
 		}
 	}
 
-	$effect(() => {
-		updateUserActivity()
-		const interval = setInterval(updateUserActivity, 1000)
-		return () => {
-			clearInterval(interval)
-			// unsubscribe()
+	const visible = new IsDocumentVisible()
+	watch(
+		() => ({ visible: visible.current, activities }),
+		({ visible, activities }) => {
+			if (!activities) {
+				// Activities not loaded yet
+			} else if (!visible) {
+				// Tab not visible
+				stopTracking()
+			} else if (!tracking) {
+				// Start or resume tracking user activity
+				track()
+			}
 		}
-	})
+	)
+
+	onDestroy(stopTracking)
 }

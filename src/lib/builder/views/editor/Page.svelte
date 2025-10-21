@@ -17,12 +17,12 @@
 	import { page_context } from '$lib/builder/stores/context'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { watch } from 'runed'
-	import { useUserActivity } from '$lib/UserActivity.svelte'
+	import { setUserActivity } from '$lib/UserActivity.svelte'
 	import { self } from '$lib/pocketbase/managers'
 
 	let { page }: { page: ObjectOf<typeof Pages> } = $props()
 
-	useUserActivity({ page: page.id })
+	setUserActivity({ page: page.id })
 
 	// Set context so child components can access the page
 	const context = $state({ value: page })
