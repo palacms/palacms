@@ -224,7 +224,7 @@
 	</AlertDialog.Content>
 </AlertDialog.Root>
 
-<Dialog.Header class="mb-2" title="Site Collaborators" />
+<Dialog.Header title="Site Collaborators" />
 
 <div class="Invitation">
 	<main>
