@@ -13,6 +13,7 @@
 	import { useContent } from '$lib/Content.svelte'
 	import { locale } from '$lib/builder/stores/app/misc.js'
 	import { self } from '$lib/pocketbase/managers'
+	import { beforeNavigate } from '$app/navigation'
 
 	let { onClose, has_unsaved_changes = $bindable(false) } = $props()
 
@@ -30,6 +31,14 @@
 	let foot = $state(site?.foot || '')
 
 	let disableSave = $state(false)
+
+	beforeNavigate((nav) => {
+		if (has_unsaved_changes) {
+			// Prevent navigation when there are unsaved changes
+			nav.cancel()
+			alert('You have unsaved changes. Please save before navigating away.')
+		}
+	})
 
 	// Compare current state to initial data
 	$effect(() => {

@@ -34,6 +34,7 @@
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { useContent } from '$lib/Content.svelte'
 	import { self } from '$lib/pocketbase/managers'
+	import { beforeNavigate } from '$app/navigation'
 
 	hide_page_field_field_type_context.set(false)
 
@@ -92,6 +93,14 @@
 	const component_data = $derived(data && (data[$locale] ?? {}))
 
 	let loading = $state(false)
+
+	beforeNavigate((nav) => {
+		if (has_unsaved_changes) {
+			// Prevent navigation when there are unsaved changes
+			nav.cancel()
+			alert('You have unsaved changes. Please save before navigating away.')
+		}
+	})
 
 	// Set up hotkey listeners for modal
 	onModKey('e', toggle_tab)

@@ -23,6 +23,7 @@
 	import * as _ from 'lodash-es'
 	import { useContent } from '$lib/Content.svelte'
 	import { self } from '$lib/pocketbase/managers'
+	import { beforeNavigate } from '$app/navigation'
 
 	let {
 		component,
@@ -94,6 +95,14 @@
 					})
 			: []
 	)
+
+	beforeNavigate((nav) => {
+		if (has_unsaved_changes) {
+			// Prevent navigation when there are unsaved changes
+			nav.cancel()
+			alert('You have unsaved changes. Please save before navigating away.')
+		}
+	})
 
 	// Set up hotkey listeners for modal (global fallback)
 	onModKey('e', toggle_tab)
