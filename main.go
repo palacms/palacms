@@ -53,5 +53,9 @@ func setup(pb *pocketbase.PocketBase) error {
 		return err
 	}
 
+	if err := internal.RegisterUserActivity(pb); err != nil {
+		return err
+	}
+
 	return nil
 }
