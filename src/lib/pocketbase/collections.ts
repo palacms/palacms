@@ -295,7 +295,7 @@ export const SiteUploads = createCollectionMapping('site_uploads', SiteUpload, s
 	links: {}
 })
 
-export const UserActivities = createCollectionMapping('user_presence', UserActivity, manager, {
+export const UserActivities = createCollectionMapping('user_activities', UserActivity, self, {
 	subscribe: true,
 	links: {}
 })

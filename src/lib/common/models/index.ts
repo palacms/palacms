@@ -30,7 +30,7 @@ import { UserActivity } from './UserActivity'
  */
 export const models = {
 	users: User,
-	user_presence: UserActivity,
+	user_activities: UserActivity,
 	library_symbol_entries: LibrarySymbolEntry,
 	library_symbol_fields: LibrarySymbolField,
 	library_symbol_groups: LibrarySymbolGroup,
