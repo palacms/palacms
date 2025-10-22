@@ -152,8 +152,14 @@
 					<Page_Sidebar />
 				{/if}
 			{:else if !$onMobile}
-				<div class="expand primo-reset">
-					<IconButton onclick={reset} icon="tabler:layout-sidebar-left-expand" />
+				<div class="expand">
+					<IconButton
+						onclick={() => {
+							reset()
+							sidebar_pane?.resize(20)
+						}}
+						icon="tabler:layout-sidebar-left-expand"
+					/>
 				</div>
 			{/if}
 		</Pane>
