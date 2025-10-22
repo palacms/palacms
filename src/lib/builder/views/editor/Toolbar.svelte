@@ -121,7 +121,7 @@
 	})
 
 	const activities = $derived(
-		UserActivities.list({ filter: { site: site.id }, sort: '-created' })
+		UserActivities.list({ filter: { site: site.id } })
 			?.map((activity) => {
 				const site = Sites.one(activity.site)
 				const user = Users.one(activity.user)
@@ -152,6 +152,7 @@
 				)
 			})
 			.filter((activity) => !!activity)
+			.sort((a, b) => a.user.id.localeCompare(b.user.id))
 	)
 </script>
 
