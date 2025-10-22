@@ -5,7 +5,8 @@ export const UserActivity = z.object({
 	user: z.string().nonempty(),
 	site: z.string().nonempty(),
 	page_type: z.string().optional(),
-	page: z.string().optional()
+	page: z.string().optional(),
+	site_symbol: z.string().optional()
 })
 
 export type UserActivity = z.infer<typeof UserActivity>

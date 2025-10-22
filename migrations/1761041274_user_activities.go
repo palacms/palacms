@@ -28,6 +28,11 @@ func init() {
 				return err
 			}
 
+			siteSymbols, err := app.FindCollectionByNameOrId("site_symbols")
+			if err != nil {
+				return err
+			}
+
 			baseRule := "(@request.auth.serverRole != \"\") || (@collection.site_role_assignments.user.id = @request.auth.id && @collection.site_role_assignments.site.id = site.id)"
 			modifyRule := "@request.auth.id = user.id"
 
@@ -68,6 +73,11 @@ func init() {
 				&core.RelationField{
 					Name:          "page",
 					CollectionId:  pages.Id,
+					CascadeDelete: true,
+				},
+				&core.RelationField{
+					Name:          "site_symbol",
+					CollectionId:  siteSymbols.Id,
 					CascadeDelete: true,
 				},
 				&core.AutodateField{

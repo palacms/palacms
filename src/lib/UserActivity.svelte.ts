@@ -28,6 +28,7 @@ export const setUserActivity = (values: Omit<UserActivity, 'id' | 'user' | 'site
 			user: user.id,
 			page: '',
 			page_type: '',
+			site_symbol: '',
 			...values
 		}
 
