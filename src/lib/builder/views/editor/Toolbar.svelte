@@ -11,7 +11,7 @@
 	import { onNavigate, goto } from '$app/navigation'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { page as pageState } from '$app/state'
-	import { PageTypes } from '$lib/pocketbase/collections'
+	import { Pages, PageTypes, Sites, UserActivities, Users } from '$lib/pocketbase/collections'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import * as Popover from '$lib/components/ui/popover/index.js'
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
@@ -119,6 +119,37 @@
 	onModKey('p', () => {
 		publishing = true
 	})
+
+	const activities = $derived(
+		UserActivities.list({ filter: { site: site.id }, sort: '-created' })
+			?.map((activity) => {
+				const site = Sites.one(activity.site)
+				const user = Users.one(activity.user)
+				const page_type = activity.page_type ? PageTypes.one(activity.page_type) : null
+				const page_type_url = page_type && new URL(`${pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}/page-type--${page_type.id}`, pageState.url.href)
+				const page = activity.page ? Pages.one(activity.page) : null
+				const page_url = page && build_cms_page_url(page, pageState.url)
+				const page_page_type = page && PageTypes.one(page.page_type)
+				return (
+					!!site &&
+					!!user &&
+					page_type !== undefined &&
+					page_type_url !== undefined &&
+					page !== undefined &&
+					page_url !== undefined &&
+					page_page_type !== undefined && {
+						site,
+						user,
+						page_type,
+						page_type_url,
+						page,
+						page_url,
+						page_page_type
+					}
+				)
+			})
+			.filter((activity) => !!activity)
+	)
 </script>
 
 <Dialog.Root
@@ -250,49 +281,46 @@
 			{/if}
 		</div>
 		<div class="right">
-			{#if true}
-				<div class="flex -space-x-1">
-					{#each [{ page: { name: 'About', slug: 'about', page_type: { name: 'Default', icon: 'iconoir:page' } }, user: { avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287', name: 'Matthew Morris' } }, { page_type: { id: 'thepagetypeid', name: 'Blog Post', icon: 'flowbite:newspaper-outline' }, user: { avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8ZmFjZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&q=60&w=900', name: 'Jesse' } }, { symbol: { name: 'Hero' }, user: { avatar: 'https://images.unsplash.com/photo-1499996860823-5214fcc65f8f?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGZhY2V8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&q=60&w=900', name: 'Bryan' } }] as { page, page_type, symbol, user }}
-						<div class="flex" transition:fade>
-							<Popover.Root>
-								<Popover.Trigger>
-									<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
-										<Avatar.Image src={user.avatar} alt={user.name} class="grayscale hover:grayscale-0 object-cover object-center" />
-										<Avatar.Fallback>{user.name.slice(0, 2)}</Avatar.Fallback>
+			<div class="flex -space-x-1">
+				{#each activities as { user, page, page_type_url, page_url, page_type, page_page_type }}
+					{@const symbol = undefined}
+					<div class="flex" transition:fade>
+						<Popover.Root>
+							<Popover.Trigger>
+								<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
+									<Avatar.Image src={user.avatar} alt={user.name || user.email} class="grayscale hover:grayscale-0 object-cover object-center" />
+									<Avatar.Fallback>{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+								</Avatar.Root>
+							</Popover.Trigger>
+							<Popover.Content class="w-auto z-[99]">
+								<div class="flex space-x-4">
+									<Avatar.Root class="data-[status=loaded]:border-foreground bg-muted text-muted-foreground h-12 w-12 rounded-full border border-transparent text-[17px] font-medium uppercase">
+										<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
+											<Avatar.Image src={user.avatar} alt={user.name || user.email} class="object-cover object-center" />
+											<Avatar.Fallback class="border-muted border">{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+										</div>
 									</Avatar.Root>
-								</Popover.Trigger>
-								<Popover.Content class="w-auto z-[99]">
-									<div class="flex space-x-4">
-										<Avatar.Root class="data-[status=loaded]:border-foreground bg-muted text-muted-foreground h-12 w-12 rounded-full border border-transparent text-[17px] font-medium uppercase">
-											<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
-												<Avatar.Image src={user.avatar} alt={user.name} class="object-cover object-center" />
-												<Avatar.Fallback class="border-muted border">{user.name.slice(0, 2)}</Avatar.Fallback>
-											</div>
-										</Avatar.Root>
-										<div class="space-y-1 text-sm">
-											<h4 class="font-medium">{user.name}</h4>
-											<div class="flex items-center gap-1">
-												{#if page}
-													{@const url = build_cms_page_url(page, pageState.url)}
-													<Icon icon={page.page_type.icon} />
-													<a href={url} class="underline">{page.name}</a>
-												{:else if page_type}
-													{@const url = `${pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}/page-type--${page_type.id}`}
-													<Icon icon={page_type.icon} />
-													<a href={url} class="underline">{page_type.name}</a>
-												{:else if symbol}
-													<Icon icon="lucide:cuboid" />
-													<p>{symbol.name}</p>
-												{/if}
-											</div>
+									<div class="space-y-1 text-sm">
+										<h4 class="font-medium">{user.name || user.email}</h4>
+										<div class="flex items-center gap-1">
+											{#if page && page_page_type}
+												<Icon icon={page_page_type.icon} />
+												<a href={page_url?.href} class="underline">{page.name}</a>
+											{:else if page_type}
+												<Icon icon={page_type.icon} />
+												<a href={page_type_url?.href} class="underline">{page_type.name}</a>
+											{:else if symbol}
+												<Icon icon="lucide:cuboid" />
+												<p>{symbol.name}</p>
+											{/if}
 										</div>
 									</div>
-								</Popover.Content>
-							</Popover.Root>
-						</div>
-					{/each}
-				</div>
-			{/if}
+								</div>
+							</Popover.Content>
+						</Popover.Root>
+					</div>
+				{/each}
+			</div>
 			<!-- {#if !$timeline.first}
 				<ToolbarButton id="undo" title="Undo" icon="material-symbols:undo" style="border: 0; font-size: 1.5rem;" on:click={undo_change} />
 			{/if}
