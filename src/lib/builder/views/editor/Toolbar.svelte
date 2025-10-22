@@ -130,6 +130,7 @@
 				const page = activity.page ? Pages.one(activity.page) : null
 				const page_url = page && build_cms_page_url(page, pageState.url)
 				const page_page_type = page && PageTypes.one(page.page_type)
+				const site_symbol = activity.site_symbol ? PageTypes.one(activity.site_symbol) : null
 				return (
 					!!site &&
 					!!user &&
@@ -137,14 +138,16 @@
 					page_type_url !== undefined &&
 					page !== undefined &&
 					page_url !== undefined &&
-					page_page_type !== undefined && {
+					page_page_type !== undefined &&
+					site_symbol !== undefined && {
 						site,
 						user,
 						page_type,
 						page_type_url,
 						page,
 						page_url,
-						page_page_type
+						page_page_type,
+						site_symbol
 					}
 				)
 			})
@@ -282,8 +285,7 @@
 		</div>
 		<div class="right">
 			<div class="flex -space-x-1">
-				{#each activities as { user, page, page_type_url, page_url, page_type, page_page_type }}
-					{@const symbol = undefined}
+				{#each activities as { user, page, page_type_url, page_url, page_type, page_page_type, site_symbol }}
 					<div class="flex" transition:fade>
 						<Popover.Root>
 							<Popover.Trigger>
@@ -309,9 +311,9 @@
 											{:else if page_type}
 												<Icon icon={page_type.icon} />
 												<a href={page_type_url?.href} class="underline">{page_type.name}</a>
-											{:else if symbol}
+											{:else if site_symbol}
 												<Icon icon="lucide:cuboid" />
-												<p>{symbol.name}</p>
+												<p>{site_symbol.name}</p>
 											{/if}
 										</div>
 									</div>
