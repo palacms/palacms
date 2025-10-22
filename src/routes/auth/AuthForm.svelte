@@ -74,7 +74,7 @@
 				await Users.confirmPasswordReset(createToken, password, confirm_password)
 					.then(async () => {
 						// Update user with name and avatar if provided
-						const userId = self.authStore.record?.id
+						const userId = self.instance.authStore.record?.id
 						if ((name || avatarFile) && userId) {
 							const updateData: any = {}
 							if (name) updateData.name = name
