@@ -81,13 +81,15 @@
 		draggable({
 			element,
 			dragHandle: drag_handle_element,
-			getInitialData: () => ({})
+			getInitialData: () => ({ item: entry })
 		})
 		dropTargetForElements({
 			element,
 			getData({ input, element }) {
 				return attachClosestEdge(
-					{},
+					{
+						item: entry
+					},
 					{
 						element,
 						input,
