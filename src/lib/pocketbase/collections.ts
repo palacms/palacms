@@ -1,3 +1,4 @@
+import { Collaborator } from '$lib/common/models/Collaborator'
 import { LibrarySymbol } from '$lib/common/models/LibrarySymbol'
 import { LibrarySymbolEntry } from '$lib/common/models/LibrarySymbolEntry'
 import { LibrarySymbolField } from '$lib/common/models/LibrarySymbolField'
@@ -37,6 +38,10 @@ export const Users = createCollectionMapping('users', User, self, {
 			return SiteRoleAssignments.list({ filter: { user: this.id } })
 		}
 	}
+})
+
+export const Collaborators = createCollectionMapping('collaborators', Collaborator, self, {
+	subscribe: true
 })
 
 export const LibrarySymbolGroups = createCollectionMapping('library_symbol_groups', LibrarySymbolGroup, self, {

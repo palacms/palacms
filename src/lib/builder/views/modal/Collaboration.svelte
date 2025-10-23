@@ -6,7 +6,7 @@
 	import * as Dialog from '$lib/components/ui/dialog'
 	import { instance } from '$lib/instance'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { SiteRoleAssignments, Users, type Sites } from '$lib/pocketbase/collections'
+	import { Collaborators, SiteRoleAssignments, Users, type Sites } from '$lib/pocketbase/collections'
 	import { self } from '$lib/pocketbase/managers'
 	import Icon from '@iconify/svelte'
 	import { Loader } from 'lucide-svelte'
@@ -152,7 +152,7 @@
 		collaborator_to_remove = undefined
 	}
 
-	let users = $derived(Users.list())
+	let users = $derived(Collaborators.list())
 	let server_members = $derived(users?.filter(({ serverRole }) => !!serverRole))
 	let site_collborators = $derived(
 		site.role_assignments()?.map((assignment) => ({

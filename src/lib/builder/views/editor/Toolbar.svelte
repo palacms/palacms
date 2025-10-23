@@ -11,7 +11,7 @@
 	import { onNavigate, goto } from '$app/navigation'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { page as pageState } from '$app/state'
-	import { Pages, PageTypes, Sites, UserActivities, Users } from '$lib/pocketbase/collections'
+	import { Collaborators, Pages, PageTypes, Sites, UserActivities } from '$lib/pocketbase/collections'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import * as Popover from '$lib/components/ui/popover/index.js'
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
@@ -124,7 +124,7 @@
 		UserActivities.list({ filter: { site: site.id } })
 			?.map((activity) => {
 				const site = Sites.one(activity.site)
-				const user = Users.one(activity.user)
+				const user = Collaborators.one(activity.user)
 				const page_type = activity.page_type ? PageTypes.one(activity.page_type) : null
 				const page_type_url = page_type && new URL(`${pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}/page-type--${page_type.id}`, pageState.url.href)
 				const page = activity.page ? Pages.one(activity.page) : null
