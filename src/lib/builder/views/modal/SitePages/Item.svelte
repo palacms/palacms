@@ -20,6 +20,7 @@
 	import { goto } from '$app/navigation'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { self as selfManager } from '$lib/pocketbase/managers'
+	import { getUserActivity } from '$lib/UserActivity.svelte'
 
 	let editing_page = $state(false)
 
@@ -47,6 +48,7 @@
 	const full_url = $derived(build_cms_page_url(page, pageState.url))
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
+	const related_activities = $derived(getUserActivity()?.filter((activity) => activity.page?.id === page.id) ?? [])
 
 	let showing_children = $state(false)
 	let children = $derived(page.children() ?? [])
@@ -252,10 +254,10 @@
 					<span class="url">/{page.slug}</span>
 				</div>
 				<div class="flex -space-x-4">
-					{#each [{ avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287', name: 'Matthew Morris' }, { avatar: 'https://images.unsplash.com/photo-1760497925596-a6462350c583?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHx0b3BpYy1mZWVkfDE3fHRvd0paRnNrcEdnfHxlbnwwfHx8fHw%3D&auto=format&fit=crop&q=60&w=900', name: 'Jesse' }] as { avatar, name }}
+					{#each related_activities as { user, user_avatar }}
 						<Avatar.Root class="ring-background ring-2 size-5 ml-4">
-							<Avatar.Image src={avatar} alt={name.slice(0, 2)} class="object-cover object-center" />
-							<Avatar.Fallback>{name.slice(0, 2)}</Avatar.Fallback>
+							<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+							<Avatar.Fallback>{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 						</Avatar.Root>
 					{/each}
 				</div>
