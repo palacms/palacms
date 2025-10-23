@@ -17,6 +17,9 @@
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { site_context } from './stores/context'
 	import { useContent } from '$lib/Content.svelte'
+	import { fromStore } from 'svelte/store'
+	import { current_user } from '$lib/pocketbase/user'
+	import { setUserActivity } from '$lib/UserActivity.svelte'
 
 	let {
 		site,
@@ -39,6 +42,13 @@
 			$site_html = generated_code
 		})
 	})
+
+	const user = fromStore(current_user).current
+	if (!user) {
+		throw new Error('No current user')
+	} else {
+		setUserActivity({ user: user.id, site: site.id })
+	}
 
 	let showing_sidebar = $state(true)
 

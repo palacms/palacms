@@ -32,14 +32,14 @@
 	$effect(() => set_current_user(site || undefined))
 </script>
 
-{#if creating_site}
+{#if creating_site && $current_user}
 	<CreateSite
 		oncreated={() => {
 			self.lists.clear()
 			creating_site = false
 		}}
 	/>
-{:else if site}
+{:else if site && $current_user}
 	<Pala {site}>
 		{@render children?.()}
 	</Pala>

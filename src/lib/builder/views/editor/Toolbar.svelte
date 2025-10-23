@@ -11,7 +11,7 @@
 	import { onNavigate, goto } from '$app/navigation'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { page as pageState } from '$app/state'
-	import { Collaborators, Pages, PageTypes, Sites, UserActivities } from '$lib/pocketbase/collections'
+	import { Collaborators, Pages, PageTypes, Sites, SiteSymbols, UserActivities } from '$lib/pocketbase/collections'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import * as Popover from '$lib/components/ui/popover/index.js'
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
@@ -131,7 +131,7 @@
 				const page = activity.page ? Pages.one(activity.page) : null
 				const page_url = page && build_cms_page_url(page, pageState.url)
 				const page_page_type = page && PageTypes.one(page.page_type)
-				const site_symbol = activity.site_symbol ? PageTypes.one(activity.site_symbol) : null
+				const site_symbol = activity.site_symbol ? SiteSymbols.one(activity.site_symbol) : null
 				return (
 					!!site &&
 					!!user &&
@@ -309,15 +309,15 @@
 									<div class="space-y-1 text-sm">
 										<h4 class="font-medium">{user.name || user.email}</h4>
 										<div class="flex items-center gap-1">
-											{#if page && page_page_type}
+											{#if site_symbol}
+												<Icon icon="lucide:cuboid" />
+												<p>{site_symbol.name}</p>
+											{:else if page && page_page_type}
 												<Icon icon={page_page_type.icon} />
 												<a href={page_url?.href} class="underline">{page.name}</a>
 											{:else if page_type}
 												<Icon icon={page_type.icon} />
 												<a href={page_type_url?.href} class="underline">{page_type.name}</a>
-											{:else if site_symbol}
-												<Icon icon="lucide:cuboid" />
-												<p>{site_symbol.name}</p>
 											{/if}
 										</div>
 									</div>

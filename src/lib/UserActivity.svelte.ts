@@ -1,20 +1,56 @@
-import { get, fromStore } from 'svelte/store'
-import { IsDocumentVisible, watch } from 'runed'
+import { Context, IsDocumentVisible, watch } from 'runed'
 import type { UserActivity } from './common/models/UserActivity'
 import { UserActivities } from './pocketbase/collections'
-import { current_user } from '$lib/pocketbase/user'
 import { self } from './pocketbase/managers'
 import { onDestroy } from 'svelte'
-import { site_context } from './builder/stores/context'
 
-export const setUserActivity = (values: Omit<UserActivity, 'id' | 'user' | 'site'>) => {
-	const { value: site } = site_context.get()
-	const user = $derived(fromStore(current_user).current)
-	if (!user) {
-		throw new Error('No current user')
+export type UserActivityValues = Omit<UserActivity, 'id'>
+
+const user_activity_context = new Context<{ value: UserActivityValues }>('user_activity')
+
+export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
+	const existing_activity = user_activity_context.getOr({ value: null })
+	if (existing_activity.value) {
+		// Set activity overrides through context
+		watch(
+			() => overrides,
+			() => {
+				Object.assign(existing_activity.value, overrides)
+				return () => {
+					for (const key of Object.keys(overrides)) {
+						existing_activity.value[key] = ''
+					}
+				}
+			}
+		)
+		return
 	}
 
-	const activities = $derived(UserActivities.list({ filter: { user: user.id } }))
+	let activity = $state<{ value: UserActivityValues }>({
+		value: {
+			user: '',
+			site: '',
+			page_type: '',
+			page: '',
+			site_symbol: ''
+		}
+	})
+	user_activity_context.set(activity)
+	watch(
+		() => overrides,
+		() => {
+			activity.value = {
+				user: '',
+				site: '',
+				page_type: '',
+				page: '',
+				site_symbol: '',
+				...overrides
+			}
+		}
+	)
+
+	const activities = $derived(UserActivities.list({ filter: { user: activity.value.user } }))
 	let task: number | undefined
 	let tracking = false
 	const track = async () => {
@@ -23,21 +59,12 @@ export const setUserActivity = (values: Omit<UserActivity, 'id' | 'user' | 'site
 		}
 
 		tracking = true
-		const data = {
-			site: site.id,
-			user: user.id,
-			page: '',
-			page_type: '',
-			site_symbol: '',
-			...values
-		}
 
 		// There's only one activity per user
-		const [activity] = activities
-		if (activity) {
-			UserActivities.update(activity.id, data)
+		if (activities[0]) {
+			UserActivities.update(activities[0].id, activity.value)
 		} else {
-			UserActivities.create(data)
+			UserActivities.create(activity.value)
 		}
 
 		await self.commit()

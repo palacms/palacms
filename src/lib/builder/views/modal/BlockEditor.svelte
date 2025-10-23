@@ -35,6 +35,7 @@
 	import { useContent } from '$lib/Content.svelte'
 	import { self } from '$lib/pocketbase/managers'
 	import { beforeNavigate } from '$app/navigation'
+	import { setUserActivity } from '$lib/UserActivity.svelte'
 
 	hide_page_field_field_type_context.set(false)
 
@@ -61,6 +62,10 @@
 		header?: any
 		symbol_type?: 'site' | 'library'
 	} = $props()
+
+	if (existing_block) {
+		setUserActivity({ site_symbol: existing_block.id })
+	}
 
 	// Choose the right collections based on symbol type
 	const SymbolCollection = $derived(symbol_type === 'library' ? LibrarySymbols : SiteSymbols)

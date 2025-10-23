@@ -24,7 +24,7 @@
 
 {#if site === null}
 	<div class="placeholder">Site not found</div>
-{:else if site}
+{:else if site && $current_user}
 	<Pala {site}>
 		{@render children?.()}
 	</Pala>
