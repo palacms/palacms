@@ -31,6 +31,16 @@ func create_users_activity_collection(app core.App) error {
 		return err
 	}
 
+	pageTypeSections, err := app.FindCollectionByNameOrId("page_type_sections")
+	if err != nil {
+		return err
+	}
+
+	pageSections, err := app.FindCollectionByNameOrId("page_sections")
+	if err != nil {
+		return err
+	}
+
 	baseRule := "(@request.auth.serverRole != \"\") || (@collection.site_role_assignments.user.id = @request.auth.id && @collection.site_role_assignments.site.id = site.id)"
 	modifyRule := "@request.auth.id = user.id"
 
@@ -76,6 +86,16 @@ func create_users_activity_collection(app core.App) error {
 		&core.RelationField{
 			Name:          "site_symbol",
 			CollectionId:  siteSymbols.Id,
+			CascadeDelete: true,
+		},
+		&core.RelationField{
+			Name:          "page_type_section",
+			CollectionId:  pageTypeSections.Id,
+			CascadeDelete: true,
+		},
+		&core.RelationField{
+			Name:          "page_section",
+			CollectionId:  pageSections.Id,
 			CascadeDelete: true,
 		},
 		&core.AutodateField{

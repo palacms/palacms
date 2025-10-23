@@ -25,6 +25,7 @@
 	import { useContent } from '$lib/Content.svelte'
 	import { build_live_page_url } from '$lib/pages'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
+	import { getUserActivity } from '$lib/UserActivity.svelte'
 
 	const { value: site } = site_context.getOr({ value: null })
 
@@ -38,15 +39,8 @@
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
 	const data = $derived(useContent(section, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
-
-	// const active_user = $derived(block.active_user())
-	const active_user = $derived(
-		block.id === 'cchxh9zsc1smwjp'
-			? {
-					avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287',
-					name: 'Matthew'
-				}
-			: null
+	const related_activities = $derived(
+		getUserActivity()?.filter((activity) => activity.site_symbol?.id === block.id || activity.page_type_section?.id === section.id || activity.page_section?.id === section.id) ?? []
 	)
 
 	let bubble_menu_state = $state({ visible: false, top: 0, left: 0 })
@@ -1214,14 +1208,16 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-{#if active_user}
+{#if related_activities.length > 0}
 	<div class="pointer-events-none flex justify-center items-start absolute inset-0 ring-inset ring-8 ring-[var(--color-gray-8)]">
-		<div class="bg-[var(--color-gray-8)] rounded-bl-lg rounded-br-lg p-2">
-			<Avatar.Root class="ring-background ring-2 size-8">
-				<Avatar.Image src={active_user.avatar} alt={active_user.name.slice(0, 2)} class="object-cover object-center" />
-				<Avatar.Fallback>{active_user.name.slice(0, 2)}</Avatar.Fallback>
-			</Avatar.Root>
-		</div>
+		{#each related_activities as { user, user_avatar }}
+			<div class="bg-[var(--color-gray-8)] rounded-bl-lg rounded-br-lg p-2">
+				<Avatar.Root class="ring-background ring-2 size-8">
+					<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+					<Avatar.Fallback>{(user.name || user.email).slice(0, 2)}</Avatar.Fallback>
+				</Avatar.Root>
+			</div>
+		{/each}
 	</div>
 {/if}
 

@@ -24,6 +24,7 @@
 	import { useContent } from '$lib/Content.svelte'
 	import { self } from '$lib/pocketbase/managers'
 	import { beforeNavigate } from '$app/navigation'
+	import { setUserActivity } from '$lib/UserActivity.svelte'
 
 	let {
 		component,
@@ -46,6 +47,8 @@
 		has_unsaved_changes: boolean
 		header?: any
 	} = $props()
+
+	setUserActivity('page_type' in component ? { page_type_section: component.id } : { page_section: component.id })
 
 	// Data will be loaded automatically by CollectionMapping system when accessed
 

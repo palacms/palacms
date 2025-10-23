@@ -1,6 +1,6 @@
 import { Context, IsDocumentVisible, watch } from 'runed'
 import type { UserActivity } from './common/models/UserActivity'
-import { Collaborators, Pages, PageTypes, Sites, SiteSymbols, UserActivities } from './pocketbase/collections'
+import { Collaborators, Pages, PageSections, PageTypes, PageTypeSections, Sites, SiteSymbols, UserActivities } from './pocketbase/collections'
 import { self } from './pocketbase/managers'
 import { onDestroy } from 'svelte'
 import { page as pageState } from '$app/state'
@@ -50,6 +50,8 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 				page_type: '',
 				page: '',
 				site_symbol: '',
+				page_type_section: '',
+				page_section: '',
 				...overrides
 			}
 		}
@@ -130,6 +132,8 @@ export const getUserActivity = () => {
 			const page_url = page && build_cms_page_url(page, pageState.url)
 			const page_page_type = page && PageTypes.one(page.page_type)
 			const site_symbol = activity.site_symbol ? SiteSymbols.one(activity.site_symbol) : null
+			const page_type_section = activity.page_type_section ? PageTypeSections.one(activity.page_type_section) : null
+			const page_section = activity.page_section ? PageSections.one(activity.page_section) : null
 			return (
 				!!site &&
 				!!user &&
@@ -139,7 +143,9 @@ export const getUserActivity = () => {
 				page !== undefined &&
 				page_url !== undefined &&
 				page_page_type !== undefined &&
-				site_symbol !== undefined && {
+				site_symbol !== undefined &&
+				page_type_section !== undefined &&
+				page_section !== undefined && {
 					site,
 					user,
 					user_avatar,
@@ -148,7 +154,9 @@ export const getUserActivity = () => {
 					page,
 					page_url,
 					page_page_type,
-					site_symbol
+					site_symbol,
+					page_type_section,
+					page_section
 				}
 			)
 		})

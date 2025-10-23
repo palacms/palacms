@@ -38,14 +38,6 @@
 </script>
 
 <div class="Card" {id} class:minimal>
-	<div class="absolute z-10 p-1 right-0 top-0 rounded-bl-lg flex justify-center -space-x-1">
-		{#each [{ page: { name: 'About', slug: 'about', page_type: { name: 'Default', icon: 'iconoir:page' } }, user: { avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287', name: 'Matthew Morris' } }, { page_type: { id: 'thepagetypeid', name: 'Blog Post', icon: 'flowbite:newspaper-outline' }, user: { avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8ZmFjZXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&q=60&w=900', name: 'Jesse' } }, { symbol: { name: 'Hero' }, user: { avatar: 'https://images.unsplash.com/photo-1499996860823-5214fcc65f8f?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGZhY2V8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&q=60&w=900', name: 'Bryan' } }] as { user }}
-			<Avatar.Root class="ring-background transition-all ring-2 size-4">
-				<Avatar.Image src={user.avatar} alt={user.name} class="object-cover object-center" />
-				<Avatar.Fallback>MM</Avatar.Fallback>
-			</Avatar.Root>
-		{/each}
-	</div>
 	<div>
 		{#if title}
 			<button
