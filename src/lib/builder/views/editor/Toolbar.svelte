@@ -125,6 +125,7 @@
 			?.map((activity) => {
 				const site = Sites.one(activity.site)
 				const user = Collaborators.one(activity.user)
+				const user_avatar = user && user.avatar ? `${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}` : null
 				const page_type = activity.page_type ? PageTypes.one(activity.page_type) : null
 				const page_type_url = page_type && new URL(`${pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}/page-type--${page_type.id}`, pageState.url.href)
 				const page = activity.page ? Pages.one(activity.page) : null
@@ -134,6 +135,7 @@
 				return (
 					!!site &&
 					!!user &&
+					user_avatar !== undefined &&
 					page_type !== undefined &&
 					page_type_url !== undefined &&
 					page !== undefined &&
@@ -142,6 +144,7 @@
 					site_symbol !== undefined && {
 						site,
 						user,
+						user_avatar,
 						page_type,
 						page_type_url,
 						page,
@@ -286,12 +289,12 @@
 		</div>
 		<div class="right">
 			<div class="flex -space-x-1">
-				{#each activities as { user, page, page_type_url, page_url, page_type, page_page_type, site_symbol }}
+				{#each activities as { user, user_avatar, page, page_type_url, page_url, page_type, page_page_type, site_symbol }}
 					<div class="flex" transition:fade>
 						<Popover.Root>
 							<Popover.Trigger>
 								<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
-									<Avatar.Image src={user.avatar} alt={user.name || user.email} class="grayscale hover:grayscale-0 object-cover object-center" />
+									<Avatar.Image src={user_avatar} alt={user.name || user.email} class="grayscale hover:grayscale-0 object-cover object-center" />
 									<Avatar.Fallback class="text-xs">{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 								</Avatar.Root>
 							</Popover.Trigger>
@@ -299,7 +302,7 @@
 								<div class="flex space-x-4">
 									<Avatar.Root class="data-[status=loaded]:border-foreground bg-muted text-muted-foreground h-12 w-12 rounded-full border border-transparent text-[17px] font-medium uppercase">
 										<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
-											<Avatar.Image src={user.avatar} alt={user.name || user.email} class="object-cover object-center" />
+											<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
 											<Avatar.Fallback class="border-muted border">{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 										</div>
 									</Avatar.Root>
