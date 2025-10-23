@@ -18,7 +18,9 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 		watch(
 			() => overrides,
 			() => {
-				Object.assign(existing_activity.value, overrides)
+				for (const [key, value] of Object.entries(overrides)) {
+					existing_activity.value[key] = value
+				}
 				return () => {
 					for (const key of Object.keys(overrides)) {
 						existing_activity.value[key] = ''
@@ -57,6 +59,7 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 	let task: number | undefined
 	let tracking = false
 	const track = async () => {
+		clearTimeout(task)
 		if (!activities) {
 			throw new Error('Activities not loaded')
 		}
@@ -65,9 +68,9 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 
 		// There's only one activity per user
 		if (activities[0]) {
-			UserActivities.update(activities[0].id, activity.value)
+			self.instance.collection('user_activities').update(activities[0].id, activity.value)
 		} else {
-			UserActivities.create(activity.value)
+			self.instance.collection('user_activities').create(activity.value)
 		}
 
 		await self.commit()
@@ -81,7 +84,7 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 		if (activities?.length) {
 			// There's only one activity per user
 			const [activity] = activities
-			UserActivities.delete(activity.id)
+			self.instance.collection('user_activities').delete(activity.id)
 			await self.commit()
 		}
 	}
@@ -97,6 +100,15 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 				stopTracking()
 			} else if (!tracking) {
 				// Start or resume tracking user activity
+				track()
+			}
+		}
+	)
+	watch(
+		() => ({ ...activity.value }),
+		() => {
+			if (activities && tracking) {
+				// Force update
 				track()
 			}
 		}
