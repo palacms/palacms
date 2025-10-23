@@ -11,6 +11,7 @@
 	import { Loader } from 'lucide-svelte'
 	import { site_context } from '$lib/builder/stores/context'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
+	import { getUserActivity } from '$lib/UserActivity.svelte'
 
 	let { active, page_type }: { active: boolean; page_type: PageType } = $props()
 
@@ -53,6 +54,7 @@
 		const base_path = page.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 		return `${base_path}/page-type--${page_type.id}`
 	})
+	const related_activities = $derived(getUserActivity()?.filter((activity) => activity.page_type?.id === page_type.id) ?? [])
 
 	// Load pages that would be deleted when confirming
 	const pages_to_delete = $derived(is_delete_open && site ? (Pages.list({ filter: { page_type: page_type.id, site: site.id }, sort: 'index' }) ?? undefined) : undefined)
@@ -80,10 +82,10 @@
 					{page_type.name}
 				</a>
 				<div class="flex -space-x-4">
-					{#each [{ avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287', name: 'Matthew Morris' }, { avatar: 'https://images.unsplash.com/photo-1760497925596-a6462350c583?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHx0b3BpYy1mZWVkfDE3fHRvd0paRnNrcEdnfHxlbnwwfHx8fHw%3D&auto=format&fit=crop&q=60&w=900', name: 'Jesse' }] as { avatar, name }}
+					{#each related_activities as { user, user_avatar }}
 						<Avatar.Root class="ring-background ring-2 size-5 ml-4">
-							<Avatar.Image src={avatar} alt={name.slice(0, 2)} class="object-cover object-center" />
-							<Avatar.Fallback>{name.slice(0, 2)}</Avatar.Fallback>
+							<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+							<Avatar.Fallback>{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 						</Avatar.Root>
 					{/each}
 				</div>
