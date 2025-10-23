@@ -1,8 +1,11 @@
 import { Context, IsDocumentVisible, watch } from 'runed'
 import type { UserActivity } from './common/models/UserActivity'
-import { UserActivities } from './pocketbase/collections'
+import { Collaborators, Pages, PageTypes, Sites, SiteSymbols, UserActivities } from './pocketbase/collections'
 import { self } from './pocketbase/managers'
 import { onDestroy } from 'svelte'
+import { page as pageState } from '$app/state'
+import { build_cms_page_url } from './pages'
+import { site_context } from './builder/stores/context'
 
 export type UserActivityValues = Omit<UserActivity, 'id'>
 
@@ -100,4 +103,43 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 	)
 
 	onDestroy(stopTracking)
+}
+
+export const getUserActivity = () => {
+	const { value: site } = site_context.get()
+	return UserActivities.list({ filter: { site: site.id } })
+		?.map((activity) => {
+			const site = Sites.one(activity.site)
+			const user = Collaborators.one(activity.user)
+			const user_avatar = user && user.avatar ? `${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}` : null
+			const page_type = activity.page_type ? PageTypes.one(activity.page_type) : null
+			const page_type_url = page_type && new URL(`${pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}/page-type--${page_type.id}`, pageState.url.href)
+			const page = activity.page ? Pages.one(activity.page) : null
+			const page_url = page && build_cms_page_url(page, pageState.url)
+			const page_page_type = page && PageTypes.one(page.page_type)
+			const site_symbol = activity.site_symbol ? SiteSymbols.one(activity.site_symbol) : null
+			return (
+				!!site &&
+				!!user &&
+				user_avatar !== undefined &&
+				page_type !== undefined &&
+				page_type_url !== undefined &&
+				page !== undefined &&
+				page_url !== undefined &&
+				page_page_type !== undefined &&
+				site_symbol !== undefined && {
+					site,
+					user,
+					user_avatar,
+					page_type,
+					page_type_url,
+					page,
+					page_url,
+					page_page_type,
+					site_symbol
+				}
+			)
+		})
+		.filter((activity) => !!activity)
+		.sort((a, b) => a.user.id.localeCompare(b.user.id))
 }

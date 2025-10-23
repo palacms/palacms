@@ -25,6 +25,7 @@
 	import { current_user } from '$lib/pocketbase/user'
 	import { resolve_page, build_cms_page_url } from '$lib/pages'
 	import { self } from '$lib/pocketbase/managers'
+	import { getUserActivity } from '$lib/UserActivity.svelte'
 
 	let { children }: { children: Snippet } = $props()
 
@@ -120,43 +121,7 @@
 		publishing = true
 	})
 
-	const activities = $derived(
-		UserActivities.list({ filter: { site: site.id } })
-			?.map((activity) => {
-				const site = Sites.one(activity.site)
-				const user = Collaborators.one(activity.user)
-				const user_avatar = user && user.avatar ? `${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}` : null
-				const page_type = activity.page_type ? PageTypes.one(activity.page_type) : null
-				const page_type_url = page_type && new URL(`${pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}/page-type--${page_type.id}`, pageState.url.href)
-				const page = activity.page ? Pages.one(activity.page) : null
-				const page_url = page && build_cms_page_url(page, pageState.url)
-				const page_page_type = page && PageTypes.one(page.page_type)
-				const site_symbol = activity.site_symbol ? SiteSymbols.one(activity.site_symbol) : null
-				return (
-					!!site &&
-					!!user &&
-					user_avatar !== undefined &&
-					page_type !== undefined &&
-					page_type_url !== undefined &&
-					page !== undefined &&
-					page_url !== undefined &&
-					page_page_type !== undefined &&
-					site_symbol !== undefined && {
-						site,
-						user,
-						user_avatar,
-						page_type,
-						page_type_url,
-						page,
-						page_url,
-						page_page_type,
-						site_symbol
-					}
-				)
-			})
-			.filter((activity) => !!activity)
-			.sort((a, b) => a.user.id.localeCompare(b.user.id))
-	)
+	const activities = $derived(getUserActivity())
 </script>
 
 <Dialog.Root

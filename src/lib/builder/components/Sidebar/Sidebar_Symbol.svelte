@@ -24,6 +24,7 @@
 	import { Unlink } from 'lucide-svelte'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { self } from '$lib/pocketbase/managers'
+	import { getUserActivity } from '$lib/UserActivity.svelte'
 
 	const dispatch = createEventDispatcher()
 
@@ -48,11 +49,7 @@
 	let renaming = $state(false)
 	let new_name = $state(symbol.name)
 
-	// const active_user = $derived(symbol.active_user())
-	const active_user = $derived({
-		avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1287',
-		name: 'Matthew'
-	})
+	const related_activities = $derived(getUserActivity()?.filter(({ site_symbol }) => site_symbol?.id === symbol.id) ?? [])
 
 	async function save_rename() {
 		if (!symbol || !new_name.trim()) return
@@ -295,14 +292,14 @@
 				<Icon icon="eos-icons:three-dots-loading" />
 			</div>
 		{:else if componentCode}
-			{#if active_user}
+			{#each related_activities as activity}
 				<div transition:fade class="absolute z-10 bg-[#222] p-1 right-0 top-0 rounded-bl-lg flex justify-center -space-x-1">
 					<Avatar.Root class="ring-background ring-2 size-5">
-						<Avatar.Image src={active_user.avatar} alt={active_user.name.slice(0, 2)} class="object-cover object-center" />
-						<Avatar.Fallback>{active_user.name.slice(0, 2)}</Avatar.Fallback>
+						<Avatar.Image src={activity.user_avatar} alt={activity.user.name || activity.user.email} class="object-cover object-center" />
+						<Avatar.Fallback>{(activity.user.name || activity.user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 					</Avatar.Root>
 				</div>
-			{/if}
+			{/each}
 			<div class="symbol">
 				<IFrame bind:height {head} {componentCode} />
 			</div>
