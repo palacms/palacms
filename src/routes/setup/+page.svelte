@@ -66,7 +66,6 @@
 			try {
 				await Users.authWithPassword(email, password)
 				console.log('User authenticated successfully')
-				console.log('Auth record:', Users.instance.authStore.record)
 			} catch (authError) {
 				console.warn('Could not authenticate user:', authError)
 			}
@@ -90,7 +89,6 @@
 
 	const complete_setup = () => {
 		console.log('Completing setup, navigating to /admin/site')
-		console.log('User authenticated:', Users.instance.authStore.isValid)
 		navigating = true
 		goto('/admin/site', { replaceState: true })
 	}
