@@ -17,6 +17,9 @@
 	let avatar = $state('')
 	let avatarFile = $state<File | null>(null)
 
+	const createToken = $derived(page.url.searchParams.get('create') || '')
+	const invitedEmail = $derived(page.url.searchParams.get('email') || '')
+
 	const handleAvatarChange = (event: Event) => {
 		const target = event.target as HTMLInputElement
 		const file = target.files?.[0]
@@ -69,29 +72,23 @@
 				break
 			case 'create_account':
 				loading = true
-				const createToken = page.url.searchParams.get('create') || ''
-				const invitedEmail = page.url.searchParams.get('email')
 				await Users.confirmPasswordReset(createToken, password, confirm_password)
 					.then(async () => {
-						// Update user with name and avatar if provided
-						const userId = self.instance.authStore.record?.id
-						if ((name || avatarFile) && userId) {
-							const updateData: any = {}
-							if (name) updateData.name = name
-
-							// Handle avatar file upload using PocketBase
-							// if (avatarFile) {
-							// 	updateData.avatar = avatarFile
-							// }
-
-							await Users.update(userId, updateData)
-						}
-						// Auto-login invited users
 						if (invitedEmail) {
+							// Auto-login invited users
 							await Users.authWithPassword(invitedEmail, password)
-							goto('/admin/site')
+
+							// Update user with name and avatar if provided
+							const userId = self.instance.authStore.record?.id
+							if ((name || avatarFile) && userId) {
+								const data: any = {}
+								if (name) data.name = name
+								if (avatarFile) data.avatar = avatarFile
+								await self.instance.collection('users').update(userId, data)
+							}
+							await goto('/admin/site')
 						} else {
-							goto('/admin/auth')
+							await goto('/admin/auth')
 						}
 					})
 					.catch((err) => {
@@ -129,7 +126,7 @@
 				<input data-test-id="email" bind:value={email} type="text" name="email" disabled={passwordResetRequested} />
 			</label>
 		{/if}
-		{#if action === 'create_account'}
+		{#if action === 'create_account' && invitedEmail}
 			<label>
 				<span>Email</span>
 				<input data-test-id="email" bind:value={email} type="text" name="email" disabled />
