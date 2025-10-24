@@ -260,7 +260,7 @@
 							<Popover.Trigger>
 								<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
 									<Avatar.Image src={user_avatar} alt={user.name || user.email} class="grayscale hover:grayscale-0 object-cover object-center" />
-									<Avatar.Fallback class="text-xs">{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+									<Avatar.Fallback>{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 								</Avatar.Root>
 							</Popover.Trigger>
 							<Popover.Content class="w-auto z-[99]">
