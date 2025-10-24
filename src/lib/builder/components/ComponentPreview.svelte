@@ -179,8 +179,9 @@
 		}
 	}
 	watch(
-		() => code.css,
-		(css) => {
+		() => [code.css, $auto_refresh],
+		([css, refresh]) => {
+			if (!refresh) return
 			update_css(css)
 		}
 	)
