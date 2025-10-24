@@ -120,6 +120,12 @@
 	async function save_component() {
 		if (!$has_error) {
 			loading = true
+			// Update symbol code (doing this here to prevent compilation for the symbol in the sidebar/background
+			SymbolCollection.update(block.id, {
+				html,
+				css,
+				js
+			})
 			await self.commit()
 			// Reset baselines after successful save
 			initial_code = { html, css, js }
@@ -188,22 +194,7 @@
 	<PaneGroup direction={$orientation} class="flex">
 		<Pane defaultSize={50} class="p-1">
 			{#if tab === 'code'}
-				<FullCodeEditor
-					bind:html
-					bind:css
-					bind:js
-					data={component_data}
-					storage_key={block?.id}
-					on:save={save_component}
-					on:mod-e={toggle_tab}
-					oninput={() => {
-						SymbolCollection.update(block.id, {
-							html,
-							css,
-							js
-						})
-					}}
-				/>
+				<FullCodeEditor bind:html bind:css bind:js data={component_data} storage_key={block?.id} on:save={save_component} on:mod-e={toggle_tab} />
 			{:else if tab === 'content' && fields}
 				<Fields
 					entity={block}
