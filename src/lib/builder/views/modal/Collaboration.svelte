@@ -290,7 +290,9 @@
 					{#each server_members ?? [] as { id, email, avatar, name, serverRole }}
 						<li>
 							<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
-								<Avatar.Image src={avatar && `${self.instance.baseURL}/api/files/collaborators/${id}/${avatar}`} alt={name || email} class="grayscale hover:grayscale-0 object-cover object-center" />
+								{#if avatar}
+									<Avatar.Image src={avatar && `${self.instance.baseURL}/api/files/collaborators/${id}/${avatar}`} alt={name || email} class="grayscale hover:grayscale-0 object-cover object-center" />
+								{/if}
 								<Avatar.Fallback class="text-xs">{(name || email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 							</Avatar.Root>
 							<span class="email">

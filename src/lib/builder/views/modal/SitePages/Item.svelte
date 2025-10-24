@@ -256,7 +256,9 @@
 				<div class="flex -space-x-4">
 					{#each related_activities as { user, user_avatar }}
 						<Avatar.Root class="ring-background ring-2 size-5 ml-4">
-							<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+							{#if user_avatar}
+								<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+							{/if}
 							<Avatar.Fallback>{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 						</Avatar.Root>
 					{/each}

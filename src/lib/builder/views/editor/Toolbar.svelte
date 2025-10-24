@@ -259,7 +259,9 @@
 						<Popover.Root>
 							<Popover.Trigger>
 								<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
-									<Avatar.Image src={user_avatar} alt={user.name || user.email} class="grayscale hover:grayscale-0 object-cover object-center" />
+									{#if user_avatar}
+										<Avatar.Image src={user_avatar} alt={user.name || user.email} class="grayscale hover:grayscale-0 object-cover object-center" />
+									{/if}
 									<Avatar.Fallback>{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 								</Avatar.Root>
 							</Popover.Trigger>
@@ -267,7 +269,9 @@
 								<div class="flex space-x-4">
 									<Avatar.Root class="data-[status=loaded]:border-foreground bg-muted text-muted-foreground h-12 w-12 rounded-full border border-transparent text-[17px] font-medium uppercase">
 										<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
-											<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+											{#if user_avatar}
+												<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+											{/if}
 											<Avatar.Fallback class="border-muted border">{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 										</div>
 									</Avatar.Root>

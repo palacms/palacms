@@ -295,7 +295,9 @@
 			{#each related_activities as activity}
 				<div transition:fade class="absolute z-10 bg-[#222] p-1 right-0 top-0 rounded-bl-lg flex justify-center -space-x-1">
 					<Avatar.Root class="ring-background ring-2 size-5">
-						<Avatar.Image src={activity.user_avatar} alt={activity.user.name || activity.user.email} class="object-cover object-center" />
+						{#if activity.user_avatar}
+							<Avatar.Image src={activity.user_avatar} alt={activity.user.name || activity.user.email} class="object-cover object-center" />
+						{/if}
 						<Avatar.Fallback>{(activity.user.name || activity.user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 					</Avatar.Root>
 				</div>
