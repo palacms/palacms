@@ -2,7 +2,7 @@ import * as _ from 'lodash-es'
 import { customAlphabet } from 'nanoid/non-secure'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js' // https://highlightjs.org
-import { generateHTML } from '@tiptap/core'
+import { generateHTML, generateJSON } from '@tiptap/core'
 import { rich_text_extensions } from '$lib/builder/rich-text/extensions'
 
 import { processors } from './component.js'
@@ -149,7 +149,15 @@ const rich_text_cache = new Map()
 export function convert_rich_text_to_html(tiptap_obj) {
 	if (rich_text_cache.has(tiptap_obj)) return rich_text_cache.get(tiptap_obj)
 	try {
-		const html = generateHTML(tiptap_obj, rich_text_extensions)
+		// Check if tiptap_obj is a string instead of a proper TipTap object
+		let processed_obj = tiptap_obj
+		if (typeof tiptap_obj === 'string') {
+			// Assume it's markdown and convert to HTML first, then to TipTap JSON
+			const html = convert_markdown_to_html(tiptap_obj)
+			processed_obj = generateJSON(html, rich_text_extensions)
+		}
+
+		const html = generateHTML(processed_obj, rich_text_extensions)
 		rich_text_cache.set(tiptap_obj, html)
 		return html
 	} catch (error) {
