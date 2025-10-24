@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { fade } from 'svelte/transition'
 	import * as _ from 'lodash-es'
 	import * as Dialog from '$lib/components/ui/dialog'
 	import ImageField from '$lib/builder/field-types/ImageField.svelte'
@@ -540,7 +541,7 @@
 
 	// Reroute non-entry links to open in a new tab
 	async function reroute_links() {
-		if (!node.contentDocument) return
+		if (!node?.contentDocument) return
 		node.contentDocument.querySelectorAll<HTMLLinkElement>('a:not([data-entry] a):not([data-key] a):not([data-entry]):not([data-key])').forEach((link) => {
 			link.addEventListener('click', (e) => {
 				e.preventDefault()
@@ -553,23 +554,6 @@
 		image_overlay_is_visible = false
 		update_menu_positions()
 	}
-
-	let last_code_signature = $state<string>('')
-	// Watch for changes in block code or component data and regenerate
-	watch(
-		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
-		({ html, css, js, data }) => {
-			// Wait until content data has resolved (avoid compiling with undefined data)
-			if (data === undefined) return
-
-			// Recompile when any source (html/css/js) changes.
-			const updated_code_signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
-			if (last_code_signature !== updated_code_signature) {
-				generate_component_code(block)
-				last_code_signature = updated_code_signature
-			}
-		}
-	)
 
 	let mutation_observer: MutationObserver
 	let iframe_resize_observer: ResizeObserver
@@ -753,7 +737,24 @@
 		}
 	}
 
-	// Watch for changes and send to iframe when ready
+	let last_code_signature = $state<string>('')
+	// Watch for changes in raw block code or component data and regenerate compiled code
+	watch(
+		() => ({ html: block.html, css: block.css, js: block.js, data: component_data, error }),
+		({ html, css, js, data, error }) => {
+			// Wait until content data has resolved (avoid compiling with undefined data)
+			if (data === undefined) return
+
+			// Recompile when any source (html/css/js) changes or an error exists.
+			const updated_code_signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
+			if (last_code_signature !== updated_code_signature || error) {
+				generate_component_code(block)
+				last_code_signature = updated_code_signature
+			}
+		}
+	)
+
+	// Watch for compiled code changes and send to iframe when ready
 	// Only send when this component's code & data meaningfully changed to avoid
 	// triggering re-renders of unrelated symbols.
 	let last_sent_data = $state<any>()
@@ -1213,7 +1214,9 @@
 		{#each related_activities as { user, user_avatar }}
 			<div class="bg-[var(--color-gray-8)] rounded-bl-lg rounded-br-lg p-2">
 				<Avatar.Root class="ring-background ring-2 size-8">
-					<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+					{#if user_avatar}
+						<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+					{/if}
 					<Avatar.Fallback>{(user.name || user.email).slice(0, 2)}</Avatar.Fallback>
 				</Avatar.Root>
 			</div>
@@ -1234,7 +1237,8 @@
 {/if}
 
 {#if error}
-	<div class="component-error">
+	<!-- delay error rendering to give full component data a chance to render in (during collaboration) -->
+	<div class="component-error" in:fade={{ delay: 1000 }}>
 		<pre>{@html error}</pre>
 		<p class="component-error__hint">Check console for full error.</p>
 	</div>
