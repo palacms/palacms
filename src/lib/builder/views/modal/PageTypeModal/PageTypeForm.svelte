@@ -24,7 +24,9 @@
 	let new_page_details = $derived({
 		name: new_page_name,
 		color: new_color,
-		icon: new_icon
+		icon: new_icon,
+		head: '',
+		foot: ''
 	})
 
 	const [popperRef, popperContent] = createPopperActions({
