@@ -234,6 +234,7 @@
 		margin-top: 0.25rem;
 		padding: 0.75rem;
 		max-height: 200px;
+		overflow: auto;
 
 		button.close {
 			position: absolute;
