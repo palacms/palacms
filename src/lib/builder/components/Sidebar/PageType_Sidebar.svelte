@@ -448,7 +448,6 @@
 
 							const field = fields.find((field) => field.id === id)
 							if (field?.key) {
-								console.log('commiting ONCHANGE - maybe it commits without a key?', field?.key)
 								clearTimeout(commit_task)
 								commit_task = setTimeout(() => self.commit(), 500)
 							}

@@ -15,18 +15,7 @@
 	import { watch } from 'runed'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import {
-		LibrarySymbolEntries,
-		LibrarySymbolFields,
-		LibrarySymbolGroups,
-		LibrarySymbols,
-		LibraryUploads,
-		Sites,
-		SiteSymbolEntries,
-		SiteSymbolFields,
-		SiteSymbols,
-		SiteUploads
-	} from '$lib/pocketbase/collections'
+	import { LibrarySymbolEntries, LibrarySymbolFields, LibrarySymbolGroups, LibrarySymbols, SiteSymbolEntries, SiteSymbolFields, SiteSymbols } from '$lib/pocketbase/collections'
 	import { page } from '$app/state'
 	import { browser } from '$app/environment'
 	import _ from 'lodash-es'
@@ -126,6 +115,7 @@
 				css,
 				js
 			})
+			console.log('updating')
 			await self.commit()
 			// Reset baselines after successful save
 			initial_code = { html, css, js }

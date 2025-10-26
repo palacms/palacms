@@ -1,6 +1,6 @@
 <script>
 	import Icon from '@iconify/svelte'
-	import { onMount, createEventDispatcher } from 'svelte'
+	import { tick, onMount, createEventDispatcher } from 'svelte'
 	import autosize from 'autosize'
 
 	const dispatch = createEventDispatcher()
@@ -55,6 +55,12 @@
 		if (textarea_element) {
 			autosize(textarea_element)
 		}
+		// autofocus attribute doesn't work so doing this
+		if (autofocus) {
+			tick().then(() => {
+				;(textarea_element || element)?.focus()
+			})
+		}
 	})
 </script>
 
@@ -84,7 +90,6 @@
 					{value}
 					{type}
 					{placeholder}
-					{autofocus}
 					{disabled}
 					{onfocus}
 					oninput={({ target }) => {
@@ -100,7 +105,6 @@
 					{value}
 					{type}
 					{placeholder}
-					{autofocus}
 					{disabled}
 					{onfocus}
 					oninput={({ target }) => {
