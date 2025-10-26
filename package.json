@@ -27,7 +27,6 @@
 		"@tailwindcss/postcss": "^4.1.13",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tiptap/core": "^3.2.0",
-		"@tiptap/extension-code-block-lowlight": "^3.7.2",
 		"@tiptap/extension-highlight": "^3.7.2",
 		"@tiptap/extension-image": "^3.7.2",
 		"@tiptap/extension-link": "^3.4.2",
