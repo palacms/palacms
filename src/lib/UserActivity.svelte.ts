@@ -6,6 +6,8 @@ import { onDestroy } from 'svelte'
 import { page as pageState } from '$app/state'
 import { build_cms_page_url } from './pages'
 import { site_context } from './builder/stores/context'
+import { get } from 'svelte/store'
+import { current_user } from './pocketbase/user'
 
 export type UserActivityValues = Omit<UserActivity, 'id'>
 
@@ -122,7 +124,8 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 export const getUserActivity = () => {
 	const { value: site } = site_context.get()
 	return UserActivities.list({ filter: { site: site.id } })
-		?.map((activity) => {
+		?.filter((activity) => activity.user !== get(current_user)?.id)
+		.map((activity) => {
 			const site = Sites.one(activity.site)
 			const user = Collaborators.one(activity.user)
 			const user_avatar = user && user.avatar ? `${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}` : null
