@@ -225,7 +225,7 @@
 	</AlertDialog.Content>
 </AlertDialog.Root>
 
-<Dialog.Header title="Site Collaborators" />
+<Dialog.Header title="Site Collaborators" icon="clarity:users-solid" />
 
 <div class="Invitation">
 	<main>
@@ -316,11 +316,7 @@
 					{#each site_collborators ?? [] as { user, assignment }}
 						<li>
 							<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
-								<Avatar.Image
-									src={user.avatar && `${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}`}
-									alt={user.name || user.email}
-									class="grayscale hover:grayscale-0 object-cover object-center"
-								/>
+								<Avatar.Image src={user.avatar && `${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}`} alt={user.name || user.email} class="object-cover object-center" />
 								<Avatar.Fallback class="text-xs">{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 							</Avatar.Root>
 							<span class="email">

@@ -1198,6 +1198,7 @@
 	<Dialog.Content class="z-[999] sm:max-w-[720px] h-auto max-h-[calc(100vh_-_1rem)] w-full pt-4 gap-0 flex flex-col">
 		<Dialog.Header
 			title="Edit Markdown"
+			icon="material-symbols:markdown"
 			button={{
 				label: 'Save',
 				onclick: handle_markdown_save,

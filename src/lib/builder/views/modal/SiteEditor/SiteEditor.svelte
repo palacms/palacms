@@ -90,6 +90,7 @@
 
 <Dialog.Header
 	title="Site"
+	icon="gg:website"
 	button={{
 		label: 'Save',
 		onclick: saveComponent,

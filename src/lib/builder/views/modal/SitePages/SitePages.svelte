@@ -94,7 +94,7 @@
 	}
 </script>
 
-<Dialog.Header title="Pages ({all_pages.length})" />
+<Dialog.Header title="Pages ({all_pages.length})" icon="iconoir:multiple-pages" />
 {#if active_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)] page-list">
 		{#each [homepage, ...root_pages].sort((a, b) => a.index - b.index) as page, i (page.id)}

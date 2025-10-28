@@ -200,7 +200,8 @@
 </script>
 
 <Dialog.Header
-	title={symbol?.name || 'Block'}
+	title={symbol?.name || 'Section'}
+	icon="tabler:section-filled"
 	button={{
 		label: header.button.label || 'Save',
 		hint: '⌘S',

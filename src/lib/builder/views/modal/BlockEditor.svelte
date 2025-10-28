@@ -169,6 +169,7 @@
 
 <Dialog.Header
 	title={block.name || 'Block'}
+	icon="lucide:cuboid"
 	button={{
 		...header.button,
 		hint: '⌘S',

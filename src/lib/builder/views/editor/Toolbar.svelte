@@ -217,7 +217,7 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content side="bottom" class="z-[999]" align="start" sideOffset={4} customAnchor={page_dropdown_anchor}>
 									<DropdownMenu.Item onclick={() => (editing_page_types = true)} class="text-xs cursor-pointer">
-										<LayoutTemplate style="width: .75rem" />
+										<Icon icon="lucide:layout-template" style="width: .75rem" />
 										<span>Page Types</span>
 									</DropdownMenu.Item>
 								</DropdownMenu.Content>
