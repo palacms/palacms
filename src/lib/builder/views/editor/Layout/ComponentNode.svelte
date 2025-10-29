@@ -26,7 +26,7 @@
 	import { useContent } from '$lib/Content.svelte'
 	import { build_live_page_url } from '$lib/pages'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
-	import { getUserActivity } from '$lib/UserActivity.svelte'
+	import { getUserActivity, setUserActivity } from '$lib/UserActivity.svelte'
 
 	const { value: site } = site_context.getOr({ value: null })
 
@@ -803,6 +803,13 @@
 	let current_image_position = $state<{ from: number; to: number } | null>(null)
 	let current_link_position = $state<{ from: number; to: number } | null>(null)
 	let editing_existing_link = $state(false)
+
+	const editing = $derived(is_editing || editing_video || editing_image || editing_existing_link || editing_link || editing_markdown)
+	if ('page_type' in section) {
+		$effect(() => setUserActivity(editing ? { page_type_section: section.id } : {}))
+	} else if ('page' in section) {
+		$effect(() => setUserActivity(editing ? { page_section: section.id } : {}))
+	}
 </script>
 
 <Dialog.Root bind:open={editing_image}>
