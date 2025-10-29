@@ -111,7 +111,6 @@ func create_users_activity_collection(app core.App) error {
 			System:   true,
 		},
 	)
-	userActivities.Indexes = append(userActivities.Indexes, "CREATE UNIQUE INDEX `idx_5JgrMbxAMw` ON `user_activities` (`user`)")
 	return app.Save(userActivities)
 }
 

@@ -1,31 +1,46 @@
 import { Context, IsDocumentVisible, watch } from 'runed'
 import type { UserActivity } from './common/models/UserActivity'
 import { Collaborators, Pages, PageSections, PageTypes, PageTypeSections, Sites, SiteSymbols, UserActivities } from './pocketbase/collections'
-import { self } from './pocketbase/managers'
+import { activity as manager, self } from './pocketbase/managers'
 import { onDestroy } from 'svelte'
 import { page as pageState } from '$app/state'
 import { build_cms_page_url } from './pages'
 import { site_context } from './builder/stores/context'
 import { get } from 'svelte/store'
 import { current_user } from './pocketbase/user'
+import type { ObjectOf } from './pocketbase/CollectionMapping.svelte'
 
 export type UserActivityValues = Omit<UserActivity, 'id'>
+
+export type UserActivityInfo = {
+	site: ObjectOf<typeof Sites>
+	user: ObjectOf<typeof Collaborators>
+	user_avatar: URL | null
+	page_type: ObjectOf<typeof PageTypes> | null
+	page_type_url: URL | null
+	page: ObjectOf<typeof Pages> | null
+	page_url: URL | null
+	page_page_type: ObjectOf<typeof PageTypes> | null
+	site_symbol: ObjectOf<typeof SiteSymbols> | null
+	page_type_section: ObjectOf<typeof PageTypeSections> | null
+	page_section: ObjectOf<typeof PageSections> | null
+}
 
 const user_activity_context = new Context<{ value: UserActivityValues }>('user_activity')
 
 export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
-	const existing_activity = user_activity_context.getOr({ value: null })
-	if (existing_activity.value) {
+	const existing_context = user_activity_context.getOr({ value: null })
+	if (existing_context.value) {
 		// Set activity overrides through context
 		watch(
 			() => overrides,
-			() => {
+			(overrides) => {
 				for (const [key, value] of Object.entries(overrides)) {
-					existing_activity.value[key] = value
+					existing_context.value[key] = value
 				}
 				return () => {
 					for (const key of Object.keys(overrides)) {
-						existing_activity.value[key] = ''
+						existing_context.value[key] = ''
 					}
 				}
 			}
@@ -33,7 +48,7 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 		return
 	}
 
-	let activity = $state<{ value: UserActivityValues }>({
+	let context = $state<{ value: UserActivityValues }>({
 		value: {
 			user: '',
 			site: '',
@@ -42,11 +57,11 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 			site_symbol: ''
 		}
 	})
-	user_activity_context.set(activity)
+	user_activity_context.set(context)
 	watch(
 		() => overrides,
 		() => {
-			activity.value = {
+			context.value = {
 				user: '',
 				site: '',
 				page_type: '',
@@ -59,59 +74,56 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 		}
 	)
 
-	const activities = $derived(UserActivities.list({ filter: { user: activity.value.user } }))
 	let task: number | undefined
-	let tracking = false
+	let activity: ObjectOf<typeof UserActivities> | null = null
 	const track = async () => {
 		clearTimeout(task)
-		if (!activities) {
-			throw new Error('Activities not loaded')
-		}
 
-		tracking = true
-
-		// There's only one activity per user
-		if (activities[0]) {
-			self.instance.collection('user_activities').update(activities[0].id, activity.value)
+		if (activity) {
+			activity = UserActivities.update(activity.id, context.value)
+			await manager.commit()
 		} else {
-			self.instance.collection('user_activities').create(activity.value)
+			activity = UserActivities.create(context.value)
+			await manager.commit()
 		}
 
-		await self.commit()
 		task = setTimeout(track, 5000)
 	}
 
-	const stopTracking = async () => {
-		tracking = false
-		clearTimeout(task)
+	const startTracking = async () => {
+		if (task) return
+		task = setTimeout(track, 500)
+	}
 
-		if (activities?.length) {
+	const stopTracking = async () => {
+		clearTimeout(task)
+		task = undefined
+
+		if (activity) {
 			// There's only one activity per user
-			const [activity] = activities
-			self.instance.collection('user_activities').delete(activity.id)
-			await self.commit()
+			UserActivities.delete(activity.id)
+			activity = null
+			await manager.commit()
 		}
 	}
 
 	const visible = new IsDocumentVisible()
 	watch(
-		() => ({ visible: visible.current, activities }),
-		({ visible, activities }) => {
-			if (!activities) {
-				// Activities not loaded yet
-			} else if (!visible) {
+		() => ({ visible: visible.current }),
+		({ visible }) => {
+			if (!visible) {
 				// Tab not visible
 				stopTracking()
-			} else if (!tracking) {
+			} else if (!activity) {
 				// Start or resume tracking user activity
-				track()
+				startTracking()
 			}
 		}
 	)
 	watch(
-		() => ({ ...activity.value }),
+		() => ({ ...context.value }),
 		() => {
-			if (activities && tracking) {
+			if (activity) {
 				// Force update
 				track()
 			}
@@ -121,14 +133,14 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 	onDestroy(stopTracking)
 }
 
-export const getUserActivity = () => {
+export const getUserActivity = ({ filter }: { filter?: (activity: UserActivityInfo) => unknown } = {}) => {
 	const { value: site } = site_context.get()
-	return UserActivities.list({ filter: { site: site.id } })
-		?.filter((activity) => activity.user !== get(current_user)?.id)
-		.map((activity) => {
+	return (UserActivities.list({ filter: { site: site.id } }) ?? [])
+		.filter((activity) => activity.user !== get(current_user)?.id)
+		.flatMap((activity): UserActivityInfo[] => {
 			const site = Sites.one(activity.site)
 			const user = Collaborators.one(activity.user)
-			const user_avatar = user && user.avatar ? `${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}` : null
+			const user_avatar = user && user.avatar ? new URL(`${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}`) : null
 			const page_type = activity.page_type ? PageTypes.one(activity.page_type) : null
 			const page_type_url = page_type && new URL(`${pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}/page-type--${page_type.id}`, pageState.url.href)
 			const page = activity.page ? Pages.one(activity.page) : null
@@ -137,8 +149,7 @@ export const getUserActivity = () => {
 			const site_symbol = activity.site_symbol ? SiteSymbols.one(activity.site_symbol) : null
 			const page_type_section = activity.page_type_section ? PageTypeSections.one(activity.page_type_section) : null
 			const page_section = activity.page_section ? PageSections.one(activity.page_section) : null
-			return (
-				!!site &&
+			return !!site &&
 				!!user &&
 				user_avatar !== undefined &&
 				page_type !== undefined &&
@@ -148,21 +159,36 @@ export const getUserActivity = () => {
 				page_page_type !== undefined &&
 				site_symbol !== undefined &&
 				page_type_section !== undefined &&
-				page_section !== undefined && {
-					site,
-					user,
-					user_avatar,
-					page_type,
-					page_type_url,
-					page,
-					page_url,
-					page_page_type,
-					site_symbol,
-					page_type_section,
-					page_section
-				}
-			)
+				page_section !== undefined
+				? [
+						{
+							site,
+							user,
+							user_avatar,
+							page_type,
+							page_type_url,
+							page,
+							page_url,
+							page_page_type,
+							site_symbol,
+							page_type_section,
+							page_section
+						}
+					]
+				: []
 		})
-		.filter((activity) => !!activity)
+		.filter((activity) => !filter || filter(activity))
 		.sort((a, b) => a.user.id.localeCompare(b.user.id))
+		.reduce(
+			([activityMap], activity) => {
+				if (activityMap[activity.user.id]) {
+					activityMap[activity.user.id].push(activity)
+				} else {
+					activityMap[activity.user.id] = [activity]
+				}
+				return [activityMap] satisfies [Record<string, UserActivityInfo[]>]
+			},
+			[{}] as [Record<string, UserActivityInfo[]>]
+		)
+		.reduce((_, activityMap) => Object.values(activityMap), [] as UserActivityInfo[][])
 }

@@ -121,7 +121,7 @@
 		publishing = true
 	})
 
-	const activities = $derived(getUserActivity())
+	const user_activities = $derived(getUserActivity())
 </script>
 
 <Dialog.Root
@@ -254,7 +254,8 @@
 		</div>
 		<div class="right">
 			<div class="flex -space-x-1">
-				{#each activities as { user, user_avatar, page, page_type_url, page_url, page_type, page_page_type, site_symbol }}
+				{#each user_activities as activities}
+					{@const { user, user_avatar } = activities[0]}
 					<div class="flex" transition:fade>
 						<Popover.Root>
 							<Popover.Trigger>
@@ -277,18 +278,20 @@
 									</Avatar.Root>
 									<div class="space-y-1 text-sm">
 										<h4 class="font-medium">{user.name || user.email}</h4>
-										<div class="flex items-center gap-1">
-											{#if site_symbol}
-												<Icon icon="lucide:cuboid" />
-												<p>{site_symbol.name}</p>
-											{:else if page && page_page_type}
-												<Icon icon={page_page_type.icon} />
-												<a href={page_url?.href} class="underline">{page.name}</a>
-											{:else if page_type}
-												<Icon icon={page_type.icon} />
-												<a href={page_type_url?.href} class="underline">{page_type.name}</a>
-											{/if}
-										</div>
+										{#each activities as { page, page_type_url, page_url, page_type, page_page_type, site_symbol }}
+											<div class="flex items-center gap-1">
+												{#if site_symbol}
+													<Icon icon="lucide:cuboid" />
+													<p>{site_symbol.name}</p>
+												{:else if page && page_page_type}
+													<Icon icon={page_page_type.icon} />
+													<a href={page_url?.href} class="underline">{page.name}</a>
+												{:else if page_type}
+													<Icon icon={page_type.icon} />
+													<a href={page_type_url?.href} class="underline">{page_type.name}</a>
+												{/if}
+											</div>
+										{/each}
 									</div>
 								</div>
 							</Popover.Content>

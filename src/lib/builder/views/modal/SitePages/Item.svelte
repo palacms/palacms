@@ -49,7 +49,7 @@
 	const full_url = $derived(build_cms_page_url(page, pageState.url))
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
-	const related_activities = $derived(getUserActivity()?.filter((activity) => activity.page?.id === page.id) ?? [])
+	const related_activities = $derived(getUserActivity({ filter: (activity) => activity.page?.id === page.id }))
 
 	let showing_children = $state(false)
 	let children = $derived((page.children() ?? []).sort((a, b) => b.index - a.index))
@@ -255,7 +255,7 @@
 					<span class="url">/{page.slug}</span>
 				</div>
 				<div class="flex -space-x-4">
-					{#each related_activities as { user, user_avatar }}
+					{#each related_activities as [{ user, user_avatar }]}
 						<Avatar.Root class="ring-background ring-2 size-5 ml-4">
 							{#if user_avatar}
 								<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />

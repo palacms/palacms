@@ -49,7 +49,7 @@
 	let renaming = $state(false)
 	let new_name = $state(symbol.name)
 
-	const related_activities = $derived(getUserActivity()?.filter(({ site_symbol }) => site_symbol?.id === symbol.id) ?? [])
+	const related_activities = $derived(getUserActivity({ filter: ({ site_symbol }) => site_symbol?.id === symbol.id }))
 
 	async function save_rename() {
 		if (!symbol || !new_name.trim()) return
@@ -292,7 +292,7 @@
 				<Icon icon="eos-icons:three-dots-loading" />
 			</div>
 		{:else if componentCode}
-			{#each related_activities as activity}
+			{#each related_activities as [activity]}
 				<div transition:fade class="absolute z-10 bg-[#222] p-1 right-0 top-0 rounded-bl-lg flex justify-center -space-x-1">
 					<Avatar.Root class="ring-background ring-2 size-5">
 						{#if activity.user_avatar}

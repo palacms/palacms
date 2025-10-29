@@ -54,7 +54,7 @@
 		const base_path = page.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 		return `${base_path}/page-type--${page_type.id}`
 	})
-	const related_activities = $derived(getUserActivity()?.filter((activity) => activity.page_type?.id === page_type.id) ?? [])
+	const related_activities = $derived(getUserActivity({ filter: (activity) => activity.page_type?.id === page_type.id }))
 
 	// Load pages that would be deleted when confirming
 	const pages_to_delete = $derived(is_delete_open && site ? (Pages.list({ filter: { page_type: page_type.id, site: site.id }, sort: 'index' }) ?? undefined) : undefined)
@@ -82,7 +82,7 @@
 					{page_type.name}
 				</a>
 				<div class="flex -space-x-4">
-					{#each related_activities as { user, user_avatar }}
+					{#each related_activities as [{ user, user_avatar }]}
 						<Avatar.Root class="ring-background ring-2 size-5 ml-4">
 							{#if user_avatar}
 								<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />

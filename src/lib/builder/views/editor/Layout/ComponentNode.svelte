@@ -41,7 +41,7 @@
 	const data = $derived(useContent(section, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
 	const related_activities = $derived(
-		getUserActivity()?.filter((activity) => activity.site_symbol?.id === block.id || activity.page_type_section?.id === section.id || activity.page_section?.id === section.id) ?? []
+		getUserActivity({ filter: (activity) => activity.site_symbol?.id === block.id || activity.page_type_section?.id === section.id || activity.page_section?.id === section.id })
 	)
 
 	let bubble_menu_state = $state({ visible: false, top: 0, left: 0 })
@@ -1212,7 +1212,7 @@
 
 {#if related_activities.length > 0}
 	<div class="pointer-events-none flex justify-center items-start absolute inset-0 ring-inset ring-8 ring-[var(--color-gray-8)]">
-		{#each related_activities as { user, user_avatar }}
+		{#each related_activities as [{ user, user_avatar }]}
 			<div class="bg-[var(--color-gray-8)] rounded-bl-lg rounded-br-lg p-2">
 				<Avatar.Root class="ring-background ring-2 size-8">
 					{#if user_avatar}

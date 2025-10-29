@@ -26,7 +26,7 @@ import { SiteUpload } from '$lib/common/models/SiteUpload'
 import { User } from '$lib/common/models/User'
 import { UserActivity } from '$lib/common/models/UserActivity'
 import { createCollectionMapping } from './CollectionMapping.svelte'
-import { self } from './managers'
+import { activity, self } from './managers'
 
 export const Users = createCollectionMapping('users', User, self, {
 	subscribe: true,
@@ -300,7 +300,7 @@ export const SiteUploads = createCollectionMapping('site_uploads', SiteUpload, s
 	links: {}
 })
 
-export const UserActivities = createCollectionMapping('user_activities', UserActivity, self, {
+export const UserActivities = createCollectionMapping('user_activities', UserActivity, activity, {
 	subscribe: true,
 	links: {}
 })
