@@ -168,13 +168,20 @@
 			debouncedCompile()
 		} else {
 			const final_css = await processCSS(raw_css)
-			let styleTag = doc.querySelector('style[id^="svelte-"]')
-			styleTag!.textContent = final_css
+			// remove stale style tag if it exists
+			let styleTags = doc.querySelectorAll('style[id^="svelte-"]')
+			if (styleTags.length > 1) {
+				styleTags[0]!.remove()
+				styleTags[1]!.textContent = final_css
+			} else {
+				styleTags[0]!.textContent = final_css
+			}
 		}
 	}
 	watch(
-		() => code.css,
-		(css) => {
+		() => [code.css, $auto_refresh],
+		([css, refresh]) => {
+			if (!refresh) return
 			update_css(css)
 		}
 	)

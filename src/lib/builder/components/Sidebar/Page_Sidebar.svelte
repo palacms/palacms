@@ -94,7 +94,7 @@
 {#snippet symbols()}
 	<div class="symbols">
 		{#if $site_html !== null}
-			{#each available_symbols ?? [] as symbol (symbol.id)}
+			{#each available_symbols ?? [] as symbol, i (symbol.id)}
 				<div use:drag_target={symbol}>
 					<Sidebar_Symbol {symbol} controls_enabled={false} head={$site_html} active_page_type_id={page_type?.id} toggled={true} />
 				</div>

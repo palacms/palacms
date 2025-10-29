@@ -3,6 +3,7 @@
 	import type { HTMLAttributes } from 'svelte/elements'
 	import type { WithElementRef } from 'bits-ui'
 	import { Loader } from 'lucide-svelte'
+	import Icon from '@iconify/svelte'
 	import { cn } from '$lib/utils.js'
 	import { Button } from '$lib/components/ui/button'
 	import { mod_key_held } from '$lib/builder/stores/app/misc.js'
@@ -12,11 +13,13 @@
 		class: className,
 		children,
 		title,
+		icon,
 		button,
 		...restProps
 	}: WithElementRef<
 		HTMLAttributes<HTMLDivElement> & {
 			title: string
+			icon?: string
 			button?: {
 				label: string
 				onclick: () => void
@@ -32,7 +35,12 @@
 	<div class="ml-4">
 		{@render children?.()}
 	</div>
-	<DialogTitle class="text-center">{title}</DialogTitle>
+	<DialogTitle class="text-center flex items-center justify-center gap-2">
+		{#if icon}
+			<Icon {icon} class="h-4 w-4" />
+		{/if}
+		<span>{title}</span>
+	</DialogTitle>
 	{#if button?.label}
 		<Button variant="default" onclick={button.onclick} disabled={button.disabled} class="justify-self-end inline-flex justify-center items-center relative">
 			<span class:opacity-0={(button.hint && $mod_key_held) || button.loading}>

@@ -27,7 +27,7 @@
 	let creating_page_type = $state(false)
 </script>
 
-<Dialog.Header title="Page Types" />
+<Dialog.Header title="Page Types" icon="lucide:layout-template" />
 <main class="grid gap-2 p-2 bg-[var(--primo-color-black)]">
 	<ul class="grid gap-2">
 		{#each site?.page_types() || [] as page_type}

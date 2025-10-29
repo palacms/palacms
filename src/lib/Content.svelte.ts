@@ -152,54 +152,14 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				if (!pageField.key) continue
 
 				let data: ReturnType<typeof getContent> | null = null
-				if ('page' in entity && 'symbol' in entity) {
-					// This is a page section, get the page data
-					const page = Pages.one(entity.page)
-					if (page === null) continue
-					if (!page) return
-
-					const pageType = PageTypes.one(page.page_type)
-					if (pageType === null) continue
-					if (!pageType) return
-
-					const pageTypeFields = pageType.fields()
-					if (pageTypeFields === null) continue
-					if (!pageTypeFields) return
-
-					const pageEntries = page?.entries()
-					if (pageEntries === null) continue
-					if (!pageEntries) return
-
-					data = getContent({ entity: page, fields: pageTypeFields, entries: pageEntries })
-					if (!data) return
-
-					content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
-				} else if ('page_type' in entity && 'symbol' in entity) {
-					// This is page type section, get the page type data
-					const pageType = PageTypes.one(entity.page_type)
-					if (pageType === null) continue
-					if (!pageType) return
-
-					const pageTypeFields = pageType.fields()
-					if (pageTypeFields === null) continue
-					if (!pageTypeFields) return
-
-					const pageTypeEntries = pageType?.entries()
-					if (pageTypeEntries === null) continue
-					if (!pageTypeEntries) return
-
-					data = getContent({ entity: pageType, fields: pageTypeFields, entries: pageTypeEntries })
-					if (!data) return
-
-					content[locale]![field.key] = data[locale]?.[pageField.key] ?? get_empty_value(pageField)
-				} else if ('slug' in entity) {
+				if ('slug' in entity) {
 					// This a page, cannot self-referense
 					continue
 				} else if ('site' in entity && 'head' in entity) {
 					// This is page type, cannot self-referense
 					continue
 				} else {
-					// Entity is not related to any page or page type
+					// This is a section, select page, page_type, or home page
 					const { value: page } = page_context.getOr({ value: null })
 					const { value: pageType } = page_type_context.getOr({ value: null })
 					const { value: site } = site_context.getOr({ value: null })
@@ -548,12 +508,21 @@ const resolveEntries = ({ entity, field, entries, parentEntry }: { entity: Entit
 		if (!sourceField) return
 
 		let sourceEntity: ObjectOf<typeof Pages> | ObjectOf<typeof PageTypes> | undefined | null
-		if ('page' in entity && 'symbol' in entity) {
-			// This is a page section, get the page
-			sourceEntity = Pages.one(entity.page)
-		} else if ('page_type' in entity && 'symbol' in entity) {
-			// This is page type section, get the page type
-			sourceEntity = PageTypes.one(entity.page_type)
+		if ('symbol' in entity) {
+			// This is a section, select the page, page_type, or home page
+			const { value: page } = page_context.getOr({ value: null })
+			const { value: pageType } = page_type_context.getOr({ value: null })
+			const { value: site } = site_context.getOr({ value: null })
+			if (page) {
+				sourceEntity = page
+			} else if (pageType) {
+				sourceEntity = pageType
+			} else if (site) {
+				sourceEntity = site.homepage()
+			} else {
+				// No page, page_type, or site
+				return []
+			}
 		} else if ('slug' in entity) {
 			// This a page
 			sourceEntity = entity

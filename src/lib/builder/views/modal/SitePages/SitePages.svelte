@@ -8,11 +8,9 @@
 	import { resolve_page } from '$lib/pages'
 	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { fly } from 'svelte/transition'
-	import { flip } from 'svelte/animate'
-	import { quintOut } from 'svelte/easing'
 	import type { Page } from '$lib/common/models/Page'
 	import { self } from '$lib/pocketbase/managers'
+	import { fade } from 'svelte/transition'
 
 	let hover_position = $state(null)
 
@@ -83,15 +81,12 @@
 	 * Note: Only copies root-level entries for now, nested entries are handled on-demand
 	 */
 	async function create_page_with_sections(page_data: Omit<Page, 'id' | 'index'>) {
-		// Get existing siblings and sort them
-		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent).sort((a, b) => a.index - b.index)
+		// Get existing siblings and find the max index
+		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent)
+		const maxIndex = sibling_pages.length > 0 ? Math.max(...sibling_pages.map((p) => p.index)) : -1
+		const new_index = maxIndex + 1
 
-		// Append to the end of the sibling list
-		const startIndex = page_data.parent === homepage?.id ? 1 : 0
-		const lastIndex = sibling_pages.length > 0 ? Math.max(...sibling_pages.map((p) => p.index)) : startIndex - 1
-		const new_index = lastIndex + 1
-
-		// Create the page at the computed index (no shifting of existing siblings)
+		// Create the page with the next available index
 		new_page = Pages.create({
 			...page_data,
 			index: new_index
@@ -99,17 +94,17 @@
 	}
 </script>
 
-<Dialog.Header title="Pages" />
+<Dialog.Header title="Pages ({all_pages.length})" icon="iconoir:multiple-pages" />
 {#if active_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)] page-list">
 		{#each [homepage, ...root_pages].sort((a, b) => a.index - b.index) as page, i (page.id)}
-			<li class="page-item-wrapper" in:fly={{ y: 20, duration: 200, delay: i * 50 }} animate:flip={{ duration: 300, easing: quintOut }}>
+			<li transition:fade={{ duration: 100 }}>
 				<Item {page} {page_slug} active_page_id={!pageState.params.page_type ? active_page.id : null} oncreate={create_page_with_sections} bind:hover_position />
 				<div class="drop-indicator-inline" class:active={hover_position === `${page.id}-bottom`}><div></div></div>
 			</li>
 		{/each}
 		{#if building_page}
-			<li class="page-item-wrapper building-placeholder">
+			<li class="building-placeholder">
 				<div class="building-page-item">
 					<Icon icon="eos-icons:three-dots-loading" />
 					<span>Building {building_page_name} Page</span>
@@ -119,7 +114,7 @@
 	</ul>
 
 	{#if creating_page}
-		<div class="p-2 pt-0 bg-[var(--primo-color-black)]">
+		<div class="p-2 bg-[var(--primo-color-black)]">
 			<PageForm
 				oncreate={async (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => {
 					creating_page = false
@@ -135,7 +130,7 @@
 			/>
 		</div>
 	{:else}
-		<div class="p-2 pt-0 bg-[var(--primo-color-black)]">
+		<div class="p-2 bg-[var(--primo-color-black)]">
 			<button class="create-page-btn" onclick={() => (creating_page = true)}>
 				<Icon icon="akar-icons:plus" />
 				<span>Create Page</span>
@@ -149,7 +144,7 @@
 		gap: 0.5rem;
 		overflow: auto;
 
-		.page-item-wrapper {
+		> li {
 			position: relative;
 		}
 
@@ -193,13 +188,14 @@
 	}
 
 	.create-page-btn {
+		font-size: 0.75;
 		width: 100%;
-		padding: 0.875rem 1.125rem;
+		padding: 0.5rem 1.125rem;
 		background: #1a1a1a;
 		border-radius: var(--primo-border-radius);
 		display: flex;
 		justify-content: center;
-		gap: 0.5rem;
+		gap: 0.25rem;
 		align-items: center;
 		transition: 0.1s;
 		color: var(--color-gray-3);

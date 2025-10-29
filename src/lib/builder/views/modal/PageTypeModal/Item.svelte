@@ -4,12 +4,14 @@
 	import PageForm from './PageTypeForm.svelte'
 	import MenuPopup from '$lib/builder/ui/Dropdown.svelte'
 	import type { PageType } from '$lib/common/models/PageType'
-	import { Sites, PageTypes, Pages } from '$lib/pocketbase/collections'
+	import { PageTypes, Pages } from '$lib/pocketbase/collections'
 	import { self as pb, self } from '$lib/pocketbase/managers'
 	import { page } from '$app/state'
 	import * as AlertDialog from '$lib/components/ui/alert-dialog'
 	import { Loader } from 'lucide-svelte'
 	import { site_context } from '$lib/builder/stores/context'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
+	import { getUserActivity } from '$lib/UserActivity.svelte'
 
 	let { active, page_type }: { active: boolean; page_type: PageType } = $props()
 
@@ -52,6 +54,7 @@
 		const base_path = page.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'
 		return `${base_path}/page-type--${page_type.id}`
 	})
+	const related_activities = $derived(getUserActivity({ filter: (activity) => activity.page_type?.id === page_type.id }))
 
 	// Load pages that would be deleted when confirming
 	const pages_to_delete = $derived(is_delete_open && site ? (Pages.list({ filter: { page_type: page_type.id, site: site.id }, sort: 'index' }) ?? undefined) : undefined)
@@ -78,6 +81,16 @@
 				<a class="name" href={full_url()}>
 					{page_type.name}
 				</a>
+				<div class="flex -space-x-4">
+					{#each related_activities as [{ user, user_avatar }]}
+						<Avatar.Root class="ring-background ring-2 size-5 ml-4">
+							{#if user_avatar}
+								<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+							{/if}
+							<Avatar.Fallback>{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+						</Avatar.Root>
+					{/each}
+				</div>
 			</div>
 			<div class="options">
 				<MenuPopup

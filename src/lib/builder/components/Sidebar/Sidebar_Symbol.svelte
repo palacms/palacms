@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
+	import { fade } from 'svelte/transition'
 	import Icon from '@iconify/svelte'
 	import Toggle from 'svelte-toggle'
 	import { Button } from '$lib/components/ui/button'
@@ -21,7 +22,9 @@
 	import { page_context, page_type_context } from '$lib/builder/stores/context'
 	import { PageTypes, PageTypeFields } from '$lib/pocketbase/collections'
 	import { Unlink } from 'lucide-svelte'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { self } from '$lib/pocketbase/managers'
+	import { getUserActivity } from '$lib/UserActivity.svelte'
 
 	const dispatch = createEventDispatcher()
 
@@ -32,12 +35,21 @@
 		toggled = false,
 		head = '',
 		active_page_type_id = null
-	}: { symbol: ObjectOf<typeof SiteSymbols>; controls_enabled?: boolean; show_toggle?: boolean; toggled?: boolean; head?: string; active_page_type_id?: string | null } = $props()
+	}: {
+		symbol: ObjectOf<typeof SiteSymbols>
+		controls_enabled?: boolean
+		show_toggle?: boolean
+		toggled?: boolean
+		head?: string
+		active_page_type_id?: string | null
+	} = $props()
 
 	let name_el = $state()
 
 	let renaming = $state(false)
 	let new_name = $state(symbol.name)
+
+	const related_activities = $derived(getUserActivity({ filter: ({ site_symbol }) => site_symbol?.id === symbol.id }))
 
 	async function save_rename() {
 		if (!symbol || !new_name.trim()) return
@@ -53,11 +65,6 @@
 
 	let height = $state(0)
 
-	const code = $derived({
-		html: symbol.html,
-		css: symbol.css,
-		js: symbol.js
-	})
 	const _data = $derived(useContent(symbol, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
 
@@ -285,6 +292,16 @@
 				<Icon icon="eos-icons:three-dots-loading" />
 			</div>
 		{:else if componentCode}
+			{#each related_activities as [activity]}
+				<div transition:fade class="absolute z-10 bg-[#222] p-1 right-0 top-0 rounded-bl-lg flex justify-center -space-x-1">
+					<Avatar.Root class="ring-background ring-2 size-5">
+						{#if activity.user_avatar}
+							<Avatar.Image src={activity.user_avatar} alt={activity.user.name || activity.user.email} class="object-cover object-center" />
+						{/if}
+						<Avatar.Fallback>{(activity.user.name || activity.user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+					</Avatar.Root>
+				</div>
+			{/each}
 			<div class="symbol">
 				<IFrame bind:height {head} {componentCode} />
 			</div>
@@ -335,13 +352,11 @@
 	}
 	.symbol-container {
 		width: 100%;
-		border-radius: 0.25rem;
-		overflow: hidden;
 		position: relative;
+		overflow: hidden;
 		cursor: grab;
-		min-height: 4rem;
+		min-height: 2rem;
 		transition: box-shadow 0.2s;
-		background: var(--color-gray-8);
 
 		&:after {
 			content: '';
@@ -352,6 +367,10 @@
 		&.disabled {
 			pointer-events: none;
 		}
+	}
+	.symbol {
+		border-radius: 0.25rem;
+		overflow: hidden;
 	}
 	.error {
 		display: flex;
@@ -375,8 +394,5 @@
 			height: 1rem;
 			width: 1rem;
 		}
-	}
-	[contenteditable] {
-		outline: 0 !important;
 	}
 </style>

@@ -2,9 +2,10 @@
 	import { goto } from '$app/navigation'
 	import { page } from '$app/state'
 	import { Users } from '$lib/pocketbase/collections'
-	import { Loader } from 'lucide-svelte'
+	import { self } from '$lib/pocketbase/managers'
+	import { Loader, User } from 'lucide-svelte'
 
-	type AuthAction = 'sign_in' | 'reset_password' | 'confirm_password_reset'
+	type AuthAction = 'sign_in' | 'reset_password' | 'confirm_password_reset' | 'create_account'
 
 	let { title, email = $bindable(), password = $bindable(null), action, footer = null }: { action: AuthAction } & Record<string, any> = $props()
 
@@ -12,6 +13,22 @@
 	let passwordResetRequested = $state(false)
 	let loading = $state(false)
 	let error = $state('')
+	let name = $state('')
+	let avatar = $state('')
+	let avatarFile = $state<File | null>(null)
+
+	const createToken = $derived(page.url.searchParams.get('create') || '')
+	const invitedEmail = $derived(page.url.searchParams.get('email') || '')
+
+	const handleAvatarChange = (event: Event) => {
+		const target = event.target as HTMLInputElement
+		const file = target.files?.[0]
+		if (file) {
+			avatarFile = file
+			// Create a preview URL
+			avatar = URL.createObjectURL(file)
+		}
+	}
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault()
@@ -38,22 +55,40 @@
 				break
 			case 'confirm_password_reset':
 				loading = true
-				const token = page.url.searchParams.get('reset') || page.url.searchParams.get('create') || ''
-				email = page.url.searchParams.get('email') || null
+				const token = page.url.searchParams.get('reset') || ''
 				await Users.confirmPasswordReset(token, password, confirm_password)
-					.then(async () => {
-						// log invited users in immediately
-						if (email) {
-							await Users.authWithPassword(email, password)
-								.then(() => {
-									goto('/admin/site')
-								})
-								.catch(({ message }) => {
-									error = message
-								})
+					.then(() => goto('/admin/auth'))
+					.catch((err) => {
+						// Extract the actual error message from PocketBase
+						if (err.response?.data?.password) {
+							error = err.response.data.password.message
+						} else if (err.response?.message) {
+							error = err.response.message
 						} else {
-							// users resetting pw have to use it to auth (to remember)
-							goto('/admin/auth')
+							error = err.message || 'An error occurred'
+						}
+					})
+				loading = false
+				break
+			case 'create_account':
+				loading = true
+				await Users.confirmPasswordReset(createToken, password, confirm_password)
+					.then(async () => {
+						if (invitedEmail) {
+							// Auto-login invited users
+							await Users.authWithPassword(invitedEmail, password)
+
+							// Update user with name and avatar if provided
+							const userId = self.instance.authStore.record?.id
+							if ((name || avatarFile) && userId) {
+								const data: any = {}
+								if (name) data.name = name
+								if (avatarFile) data.avatar = avatarFile
+								await self.instance.collection('users').update(userId, data)
+							}
+							await goto('/admin/site')
+						} else {
+							await goto('/admin/auth')
 						}
 					})
 					.catch((err) => {
@@ -85,11 +120,33 @@
 {/if}
 <form class="form" onsubmit={submit}>
 	<div class="fields">
-		{#if action !== 'confirm_password_reset'}
+		{#if action !== 'confirm_password_reset' && action !== 'create_account'}
 			<label>
 				<span>Email</span>
 				<input data-test-id="email" bind:value={email} type="text" name="email" disabled={passwordResetRequested} />
 			</label>
+		{/if}
+		{#if action === 'create_account' && invitedEmail}
+			<label>
+				<span>Email</span>
+				<input data-test-id="email" bind:value={email} type="text" name="email" disabled />
+			</label>
+			<div class="grid grid-cols-[1fr_auto] gap-2 items-end">
+				<label class="grid gap-2">
+					<span>Name & Avatar</span>
+					<input data-test-id="name" bind:value={name} type="text" name="name" placeholder="John Doe" />
+				</label>
+				<div class="relative">
+					{#if avatar}
+						<img src={avatar} alt="Avatar preview" class="h-[50px] w-[50px] rounded-lg object-cover border border-gray-600 bg-gray-800" />
+					{:else}
+						<div class="h-[50px] w-[50px] rounded-lg border border-gray-600 bg-gray-800 flex items-center justify-center text-gray-600">
+							<User size={20} />
+						</div>
+					{/if}
+					<input type="file" accept="image/*" onchange={handleAvatarChange} class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+				</div>
+			</div>
 		{/if}
 		{#if action !== 'reset_password'}
 			<label>
@@ -97,7 +154,7 @@
 				<input data-test-id="password" bind:value={password} type="password" name="password" />
 			</label>
 		{/if}
-		{#if action === 'confirm_password_reset'}
+		{#if action === 'confirm_password_reset' || action === 'create_account'}
 			<label>
 				<span>Confirm Password</span>
 				<input data-test-id="confirm-password" bind:value={confirm_password} type="password" name="confirm-password" />
@@ -159,6 +216,10 @@
 			padding: 0.75rem;
 			background-color: #1c1c1c;
 			font-size: 1rem;
+		}
+
+		::file-selector-button {
+			display: none;
 		}
 
 		.button {

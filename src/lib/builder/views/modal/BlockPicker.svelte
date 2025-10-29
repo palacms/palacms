@@ -42,6 +42,7 @@
 <Dialog.Header
 	class="mb-2"
 	title="Add Blocks to Site"
+	icon="lucide:plus-square"
 	button={{
 		label: `Add ${selected_symbols.length} Blocks`,
 		onclick: handleSave,

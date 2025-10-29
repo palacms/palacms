@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { fade } from 'svelte/transition'
 	import Icon from '@iconify/svelte'
 
 	let {
@@ -98,7 +97,6 @@
 		onwheel={() => {
 			visible = false // prevent overlay from interrupting scroll, bad ux
 		}}
-		transition:fade={{ duration: 200 }}
 		class="image-editor-overlay"
 		bind:this={overlay_element}
 		onmousedown={handleMouseDown}
@@ -126,6 +124,13 @@
 		display: flex;
 		overflow: visible;
 		cursor: pointer;
+		opacity: 0;
+		transition: opacity 0.1s;
+		overflow: hidden;
+
+		&:hover {
+			opacity: 1;
+		}
 	}
 
 	.overlay-button {

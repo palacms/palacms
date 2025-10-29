@@ -6,15 +6,14 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu'
 	import { LayoutTemplate, Trash2, ChevronDown } from 'lucide-svelte'
 	import ToolbarButton from './ToolbarButton.svelte'
-	import Letter from '$lib/builder/ui/Letter.svelte'
 	import { PalaButton } from '$lib/builder/components/buttons'
 	import { mod_key_held } from '$lib/builder/stores/app/misc'
 	import { onNavigate, goto } from '$app/navigation'
-	import { active_users } from '$lib/builder/stores/app/misc'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { page as pageState } from '$app/state'
-	import { PageTypes } from '$lib/pocketbase/collections'
+	import { Collaborators, Pages, PageTypes, Sites, SiteSymbols, UserActivities } from '$lib/pocketbase/collections'
 	import { onModKey } from '$lib/builder/utils/keyboard'
-
+	import * as Popover from '$lib/components/ui/popover/index.js'
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
 	import SitePages from '$lib/builder/views/modal/SitePages/SitePages.svelte'
 	import PageTypeModal from '$lib/builder/views/modal/PageTypeModal/PageTypeModal.svelte'
@@ -26,6 +25,7 @@
 	import { current_user } from '$lib/pocketbase/user'
 	import { resolve_page, build_cms_page_url } from '$lib/pages'
 	import { self } from '$lib/pocketbase/managers'
+	import { getUserActivity } from '$lib/UserActivity.svelte'
 
 	let { children }: { children: Snippet } = $props()
 
@@ -120,6 +120,8 @@
 	onModKey('p', () => {
 		publishing = true
 	})
+
+	const user_activities = $derived(getUserActivity())
 </script>
 
 <Dialog.Root
@@ -182,7 +184,7 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<nav aria-label="toolbar" id="primo-toolbar" class="primo-reset">
+<nav aria-label="toolbar" id="primo-toolbar">
 	<div class="menu-container">
 		<div class="left">
 			{#if $current_user?.serverRole}
@@ -215,7 +217,7 @@
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content side="bottom" class="z-[999]" align="start" sideOffset={4} customAnchor={page_dropdown_anchor}>
 									<DropdownMenu.Item onclick={() => (editing_page_types = true)} class="text-xs cursor-pointer">
-										<LayoutTemplate style="width: .75rem" />
+										<Icon icon="lucide:layout-template" style="width: .75rem" />
 										<span>Page Types</span>
 									</DropdownMenu.Item>
 								</DropdownMenu.Content>
@@ -251,15 +253,52 @@
 			{/if}
 		</div>
 		<div class="right">
-			{#if $active_users.length > 0}
-				<div class="active-editors flex gap-1">
-					{#each $active_users as user}
-						<div class="editor" transition:fade={{ duration: 200 }}>
-							<Letter letter={user.email.slice(0, 1)} />
-						</div>
-					{/each}
-				</div>
-			{/if}
+			<div class="flex -space-x-1">
+				{#each user_activities as activities}
+					{@const { user, user_avatar } = activities[0]}
+					<div class="flex" transition:fade>
+						<Popover.Root>
+							<Popover.Trigger>
+								<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
+									{#if user_avatar}
+										<Avatar.Image src={user_avatar} alt={user.name || user.email} class="grayscale hover:grayscale-0 object-cover object-center" />
+									{/if}
+									<Avatar.Fallback>{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+								</Avatar.Root>
+							</Popover.Trigger>
+							<Popover.Content class="w-auto z-[99]">
+								<div class="flex space-x-4">
+									<Avatar.Root class="data-[status=loaded]:border-foreground bg-muted text-muted-foreground h-12 w-12 rounded-full border border-transparent text-[17px] font-medium uppercase">
+										<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
+											{#if user_avatar}
+												<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+											{/if}
+											<Avatar.Fallback class="border-muted border">{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+										</div>
+									</Avatar.Root>
+									<div class="space-y-1 text-sm">
+										<h4 class="font-medium">{user.name || user.email}</h4>
+										{#each activities as { page, page_type_url, page_url, page_type, page_page_type, site_symbol }}
+											<div class="flex items-center gap-1">
+												{#if site_symbol}
+													<Icon icon="lucide:cuboid" />
+													<p>{site_symbol.name}</p>
+												{:else if page && page_page_type}
+													<Icon icon={page_page_type.icon} />
+													<a href={page_url?.href} class="underline">{page.name}</a>
+												{:else if page_type}
+													<Icon icon={page_type.icon} />
+													<a href={page_type_url?.href} class="underline">{page_type.name}</a>
+												{/if}
+											</div>
+										{/each}
+									</div>
+								</div>
+							</Popover.Content>
+						</Popover.Root>
+					</div>
+				{/each}
+			</div>
 			<!-- {#if !$timeline.first}
 				<ToolbarButton id="undo" title="Undo" icon="material-symbols:undo" style="border: 0; font-size: 1.5rem;" on:click={undo_change} />
 			{/if}

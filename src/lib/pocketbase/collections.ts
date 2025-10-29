@@ -1,3 +1,4 @@
+import { Collaborator } from '$lib/common/models/Collaborator'
 import { LibrarySymbol } from '$lib/common/models/LibrarySymbol'
 import { LibrarySymbolEntry } from '$lib/common/models/LibrarySymbolEntry'
 import { LibrarySymbolField } from '$lib/common/models/LibrarySymbolField'
@@ -23,8 +24,9 @@ import { SiteSymbolEntry } from '$lib/common/models/SiteSymbolEntry'
 import { SiteSymbolField } from '$lib/common/models/SiteSymbolField'
 import { SiteUpload } from '$lib/common/models/SiteUpload'
 import { User } from '$lib/common/models/User'
+import { UserActivity } from '$lib/common/models/UserActivity'
 import { createCollectionMapping } from './CollectionMapping.svelte'
-import { self } from './managers'
+import { activity, self } from './managers'
 
 export const Users = createCollectionMapping('users', User, self, {
 	subscribe: true,
@@ -36,6 +38,10 @@ export const Users = createCollectionMapping('users', User, self, {
 			return SiteRoleAssignments.list({ filter: { user: this.id } })
 		}
 	}
+})
+
+export const Collaborators = createCollectionMapping('collaborators', Collaborator, self, {
+	subscribe: true
 })
 
 export const LibrarySymbolGroups = createCollectionMapping('library_symbol_groups', LibrarySymbolGroup, self, {
@@ -290,6 +296,11 @@ export const PageSectionEntries = createCollectionMapping('page_section_entries'
 })
 
 export const SiteUploads = createCollectionMapping('site_uploads', SiteUpload, self, {
+	subscribe: true,
+	links: {}
+})
+
+export const UserActivities = createCollectionMapping('user_activities', UserActivity, activity, {
 	subscribe: true,
 	links: {}
 })

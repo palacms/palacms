@@ -17,9 +17,12 @@
 	import { page_context } from '$lib/builder/stores/context'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import { watch } from 'runed'
+	import { setUserActivity } from '$lib/UserActivity.svelte'
 	import { self } from '$lib/pocketbase/managers'
 
 	let { page }: { page: ObjectOf<typeof Pages> } = $props()
+
+	setUserActivity({ page: page.id })
 
 	// Set context so child components can access the page
 	const context = $state({ value: page })
@@ -951,14 +954,6 @@
 		color: var(--color-gray-7);
 		z-index: 1;
 		text-align: center;
-	}
-	.button {
-		background: var(--color-gray-1);
-		padding: 0.5rem 1rem;
-		border-radius: var(--primo-border-radius);
-		font-size: 0.875rem;
-		text-decoration: none;
-		color: var(--color-gray-7);
 	}
 	.site-foot {
 		color: black;

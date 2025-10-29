@@ -42,7 +42,7 @@
 
 	let icons = $state([])
 	async function search() {
-		fetch(`https://api.iconify.design/search?query=${encodeURIComponent(search_query.trim())}&limit=32`)
+		fetch(`https://api.iconify.design/search?query=${encodeURIComponent(search_query.trim())}&limit=200`)
 			.then((res) => res.json())
 			.then((data) => {
 				icons = data.icons
@@ -233,6 +233,8 @@
 		position: relative;
 		margin-top: 0.25rem;
 		padding: 0.75rem;
+		max-height: 200px;
+		overflow: auto;
 
 		button.close {
 			position: absolute;

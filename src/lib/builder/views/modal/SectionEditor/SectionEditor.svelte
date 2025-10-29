@@ -23,6 +23,8 @@
 	import * as _ from 'lodash-es'
 	import { useContent } from '$lib/Content.svelte'
 	import { self } from '$lib/pocketbase/managers'
+	import { beforeNavigate } from '$app/navigation'
+	import { setUserActivity } from '$lib/UserActivity.svelte'
 
 	let {
 		component,
@@ -45,6 +47,8 @@
 		has_unsaved_changes: boolean
 		header?: any
 	} = $props()
+
+	setUserActivity('page_type' in component ? { page_type_section: component.id } : { page_section: component.id })
 
 	// Data will be loaded automatically by CollectionMapping system when accessed
 
@@ -95,6 +99,14 @@
 			: []
 	)
 
+	beforeNavigate((nav) => {
+		if (has_unsaved_changes) {
+			// Prevent navigation when there are unsaved changes
+			nav.cancel()
+			alert('You have unsaved changes. Please save before navigating away.')
+		}
+	})
+
 	// Set up hotkey listeners for modal (global fallback)
 	onModKey('e', toggle_tab)
 
@@ -116,6 +128,9 @@
 
 		if (!$has_error && symbol) {
 			loading = true
+
+			// Update symbol code (doing this here to prevent compilation for the symbol in the sidebar/background
+			SiteSymbols.update(symbol.id, { html, css, js })
 
 			// Copy entries for newly created fields to the symbol
 			if (newly_created_fields.size > 0 && entries) {
@@ -185,7 +200,8 @@
 </script>
 
 <Dialog.Header
-	title={symbol?.name || 'Block'}
+	title={symbol?.name || 'Section'}
+	icon="tabler:section-filled"
 	button={{
 		label: header.button.label || 'Save',
 		hint: '⌘S',
@@ -203,20 +219,7 @@
 	<PaneGroup direction={$orientation} class="flex gap-1">
 		<Pane defaultSize={50} class="flex flex-col pt-1 pl-1">
 			{#if tab === 'code'}
-				<FullCodeEditor
-					bind:html
-					bind:css
-					bind:js
-					data={component_data}
-					{completions}
-					storage_key={symbol?.id}
-					on:save={save_component}
-					on:mod-e={toggle_tab}
-					on:mod-r={() => $refresh_preview()}
-					oninput={() => {
-						SiteSymbols.update(symbol.id, { html, css, js })
-					}}
-				/>
+				<FullCodeEditor bind:html bind:css bind:js data={component_data} {completions} storage_key={symbol?.id} on:save={save_component} on:mod-e={toggle_tab} on:mod-r={() => $refresh_preview()} />
 			{:else if tab === 'content' && fields && entries}
 				<Fields
 					entity={component}

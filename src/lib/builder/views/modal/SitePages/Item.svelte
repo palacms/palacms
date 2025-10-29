@@ -3,13 +3,14 @@
 	import Icon from '@iconify/svelte'
 	import { onMount, tick } from 'svelte'
 	import { get, set } from 'idb-keyval'
-	import { slide } from 'svelte/transition'
+	import { slide, fade } from 'svelte/transition'
 	import { content_editable, validate_url } from '$lib/builder/utilities'
 	import PageForm from './PageForm.svelte'
 	import MenuPopup from '$lib/builder/ui/Dropdown.svelte'
 	import * as Dialog from '$lib/components/ui/dialog'
 	import { Button } from '$lib/components/ui/button'
 	import { page as pageState } from '$app/state'
+	import { toast } from 'svelte-sonner'
 	import { Pages, PageTypes, Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { site_context } from '$lib/builder/stores/context'
@@ -18,7 +19,9 @@
 	import type { Page } from '$lib/common/models/Page'
 	import { build_cms_page_url } from '$lib/pages'
 	import { goto } from '$app/navigation'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
 	import { self as selfManager } from '$lib/pocketbase/managers'
+	import { getUserActivity } from '$lib/UserActivity.svelte'
 
 	let editing_page = $state(false)
 
@@ -46,9 +49,10 @@
 	const full_url = $derived(build_cms_page_url(page, pageState.url))
 	const allPages = $derived(site?.pages() ?? [])
 	const page_type = $derived(PageTypes.one(page.page_type))
+	const related_activities = $derived(getUserActivity({ filter: (activity) => activity.page?.id === page.id }))
 
 	let showing_children = $state(false)
-	let children = $derived(page.children() ?? [])
+	let children = $derived((page.children() ?? []).sort((a, b) => b.index - a.index))
 	let has_children = $derived(children.length > 0 && page.slug !== '')
 	let has_toggled = $state(false)
 	const active = $derived(page.id === active_page_id)
@@ -250,6 +254,16 @@
 					<a class:active href={full_url?.href} onclick={() => {}} class="name">{page.name}</a>
 					<span class="url">/{page.slug}</span>
 				</div>
+				<div class="flex -space-x-4">
+					{#each related_activities as [{ user, user_avatar }]}
+						<Avatar.Root class="ring-background ring-2 size-5 ml-4">
+							{#if user_avatar}
+								<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+							{/if}
+							<Avatar.Fallback>{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+						</Avatar.Root>
+					{/each}
+				</div>
 			{/if}
 			{#if has_children}
 				<button
@@ -306,6 +320,7 @@
 								{
 									label: 'Delete',
 									icon: 'ic:outline-delete',
+									danger: true,
 									on_click: async () => {
 										const descendants = getAllDescendants(page.id)
 
@@ -328,6 +343,8 @@
 												})
 
 												await selfManager.commit()
+
+												toast.success(descendants.length > 0 ? `Deleted "${page.name}" and ${descendants.length} child page(s)` : `Deleted "${page.name}"`)
 
 												// If the deleted page was the one open, navigate to homepage
 												try {
@@ -354,6 +371,8 @@
 											})
 
 											await selfManager.commit()
+
+											toast.success(`Deleted "${page.name}"`)
 
 											// If the deleted page was the one open, navigate to homepage
 											try {
@@ -396,8 +415,10 @@
 
 	{#if showing_children && has_children}
 		<ul class="page-list child" transition:slide={{ duration: has_toggled ? 100 : 0 }}>
-			{#each children as subpage}
-				<Item parent={page} page={subpage} active={subpage.id === active_page_id} {page_slug} {active_page_id} {oncreate} bind:hover_position on:delete on:create />
+			{#each children as subpage (subpage.id)}
+				<li transition:fade={{ duration: 200 }}>
+					<Item parent={page} page={subpage} active={subpage.id === active_page_id} {page_slug} {active_page_id} {oncreate} bind:hover_position on:delete on:create />
+				</li>
 			{/each}
 		</ul>
 	{/if}
@@ -465,15 +486,16 @@
 	.Item {
 		display: flex;
 		flex-direction: column;
+		position: relative;
 		/* gap: 4px; */
-		transition:
-			transform 0.2s ease,
-			opacity 0.2s ease;
 		/* padding-bottom: 0.5rem; */
 
 		&.dragging {
 			opacity: 0.5;
 			transform: scale(0.98);
+			transition:
+				transform 0.2s ease,
+				opacity 0.2s ease;
 		}
 
 		&.contains-child {
@@ -499,6 +521,7 @@
 			}
 		}
 	}
+
 	.page-item-container {
 		display: flex;
 		justify-content: space-between;
@@ -532,7 +555,7 @@
 				display: grid;
 				grid-template-columns: auto auto 1fr;
 				place-items: center;
-				gap: 1rem;
+				gap: 0.75rem;
 				color: var(--color-gray-1);
 
 				.icon {
@@ -545,6 +568,7 @@
 				}
 
 				a.name {
+					font-size: 0.875rem;
 					white-space: nowrap;
 					overflow: hidden;
 					text-overflow: ellipsis;
@@ -563,9 +587,7 @@
 					text-overflow: ellipsis;
 					font-weight: 400;
 					color: var(--color-gray-5);
-					max-width: 10rem;
 					display: inline-block; /* This is key for spans */
-					max-width: 200px; /* Using max-width is often better for responsive designs */
 					white-space: nowrap;
 					overflow: hidden;
 					text-overflow: ellipsis;

@@ -2,11 +2,12 @@
 	import { SiteRoleAssignment } from '$lib/common/models/SiteRoleAssignment'
 	import type { User } from '$lib/common/models/User'
 	import * as AlertDialog from '$lib/components/ui/alert-dialog'
+	import * as Avatar from '$lib/components/ui/avatar'
 	import { Button } from '$lib/components/ui/button'
 	import * as Dialog from '$lib/components/ui/dialog'
 	import { instance } from '$lib/instance'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
-	import { SiteRoleAssignments, Users, type Sites } from '$lib/pocketbase/collections'
+	import { Collaborators, SiteRoleAssignments, Users, type Sites } from '$lib/pocketbase/collections'
 	import { self } from '$lib/pocketbase/managers'
 	import Icon from '@iconify/svelte'
 	import { Loader } from 'lucide-svelte'
@@ -152,7 +153,7 @@
 		collaborator_to_remove = undefined
 	}
 
-	let users = $derived(Users.list())
+	let users = $derived(Collaborators.list())
 	let server_members = $derived(users?.filter(({ serverRole }) => !!serverRole))
 	let site_collborators = $derived(
 		site.role_assignments()?.map((assignment) => ({
@@ -224,7 +225,7 @@
 	</AlertDialog.Content>
 </AlertDialog.Root>
 
-<Dialog.Header class="mb-2" title="Site Collaborators" />
+<Dialog.Header title="Site Collaborators" icon="clarity:users-solid" />
 
 <div class="Invitation">
 	<main>
@@ -286,10 +287,22 @@
 				<span>Loading...</span>
 			{:else}
 				<ul>
-					{#each server_members ?? [] as { email, serverRole }}
+					{#each server_members ?? [] as { id, email, avatar, name, serverRole }}
 						<li>
-							<span class="letter">{email[0]}</span>
-							<span class="email">{email}</span>
+							<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
+								{#if avatar}
+									<Avatar.Image src={avatar && `${self.instance.baseURL}/api/files/collaborators/${id}/${avatar}`} alt={name || email} class="object-cover object-center" />
+								{/if}
+								<Avatar.Fallback class="text-xs">{(name || email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+							</Avatar.Root>
+							<span class="email">
+								{#if name}
+									<span>{name}</span>
+									<span>({email})</span>
+								{:else}
+									<span>{email}</span>
+								{/if}
+							</span>
 							<span class="role">
 								{role_names[serverRole ?? 'none']}
 							</span>
@@ -302,8 +315,18 @@
 					{/each}
 					{#each site_collborators ?? [] as { user, assignment }}
 						<li>
-							<span class="letter">{user?.email[0]}</span>
-							<span class="email">{user?.email}</span>
+							<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
+								<Avatar.Image src={user.avatar && `${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}`} alt={user.name || user.email} class="object-cover object-center" />
+								<Avatar.Fallback class="text-xs">{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
+							</Avatar.Root>
+							<span class="email">
+								{#if user.name}
+									<span>{user.name}</span>
+									<span>({user.email})</span>
+								{:else}
+									<span>{user.email}</span>
+								{/if}
+							</span>
 							<span class="role">
 								{role_names[assignment.role]}
 							</span>

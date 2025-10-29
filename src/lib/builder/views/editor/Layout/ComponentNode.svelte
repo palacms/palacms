@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import * as _ from 'lodash-es'
 	import { fade } from 'svelte/transition'
+	import * as _ from 'lodash-es'
 	import * as Dialog from '$lib/components/ui/dialog'
 	import ImageField from '$lib/builder/field-types/ImageField.svelte'
 	import LinkField from '$lib/builder/field-types/Link.svelte'
@@ -25,6 +25,8 @@
 	import { convert_markdown_to_html, convert_rich_text_to_html } from '$lib/builder/utils'
 	import { useContent } from '$lib/Content.svelte'
 	import { build_live_page_url } from '$lib/pages'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
+	import { getUserActivity, setUserActivity } from '$lib/UserActivity.svelte'
 
 	const { value: site } = site_context.getOr({ value: null })
 
@@ -38,6 +40,9 @@
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
 	const data = $derived(useContent(section, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
+	const related_activities = $derived(
+		getUserActivity({ filter: (activity) => activity.site_symbol?.id === block.id || activity.page_type_section?.id === section.id || activity.page_section?.id === section.id })
+	)
 
 	let bubble_menu_state = $state({ visible: false, top: 0, left: 0 })
 	let floating_menu_state = $state({ visible: false, top: 0, left: 0 })
@@ -536,7 +541,7 @@
 
 	// Reroute non-entry links to open in a new tab
 	async function reroute_links() {
-		if (!node.contentDocument) return
+		if (!node?.contentDocument) return
 		node.contentDocument.querySelectorAll<HTMLLinkElement>('a:not([data-entry] a):not([data-key] a):not([data-entry]):not([data-key])').forEach((link) => {
 			link.addEventListener('click', (e) => {
 				e.preventDefault()
@@ -549,23 +554,6 @@
 		image_overlay_is_visible = false
 		update_menu_positions()
 	}
-
-	let last_code_signature = $state<string>('')
-	// Watch for changes in block code or component data and regenerate
-	watch(
-		() => ({ html: block.html, css: block.css, js: block.js, data: component_data }),
-		({ html, css, js, data }) => {
-			// Wait until content data has resolved (avoid compiling with undefined data)
-			if (data === undefined) return
-
-			// Recompile when any source (html/css/js) changes.
-			const updated_code_signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
-			if (last_code_signature !== updated_code_signature) {
-				generate_component_code(block)
-				last_code_signature = updated_code_signature
-			}
-		}
-	)
 
 	let mutation_observer: MutationObserver
 	let iframe_resize_observer: ResizeObserver
@@ -749,7 +737,24 @@
 		}
 	}
 
-	// Watch for changes and send to iframe when ready
+	let last_code_signature = $state<string>('')
+	// Watch for changes in raw block code or component data and regenerate compiled code
+	watch(
+		() => ({ html: block.html, css: block.css, js: block.js, data: component_data, error }),
+		({ html, css, js, data, error }) => {
+			// Wait until content data has resolved (avoid compiling with undefined data)
+			if (data === undefined) return
+
+			// Recompile when any source (html/css/js) changes or an error exists.
+			const updated_code_signature = `${html}\n/*__CSS__*/\n${css}\n/*__JS__*/\n${js}`
+			if (last_code_signature !== updated_code_signature || error) {
+				generate_component_code(block)
+				last_code_signature = updated_code_signature
+			}
+		}
+	)
+
+	// Watch for compiled code changes and send to iframe when ready
 	// Only send when this component's code & data meaningfully changed to avoid
 	// triggering re-renders of unrelated symbols.
 	let last_sent_data = $state<any>()
@@ -798,6 +803,13 @@
 	let current_image_position = $state<{ from: number; to: number } | null>(null)
 	let current_link_position = $state<{ from: number; to: number } | null>(null)
 	let editing_existing_link = $state(false)
+
+	const editing = $derived(is_editing || editing_video || editing_image || editing_existing_link || editing_link || editing_markdown)
+	if ('page_type' in section) {
+		$effect(() => setUserActivity(editing ? { page_type_section: section.id } : {}))
+	} else if ('page' in section) {
+		$effect(() => setUserActivity(editing ? { page_section: section.id } : {}))
+	}
 </script>
 
 <Dialog.Root bind:open={editing_image}>
@@ -1193,6 +1205,7 @@
 	<Dialog.Content class="z-[999] sm:max-w-[720px] h-auto max-h-[calc(100vh_-_1rem)] w-full pt-4 gap-0 flex flex-col">
 		<Dialog.Header
 			title="Edit Markdown"
+			icon="material-symbols:markdown"
 			button={{
 				label: 'Save',
 				onclick: handle_markdown_save,
@@ -1203,6 +1216,21 @@
 		<MarkdownCodeMirror bind:value={current_markdown_value} autofocus on:save={handle_markdown_save} />
 	</Dialog.Content>
 </Dialog.Root>
+
+{#if related_activities.length > 0}
+	<div class="pointer-events-none flex justify-center items-start absolute inset-0 ring-inset ring-8 ring-[var(--color-gray-8)]">
+		{#each related_activities as [{ user, user_avatar }]}
+			<div class="bg-[var(--color-gray-8)] rounded-bl-lg rounded-br-lg p-2">
+				<Avatar.Root class="ring-background ring-2 size-8">
+					{#if user_avatar}
+						<Avatar.Image src={user_avatar} alt={user.name || user.email} class="object-cover object-center" />
+					{/if}
+					<Avatar.Fallback>{(user.name || user.email).slice(0, 2)}</Avatar.Fallback>
+				</Avatar.Root>
+			</div>
+		{/each}
+	</div>
+{/if}
 
 {#if $site_html && generated_js}
 	<iframe
@@ -1217,7 +1245,8 @@
 {/if}
 
 {#if error}
-	<div class="component-error">
+	<!-- delay error rendering to give full component data a chance to render in (during collaboration) -->
+	<div class="component-error" in:fade={{ delay: 1000 }}>
 		<pre>{@html error}</pre>
 		<p class="component-error__hint">Check console for full error.</p>
 	</div>

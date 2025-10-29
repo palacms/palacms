@@ -2,7 +2,6 @@
 	import * as _ from 'lodash-es'
 	import { tick } from 'svelte'
 	import { site_context, page_type_context } from '$lib/builder/stores/context'
-	import { fade } from 'svelte/transition'
 	import { flip } from 'svelte/animate'
 	import UI from '../../ui/index.js'
 	import * as Dialog from '$lib/components/ui/dialog'
@@ -15,10 +14,13 @@
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 	import { PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
-	import { self as pb, self } from '$lib/pocketbase/managers'
+	import { self as pb } from '$lib/pocketbase/managers'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
+	import { setUserActivity } from '$lib/UserActivity.svelte'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
+
+	setUserActivity({ page_type: page_type.id })
 
 	// Set context so child components can access the page type
 	const context = $state({ value: page_type })
@@ -33,9 +35,9 @@
 	const page_type_symbols = $derived(page_type?.symbols() ?? [])
 
 	// Group sections by zone
-	const header_sections = $derived(page_type_sections.filter((s) => s.zone === 'header'))
-	const body_sections = $derived(page_type_sections.filter((s) => s.zone === 'body'))
-	const footer_sections = $derived(page_type_sections.filter((s) => s.zone === 'footer'))
+	const header_sections = $derived(page_type_sections.filter((s) => s.zone === 'header').sort((a, b) => a.index - b.index))
+	const body_sections = $derived(page_type_sections.filter((s) => s.zone === 'body').sort((a, b) => a.index - b.index))
+	const footer_sections = $derived(page_type_sections.filter((s) => s.zone === 'footer').sort((a, b) => a.index - b.index))
 
 	// Page type head and foot editors
 	let head = $state(page_type.head || '')
@@ -45,7 +47,7 @@
 	async function save_page_type_code() {
 		if (!page_type) return
 		PageTypes.update(page_type.id, { head, foot })
-		await self.commit()
+		await pb.commit()
 	}
 
 	// Auto-save with delay
@@ -314,7 +316,7 @@
 						await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
 					}
 
-					await self.commit()
+					await pb.commit()
 				} catch (error) {
 					console.error('Database insertion error (empty zone):', error)
 					throw error
@@ -398,13 +400,8 @@
 				const section_position_in_zone = zone_sections.findIndex((s) => s.id === section_dragged_over.id)
 				const target_position = closestEdgeOfTarget === 'top' ? section_position_in_zone : section_position_in_zone + 1
 
-				// Update indices of existing sections in this zone that come after the insertion position
-				const sections_to_update = zone_sections.slice(target_position)
-				for (const section of sections_to_update) {
-					PageTypeSections.update(section.id, { index: section.index + 1 })
-				}
-
 				try {
+					// Create new section first to avoid visual jumps
 					const new_section = PageTypeSections.create({
 						page_type: page_type.id,
 						symbol: block_being_dragged.id,
@@ -416,7 +413,13 @@
 						await copy_symbol_entries_to_section(block_being_dragged.id, new_section.id)
 					}
 
-					await self.commit()
+					// Update indices of existing sections in this zone that come after the insertion position
+					const sections_to_update = zone_sections.slice(target_position)
+					for (const section of sections_to_update) {
+						PageTypeSections.update(section.id, { index: section.index + 1 })
+					}
+
+					await pb.commit()
 				} catch (error) {
 					console.error('Database insertion error:', error)
 					throw error
@@ -492,7 +495,7 @@
 					return
 				}
 				// User confirmed, discard changes
-				self.discard()
+				pb.discard()
 			}
 		}
 	}}
@@ -570,7 +573,7 @@
 					PageTypeSections.update(section.id, { index: section.index - 1 })
 				}
 
-				await self.commit()
+				await pb.commit()
 			}}
 			on:edit-code={() => edit_component('code')}
 			on:edit-content={() => edit_component('content')}
@@ -598,15 +601,15 @@
 
 					// Step 1: Move current section to temp position and commit
 					PageTypeSections.update(section.id, { index: temp_index })
-					await self.commit()
+					await pb.commit()
 
 					// Step 2: Move above section to current position and commit
 					PageTypeSections.update(section_above.id, { index: section_index })
-					await self.commit()
+					await pb.commit()
 
 					// Step 3: Move current section to above position and commit
 					PageTypeSections.update(section.id, { index: above_index })
-					await self.commit()
+					await pb.commit()
 				}
 
 				setTimeout(() => {
@@ -637,15 +640,15 @@
 
 					// Step 1: Move current section to temp position and commit
 					PageTypeSections.update(section.id, { index: temp_index })
-					await self.commit()
+					await pb.commit()
 
 					// Step 2: Move below section to current position and commit
 					PageTypeSections.update(section_below.id, { index: section_index })
-					await self.commit()
+					await pb.commit()
 
 					// Step 3: Move current section to below position and commit
 					PageTypeSections.update(section.id, { index: below_index })
-					await self.commit()
+					await pb.commit()
 				}
 
 				setTimeout(() => {
@@ -694,7 +697,6 @@
 						}
 					}, 50)
 				}}
-				in:fade={{ duration: 100 }}
 				animate:flip={{ duration: 100 }}
 				data-test-id="page-type-section-{section.id}"
 				style="min-height: 3rem;overflow:hidden;position: relative;"
@@ -761,7 +763,6 @@
 						}
 					}, 50)
 				}}
-				in:fade={{ duration: 100 }}
 				animate:flip={{ duration: 100 }}
 				data-test-id="page-type-section-{section.id}"
 				style="min-height: 3rem;overflow:hidden;position: relative;"
@@ -825,7 +826,6 @@
 						}
 					}, 50)
 				}}
-				in:fade={{ duration: 100 }}
 				animate:flip={{ duration: 100 }}
 				data-test-id="page-type-section-{section.id}"
 				style="min-height: 3rem;overflow:hidden;position: relative;"

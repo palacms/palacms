@@ -2,6 +2,7 @@
 	import { onDestroy } from 'svelte'
 	import Icon from '@iconify/svelte'
 	import { get, set } from 'idb-keyval'
+	import * as Avatar from '$lib/components/ui/avatar/index.js'
 
 	/**
 	 * @typedef {Object} Props
@@ -37,41 +38,43 @@
 </script>
 
 <div class="Card" {id} class:minimal>
-	{#if title}
-		<button
-			class="header-button"
-			onclick={() => {
-				hidden = !hidden
-			}}
-		>
-			<header>
-				<div
-					style="display: flex;
+	<div>
+		{#if title}
+			<button
+				class="header-button"
+				onclick={() => {
+					hidden = !hidden
+				}}
+			>
+				<header>
+					<div
+						style="display: flex;
 				align-items: center;
 				gap: 0.5rem;"
-				>
-					{#if title}<span class="title">{title}</span>{/if}
-					{#if icon}<Icon {icon} />{/if}
-					{#if pill}
-						<span class="pill">{pill}</span>
+					>
+						{#if title}<span class="title">{title}</span>{/if}
+						{#if icon}<Icon {icon} />{/if}
+						{#if pill}
+							<span class="pill">{pill}</span>
+						{/if}
+					</div>
+					{#if hidden}
+						<Icon icon="ph:caret-down-bold" />
+					{:else}
+						<Icon icon="ph:caret-up-bold" />
 					{/if}
-				</div>
-				{#if hidden}
-					<Icon icon="ph:caret-down-bold" />
-				{:else}
-					<Icon icon="ph:caret-up-bold" />
-				{/if}
-			</header>
-		</button>
-	{/if}
-	{#if !hidden}
-		<!-- <div class="card-body" transition:fade|local={{ duration: 100 }}> -->
-		<div class="card-body">
-			{@render body?.()}
-			{@render children?.()}
-		</div>
-	{/if}
-	{@render footer?.({ class: 'card-footer' })}
+				</header>
+			</button>
+		{/if}
+		{#if !hidden}
+			<!-- <div class="card-body" transition:fade|local={{ duration: 100 }}> -->
+			<div class="card-body">
+				{@render body?.()}
+				{@render children?.()}
+			</div>
+		{/if}
+		{@render footer?.({ class: 'card-footer' })}
+	</div>
 </div>
 
 <style lang="postcss">

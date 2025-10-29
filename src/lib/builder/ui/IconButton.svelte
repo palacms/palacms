@@ -19,6 +19,9 @@
 
 <style lang="postcss">
 	button.show-menu {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		flex: 1;
 		padding: 0.25rem;
 		transition: 0.1s;
