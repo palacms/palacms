@@ -56,11 +56,14 @@
 			entries,
 			updateEntry: EntriesCollection.update,
 			createEntry: (data) => {
-				if (!page) {
-					throw new Error('No page')
+				if (page) {
+					return PageEntries.create({
+						...data,
+						page: page.id
+					})
+				} else {
+					return PageTypeEntries.create(data)
 				}
-
-				return EntriesCollection.create({ ...data, page: page.id })
 			},
 			values
 		})
