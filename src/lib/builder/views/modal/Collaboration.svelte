@@ -156,10 +156,20 @@
 	let users = $derived(Collaborators.list())
 	let server_members = $derived(users?.filter(({ serverRole }) => !!serverRole))
 	let site_collborators = $derived(
-		site.role_assignments()?.map((assignment) => ({
-			assignment,
-			user: users?.find((user) => user.id === assignment.user)!
-		}))
+		site
+			.role_assignments()
+			?.map((assignment) => ({
+				assignment,
+				user: users?.find((user) => user.id === assignment.user)
+			}))
+			.filter(
+				(
+					collaborator
+				): collaborator is {
+					assignment: ObjectOf<typeof SiteRoleAssignments>
+					user: ObjectOf<typeof Collaborators>
+				} => !!collaborator.user
+			)
 	)
 	let is_remove_collaborator_open = $state(false)
 	let removing_collaborator = $state(false)
