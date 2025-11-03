@@ -11,14 +11,14 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
       <script type="module">
         import { mount, unmount } from "https://esm.sh/svelte@${SVELTE_VERSION}";
 
-        let source;
+        let App;
         let c;
 
         const channel = new BroadcastChannel('${broadcast_id}');
-        channel.onmessage = ({data}) => {
+        channel.onmessage = async ({data}) => {
           const { event, payload = {} } = data
           if (payload.componentApp) {
-            source = payload.componentApp
+            await init(payload.componentApp)
           }
           if (payload.data) {
             update(payload.data)
@@ -26,77 +26,84 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
         }
         channel.postMessage({ event: 'INITIALIZED' });
 
+        async function init(source) {
+          const blob = new Blob([source], { type: 'text/javascript' })
+          const url = URL.createObjectURL(blob)
+          await import(url)
+            .then((module) => {
+              App = module.default
+            })
+            .finally(() => {
+              try { URL.revokeObjectURL(url) } catch (_) {}
+            });
+        }
+
         function update(props) {
           // Reset logs and runtime error display in parent
           try { channel.postMessage({ event: 'BEGIN' }); } catch (_) {}
 
-          // Install a safe console proxy that forwards logs to the parent
-          (function setupConsoleBridge(){
-            try {
-              const methods = ['log','info','warn','error'];
-              const original = Object.create(null);
-              for (const m of methods) {
-                const fn = (console && typeof console[m] === 'function') ? console[m].bind(console) : null;
-                original[m] = fn;
+          if (c) unmount(c)
+          try {
+            c = mount(App, {
+              target: document.body,
+              props
+            })
+            channel.postMessage({ event: 'MOUNTED' })
+          } catch(e) {
+            document.body.innerHTML = ''
+            channel.postMessage({
+              event: 'SET_ERROR',
+              payload: {
+                error: e.toString()
               }
-
-              const safeSerialize = (v) => {
-                try { return JSON.parse(JSON.stringify(v)); } catch (_) { return typeof v === 'string' ? v : String(v); }
-              };
-
-              let timer = null;
-              let lastQueued = undefined;
-              let lastSent = undefined;
-              const sendThrottled = (value) => {
-                lastQueued = value;
-                if (timer) return;
-                timer = setTimeout(() => {
-                  timer = null;
-                  const payload = lastQueued;
-                  const key = (()=>{ try { return JSON.stringify(payload);} catch(_) { return String(payload);} })();
-                  if (key !== lastSent) {
-                    try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: payload } }); } catch(_) {}
-                    lastSent = key;
-                  }
-                }, 120);
-              };
-
-              for (const m of methods) {
-                console[m] = (...args) => {
-                  try {
-                    const payload = args.length <= 1 ? safeSerialize(args[0]) : args.map(safeSerialize);
-                    sendThrottled(payload);
-                  } catch(_) {}
-                  if (original[m]) try { original[m](...args); } catch(_) {}
-                };
-              }
-            } catch(_) {
-              // ignore logging bridge failures
-            }
-          })();
-
-          const blob = new Blob([source], { type: 'text/javascript' });
-          const url = URL.createObjectURL(blob);
-          import(url).then(({ default: App }) => {
-            if (c) unmount(c)
-            try {
-              c = mount(App, {
-                target: document.body,
-                props
-              })
-              channel.postMessage({ event: 'MOUNTED' });
-            } catch(e) {
-              document.body.innerHTML = ''
-              channel.postMessage({
-                event: 'SET_ERROR',
-                payload: {
-                  error: e.toString()
-                }
-              });
-            }
-            try { URL.revokeObjectURL(url) } catch (_) {}
-          })
+            });
+          }
         }
+
+        // Install a safe console proxy that forwards logs to the parent
+        (function setupConsoleBridge(){
+          try {
+            const methods = ['log','info','warn','error'];
+            const original = Object.create(null);
+            for (const m of methods) {
+              const fn = (console && typeof console[m] === 'function') ? console[m].bind(console) : null;
+              original[m] = fn;
+            }
+
+            const safeSerialize = (v) => {
+              try { return JSON.parse(JSON.stringify(v)); } catch (_) { return typeof v === 'string' ? v : String(v); }
+            };
+
+            let timer = null;
+            let lastQueued = undefined;
+            let lastSent = undefined;
+            const sendThrottled = (value) => {
+              lastQueued = value;
+              if (timer) return;
+              timer = setTimeout(() => {
+                timer = null;
+                const payload = lastQueued;
+                const key = (()=>{ try { return JSON.stringify(payload);} catch(_) { return String(payload);} })();
+                if (key !== lastSent) {
+                  try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: payload } }); } catch(_) {}
+                  lastSent = key;
+                }
+              }, 120);
+            };
+
+            for (const m of methods) {
+              console[m] = (...args) => {
+                try {
+                  const payload = args.length <= 1 ? safeSerialize(args[0]) : args.map(safeSerialize);
+                  sendThrottled(payload);
+                } catch(_) {}
+                if (original[m]) try { original[m](...args); } catch(_) {}
+              };
+            }
+          } catch(_) {
+            // ignore logging bridge failures
+          }
+        })();
 		  </script>
     </head>
     <body></body>
@@ -127,52 +134,56 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
         <script type="module">
           import { mount, unmount } from "https://esm.sh/svelte@${SVELTE_VERSION}"
 
-          let source;
+          let App;
           let c;
 
-          window.addEventListener('message', ({ data }) => {
+          window.addEventListener('message', async ({ data }) => {
             const payload = data && data.payload
             if (!payload) return
             if (payload.js) {
-              source = payload.js
+              await init(payload.js)
             }
             if (payload && Object.prototype.hasOwnProperty.call(payload, 'data')) {
               update(payload.data)
             }
           })
 
-          function update(props) {
+          async function init(source) {
             if (!source) return
-            const target = document.querySelector('#component')
-            if (!target) return
-
             const blob = new Blob([source], { type: 'text/javascript' })
             const url = URL.createObjectURL(blob)
-            import(url)
-              .then(({ default: App }) => {
-                if (c) unmount(c)
-                try {
-                  c = mount(App, {
-                    target,
-                    props
-                  })
-                  window.parent.postMessage({ type: 'component-error', error: '' }, '*')
-                } catch (e) {
-                  target.innerHTML = ''
-                  console.error(e)
-                  const message = typeof e === 'string' ? e : e?.stack || e?.message || e?.toString?.() || 'Unknown error'
-                  window.parent.postMessage({ type: 'component-error', error: String(message).split('\\n')[0] }, '*')
-                }
+            await import(url)
+              .then((module) => {
+                App = module.default
               })
               .catch((e) => {
                 target.innerHTML = ''
                 console.error(e)
                 const message = typeof e === 'string' ? e : e?.stack || e?.message || e?.toString?.() || 'Unknown error'
                 window.parent.postMessage({ type: 'component-error', error: String(message).split('\\n')[0] }, '*')
+                throw e
               })
               .finally(() => {
                 try { URL.revokeObjectURL(url) } catch (_) {}
               })
+          }
+
+          function update(props) {
+            const target = document.querySelector('#component')
+            if (!target) return
+            if (c) unmount(c)
+            try {
+              c = mount(App, {
+                target,
+                props
+              })
+              window.parent.postMessage({ type: 'component-error', error: '' }, '*')
+            } catch (e) {
+              target.innerHTML = ''
+              console.error(e)
+              const message = typeof e === 'string' ? e : e?.stack || e?.message || e?.toString?.() || 'Unknown error'
+              window.parent.postMessage({ type: 'component-error', error: String(message).split('\\n')[0] }, '*')
+            }
           }
         </script>
         ${head}
