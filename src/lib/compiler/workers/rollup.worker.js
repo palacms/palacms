@@ -77,123 +77,198 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 	generate_lookup(component, head)
 
 	if (buildStatic) {
-		const bundle = await compile({
-			generate: 'server',
-			css: 'injected',
-			runes: true
-		})
+		try {
+			const bundle = await compile({
+				generate: 'server',
+				css: 'injected',
+				runes: true
+			})
 
-		const output = (await bundle.generate({ format })).output[0].code
-		final.ssr = output
+			const output = (await bundle.generate({ format })).output[0].code
+			final.ssr = output
+		} catch (error) {
+			noteBuildError(error)
+			return final
+		}
 	} else {
-		const bundle = await compile({
-			generate: 'client',
-			css,
-			dev: dev_mode,
-			runes: true
-		})
+		try {
+			const bundle = await compile({
+				generate: 'client',
+				css,
+				dev: dev_mode,
+				runes: true
+			})
 
-		const output = (await bundle.generate({ format })).output[0].code
-		final.dom = output
+			const output = (await bundle.generate({ format })).output[0].code
+			final.dom = output
+		} catch (error) {
+			noteBuildError(error)
+			return final
+		}
 	}
 
 	// If static build needs to be hydrated, include Svelte JS (or just render normal component)
 	if (hydrated) {
-		const bundle = await compile({
-			generate: 'client',
-			css: 'external',
-			runes: true
-		})
-		const output = (await bundle.generate({ format })).output[0].code
-		final.dom = output
+		try {
+			const bundle = await compile({
+				generate: 'client',
+				css: 'external',
+				runes: true
+			})
+			const output = (await bundle.generate({ format })).output[0].code
+			final.dom = output
+		} catch (error) {
+			noteBuildError(error)
+			return final
+		}
 	}
 
 	async function compile(svelteOptions = {}) {
-		return await rollup({
-			input: './App.svelte',
-			// Keep remote modules external; browser will fetch them by URL
-			external: (id) => /^https?:/.test(id),
-			plugins: [
-				commonjs,
-				{
-					name: 'repl-plugin',
-					async resolveId(importee, importer) {
-						// 1) Virtual esm-env
-						if (importee === 'esm-env') return 'virtual:esm-env'
+		try {
+			return await rollup({
+				input: './App.svelte',
+				// Keep remote modules external; browser will fetch them by URL
+				external: (id) => /^https?:/.test(id),
+				plugins: [
+					commonjs,
+					{
+						name: 'repl-plugin',
+						async resolveId(importee, importer) {
+							// 1) Virtual esm-env
+							if (importee === 'esm-env') return 'virtual:esm-env'
 
-						// 2) Local virtual files (in-memory Svelte sources)
-						if (component_lookup.has(importee)) return importee
+							// 2) Local virtual files (in-memory Svelte sources)
+							if (component_lookup.has(importee)) return importee
 
-						// 3) Absolute remote URL stays as-is
-						if (/^https?:/.test(importee)) return importee
+							// 3) Absolute remote URL stays as-is
+							if (/^https?:/.test(importee)) return importee
 
-						// 4) Resolve relative from remote importer
-						if (importee.startsWith('.')) {
-							if (importer && /^https?:/.test(importer)) return new URL(importee, importer).href
-							return importee
+							// 4) Resolve relative from remote importer
+							if (importee.startsWith('.')) {
+								if (importer && /^https?:/.test(importer)) return new URL(importee, importer).href
+								return importee
+							}
+
+							// 5) Handle esm.sh absolute subpaths
+							if (importer && importer.startsWith(`${CDN_URL}/`)) {
+								if (importee.startsWith(`${CDN_URL}/`)) return importee
+								if (importee.startsWith('/')) return new URL(importee, CDN_URL).href
+							}
+
+							// 6) Svelte runtime pinned
+							if (importee === 'svelte') return SVELTE_CDN
+							if (importee.startsWith('svelte/')) return `${SVELTE_CDN}/${importee.slice('svelte/'.length)}`
+
+							// 7) Bare package → let esm.sh resolve
+							return `${CDN_URL}/${importee}`
+						},
+						async load(id) {
+							if (id === 'virtual:esm-env') {
+								return `export const DEV = false; export const PROD = true; export const BROWSER = true;`
+							}
+							if (component_lookup.has(id)) return component_lookup.get(id)
+							return null
+						},
+						async transform(code, id) {
+							// our only transform is to compile svelte components
+							//@ts-ignore
+							if (!/.*\.svelte/.test(id)) return null
+
+							try {
+								const res = await sveltePromiseWorker.postMessage({
+									code,
+									svelteOptions
+								})
+								return res.code
+
+								// TODO: reinstate warnings, pass along to UI instead of throwing
+								// const warnings = res.warnings
+								// 	.filter((w) => !w.message.startsWith(`Component has unused export`))
+								// 	.filter((w) => !w.message.startsWith(`A11y: <img> element should have an alt attribute`))
+								// 	.filter((w) => w.code !== `a11y-missing-content`)
+								// 	.filter((w) => !w.message.startsWith(`Unused CSS selector`)) // TODO: reinstate
+								// if (warnings[0]) {
+								// 	final.error = warnings[0].message
+								// 	return ''
+								// } else {
+								// 	return res.code
+								// }
+							} catch (e) {
+								noteBuildError(e, id)
+								return ''
+							}
 						}
-
-						// 5) Handle esm.sh absolute subpaths
-						if (importer && importer.startsWith(`${CDN_URL}/`)) {
-							if (importee.startsWith(`${CDN_URL}/`)) return importee
-							if (importee.startsWith('/')) return new URL(importee, CDN_URL).href
-						}
-
-						// 6) Svelte runtime pinned
-						if (importee === 'svelte') return SVELTE_CDN
-						if (importee.startsWith('svelte/')) return `${SVELTE_CDN}/${importee.slice('svelte/'.length)}`
-
-						// 7) Bare package → let esm.sh resolve
-						return `${CDN_URL}/${importee}`
 					},
-					async load(id) {
-						if (id === 'virtual:esm-env') {
-							return `export const DEV = false; export const PROD = true; export const BROWSER = true;`
-						}
-						if (component_lookup.has(id)) return component_lookup.get(id)
-						return null
-					},
-					async transform(code, id) {
-						// our only transform is to compile svelte components
-						//@ts-ignore
-						if (!/.*\.svelte/.test(id)) return null
-
-						try {
-							const res = await sveltePromiseWorker.postMessage({
-								code,
-								svelteOptions
-							})
-							return res.code
-
-							// TODO: reinstate warnings, pass along to UI instead of throwing
-							// const warnings = res.warnings
-							// 	.filter((w) => !w.message.startsWith(`Component has unused export`))
-							// 	.filter((w) => !w.message.startsWith(`A11y: <img> element should have an alt attribute`))
-							// 	.filter((w) => w.code !== `a11y-missing-content`)
-							// 	.filter((w) => !w.message.startsWith(`Unused CSS selector`)) // TODO: reinstate
-							// if (warnings[0]) {
-							// 	final.error = warnings[0].message
-							// 	return ''
-							// } else {
-							// 	return res.code
-							// }
-						} catch (e) {
-							final.error = e.toString()
-							return ''
-						}
-					}
-				},
-				json,
-				glsl
-				// replace({
-				//   'process.env.NODE_ENV': JSON.stringify('production'),
-				// }),
-			]
-			// inlineDynamicImports: true
-		})
+					json,
+					glsl
+					// replace({
+					//   'process.env.NODE_ENV': JSON.stringify('production'),
+					// }),
+				]
+				// inlineDynamicImports: true
+			})
+		} catch (error) {
+			noteBuildError(error)
+			throw error
+		}
 	}
 
 	return final
+
+	function noteBuildError(error, id) {
+		if (final.error) return
+		final.error = formatRollupError(error, id)
+	}
 }
 
 /** Removed legacy remote resolution helpers; esm.sh handles bare specifiers. */
+
+function formatRollupError(error, id) {
+	if (!error) return 'Unknown build error'
+	if (typeof error === 'string') return error
+
+	const name = error.name || error.code || 'BuildError'
+	const plugin = error.plugin ? `[${error.plugin}] ` : ''
+	const reason = error.message || error.reason || String(error)
+
+	const line = error.loc?.line ?? error.start?.line ?? error.line
+	const column = error.loc?.column ?? error.start?.column ?? error.column
+
+	const position = line || column ? [typeof line === 'number' ? `line ${line}` : null, typeof column === 'number' ? `column ${column}` : null].filter(Boolean).join(', ') : ''
+
+	let message = `${plugin}${name}: ${reason}`
+	if (position) {
+		message += `\n${position}`
+	}
+
+	const frame = typeof error.frame === 'string' ? error.frame.trim() : ''
+	const docLinks = collectDocLinks(error)
+	if (frame) {
+		message += `\n\n${frame}`
+	}
+
+	if (docLinks.length) {
+		message += `\n\n${docLinks.join('\n')}`
+	}
+
+	return message
+}
+
+function collectDocLinks(error) {
+	const links = new Set()
+
+	if (typeof error.url === 'string') {
+		links.add(error.url)
+	}
+
+	const maybeStack = typeof error.stack === 'string' ? error.stack.split('\n') : []
+	for (const raw of maybeStack) {
+		const line = raw.trim()
+		if (!line) continue
+		if (/^https?:\/\//.test(line)) {
+			links.add(line)
+		}
+	}
+
+	return Array.from(links)
+}

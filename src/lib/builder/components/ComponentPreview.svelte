@@ -20,6 +20,7 @@
 	import { debounce } from 'lodash-es'
 	import { watch } from 'runed'
 	import { site_html } from '$lib/builder/stores/app/page.js'
+	import { onModKey } from '$lib/builder/utils/keyboard'
 	import _ from 'lodash-es'
 
 	/**
@@ -53,12 +54,23 @@
 
 	$preview_updated = false
 
-	let compilation_error = $state(null)
+	type PreviewErrorSource = 'compile' | 'runtime' | 'css' | 'unknown'
+	type PreviewError = {
+		detail: string
+		has_details: boolean
+		is_html: boolean
+		source: PreviewErrorSource
+		title: string
+	}
+
+	let compilation_error: string | null = $state(null)
+	let error_source: PreviewErrorSource | null = $state(null)
+	let error_token = $state(0)
+	let visible_error: PreviewError | null = $state(null)
 
 	let componentApp = $state(null)
 	let component_mounted = $state(false)
 	let quiet_compile = $state(false)
-	let last_error_html = $state(null)
 	async function compile_component_code() {
 		if (!code || !code.html || !data) return
 		// disable_save = true
@@ -88,22 +100,90 @@
 			})
 
 			if (error) {
-				// Only update the error if it actually changed to avoid flicker/animations
-				if (error !== last_error_html) {
-					compilation_error = error
-					last_error_html = error
-				}
+				const message = toErrorMessage(error)
+				compilation_error = message
+				error_source = message.startsWith('CSS Error') ? 'css' : 'compile'
+				error_token = error_token + 1
 				$has_error = true
 			} else {
 				componentApp = js
 				compilation_error = null
-				last_error_html = null
+				error_source = null
+				error_token = error_token + 1
 				$has_error = false
 			}
 		}
 	}
 
 	compile_component_code()
+
+	function toErrorMessage(value: unknown) {
+		if (typeof value === 'string') return value
+		if (value && typeof value === 'object') {
+			const maybeMessage = (value as { message?: unknown }).message
+			if (typeof maybeMessage === 'string') {
+				return maybeMessage
+			}
+		}
+		return value != null ? String(value) : ''
+	}
+
+	function looksLikeHtml(value: string) {
+		const trimmed = value.trim()
+		if (!trimmed.startsWith('<')) return false
+		return /^<([a-zA-Z!/?][\s\S]*)>/.test(trimmed)
+	}
+
+	function formatErrorTitle(source: PreviewErrorSource | null) {
+		if (source === 'runtime') return 'Runtime error'
+		if (source === 'css') return 'CSS error'
+		if (source === 'compile') return 'Build error'
+		return 'Component error'
+	}
+
+	function normalizeError(message: string, source: PreviewErrorSource | null): PreviewError {
+		const raw = toErrorMessage(message).trim()
+		const baseSource = source ?? 'unknown'
+		const is_html = looksLikeHtml(raw)
+		const detail = is_html ? raw : decodeEntities(raw)
+		const has_details = !!detail
+		return {
+			detail,
+			has_details,
+			is_html,
+			source: baseSource,
+			title: formatErrorTitle(baseSource)
+		}
+	}
+
+	function decodeEntities(value: string) {
+		const HTML_ENTITY_PATTERN = /&(?:[a-zA-Z]+|#\d+|#x[\da-fA-F]+);/
+		if (!HTML_ENTITY_PATTERN.test(value)) return value
+		const text = document.createElement('textarea')
+		text.innerHTML = value
+		return text.value || value
+	}
+
+	const showErrorAfterPause = debounce((payload: { message: unknown; source: PreviewErrorSource | null }) => {
+		const normalizedMessage = toErrorMessage(payload.message)
+		if (!normalizedMessage.trim()) {
+			visible_error = null
+			return
+		}
+		visible_error = normalizeError(normalizedMessage, payload.source)
+	}, 350)
+
+	watch(
+		() => [compilation_error, error_source, error_token],
+		([message, source]) => {
+			if (!message) {
+				showErrorAfterPause.cancel()
+				visible_error = null
+				return
+			}
+			showErrorAfterPause({ message, source })
+		}
+	)
 
 	// Debounce compilation to prevent frequent recompilation during typing
 	const debouncedCompile = debounce(compile_component_code, 100)
@@ -115,8 +195,11 @@
 
 	// Set the refresh_preview store to the debounced compile function
 	$effect(() => {
-		$refresh_preview = debouncedCompile
+		$refresh_preview = setIframeApp
 	})
+
+	// Add Command+R keyboard shortcut to refresh preview
+	onModKey('r', setIframeApp)
 
 	let channel
 	onMount(() => {
@@ -129,12 +212,18 @@
 				// reset log & runtime error
 				consoleLog = null
 				compilation_error = null
+				error_source = null
+				error_token = error_token + 1
 			} else if (event === 'MOUNTED') {
 				component_mounted = true
 			} else if (event === 'SET_CONSOLE_LOGS') {
 				consoleLog = data.payload.logs
 			} else if (event === 'SET_ERROR') {
-				compilation_error = data.payload.error
+				const runtimeError = payload?.error ?? 'Unknown runtime error'
+				compilation_error = toErrorMessage(runtimeError)
+				error_source = 'runtime'
+				error_token = error_token + 1
+				$has_error = true
 			} else if (event === 'SET_ELEMENT_PATH' && payload.loc) {
 				$highlightedElement = payload.loc
 			}
@@ -167,14 +256,28 @@
 		if (/:global/.test(raw_css)) {
 			debouncedCompile()
 		} else {
-			const final_css = await processCSS(raw_css)
-			// remove stale style tag if it exists
-			let styleTags = doc.querySelectorAll('style[id^="svelte-"]')
-			if (styleTags.length > 1) {
-				styleTags[0]!.remove()
-				styleTags[1]!.textContent = final_css
-			} else {
-				styleTags[0]!.textContent = final_css
+			try {
+				const final_css = await processCSS(raw_css)
+				// remove stale style tag if it exists
+				let styleTags = doc.querySelectorAll('style[id^="svelte-"]')
+				if (styleTags.length > 1) {
+					styleTags[0]!.remove()
+					styleTags[1]!.textContent = final_css
+				} else {
+					styleTags[0]!.textContent = final_css
+				}
+				if (error_source === 'css') {
+					compilation_error = null
+					error_source = null
+					error_token = error_token + 1
+					$has_error = false
+				}
+			} catch (error) {
+				const message = toErrorMessage(error)
+				compilation_error = message.startsWith('CSS Error') ? message : `CSS Error: ${message}`
+				error_source = 'css'
+				error_token = error_token + 1
+				$has_error = true
 			}
 		}
 	}
@@ -332,10 +435,28 @@
 </script>
 
 <div class="code-preview">
-	{#if compilation_error}
-		<pre transition:slide|local={{ duration: 100 }} class="error-container">
-      {@html compilation_error}
-    </pre>
+	{#if visible_error}
+		<div transition:slide|local={{ duration: 120 }} class="error-panel" role="alert" aria-live="polite">
+			<div class="error-header">
+				<span class="error-icon">
+					<Icon icon="mdi:alert-circle-outline" height="1.25rem" />
+				</span>
+				<div class="error-text">
+					<span class="error-title">{visible_error.title}</span>
+				</div>
+			</div>
+			{#if visible_error?.has_details}
+				<div class="error-body" class:has-html={visible_error && visible_error.is_html}>
+					{#if visible_error?.is_html}
+						<div class="error-html">
+							{@html visible_error?.detail || ''}
+						</div>
+					{:else}
+						<code>{visible_error?.detail}</code>
+					{/if}
+				</div>
+			{/if}
+		</div>
 	{/if}
 
 	{#if consoleLog}
@@ -415,10 +536,76 @@
 		display: flex;
 		flex-direction: column;
 
-		.error-container {
+		.error-panel {
+			background: var(--color-gray-9);
+			border: 1px solid var(--primo-color-danger);
 			color: var(--primo-color-white);
-			background: var(--primo-color-danger);
-			padding: 5px;
+			display: flex;
+			flex-direction: column;
+			gap: 0.75rem;
+			padding: 0.75rem 0.875rem;
+		}
+
+		.error-header {
+			display: flex;
+			align-items: flex-start;
+			gap: 0.75rem;
+		}
+
+		.error-icon {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: var(--primo-color-white);
+			flex-shrink: 0;
+		}
+
+		.error-text {
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+			min-width: 0;
+		}
+
+		.error-title {
+			font-weight: 600;
+			letter-spacing: 0.01em;
+			text-transform: capitalize;
+		}
+
+		.error-body {
+			background: rgba(0, 0, 0, 0.25);
+			border-radius: 0.5rem;
+			padding: 0.75rem;
+			max-height: 18rem;
+			overflow: auto;
+			font-size: 0.85rem;
+			line-height: 1.4;
+		}
+
+		.error-body.has-html {
+			padding: 0;
+		}
+
+		.error-body code {
+			display: block;
+			white-space: pre-wrap;
+			word-break: break-word;
+		}
+
+		.error-html {
+			padding: 0.75rem;
+			max-height: 18rem;
+			overflow: auto;
+		}
+
+		.error-html :global(pre) {
+			margin: 0;
+		}
+
+		.error-html :global(code) {
+			font-family: var(--font-mono, 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace);
+			font-size: 0.85rem;
 		}
 
 		.logs {

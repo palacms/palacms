@@ -13,11 +13,12 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
 
         let App;
         let c;
+        let last_rendered_html = '';
 
         const channel = new BroadcastChannel('${broadcast_id}');
         channel.onmessage = async ({data}) => {
-          const { event, payload = {} } = data
-          if (payload.componentApp) {
+        const { event, payload = {} } = data
+        if (payload.componentApp) { 
             await init(payload.componentApp)
           }
           if (payload.data) {
@@ -42,15 +43,28 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
           // Reset logs and runtime error display in parent
           try { channel.postMessage({ event: 'BEGIN' }); } catch (_) {}
 
-          if (c) unmount(c)
+          const previous_html = document.body.innerHTML;
+          document.body.innerHTML = '';
+
+          if (c) {
+            try { unmount(c) } catch (_) {}
+            c = null;
+          }
+
           try {
             c = mount(App, {
               target: document.body,
               props
             })
+            last_rendered_html = document.body.innerHTML;
             channel.postMessage({ event: 'MOUNTED' })
           } catch(e) {
-            document.body.innerHTML = ''
+            c = null;
+            if (last_rendered_html) {
+              document.body.innerHTML = last_rendered_html;
+            } else {
+              document.body.innerHTML = previous_html;
+            }
             channel.postMessage({
               event: 'SET_ERROR',
               payload: {
