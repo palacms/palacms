@@ -12,6 +12,8 @@
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 	import EntryContent from '../components/Fields/EntryContent.svelte'
 	import { useEntries } from '$lib/Content.svelte'
+	import { mod_key_held } from '../stores/app/misc'
+	import { site_context } from '../stores/context'
 
 	const dispatch = createEventDispatcher()
 
@@ -64,10 +66,14 @@
 	}
 
 	function get_title(subfields) {
-		const first_subfield = subfields.find((subfield) => ['text', 'markdown', 'link', 'number'].includes(subfield.type))
+		const first_subfield = subfields.find((subfield) => ['text', 'markdown', 'link', 'number', 'page'].includes(subfield.type))
 		if (first_subfield) {
 			const [ent] = useEntries(entity, first_subfield, entry) ?? []
 			if (first_subfield.type === 'link') return ent?.value?.label
+			else if (first_subfield.type === 'page') {
+				const page = site_context.get().value?.pages()?.find(p => p.id === ent?.value)
+				return page?.name
+			}
 			else return ent?.value
 		} else {
 			return singular_label
@@ -133,7 +139,18 @@
 >
 	<div class="repeater-item-container">
 		<div class="item-options">
-			<button class="title" onclick={() => dispatch('toggle')}>
+			<button
+				class="title"
+				ondblclick={() => dispatch('toggleall')}
+				onclick={(e) => {
+					if ($mod_key_held) {
+						dispatch('toggleall')
+					} else {
+						dispatch('toggle')
+					}
+				}}
+				title={$mod_key_held ? 'Toggle all items' : ''}
+			>
 				{#if item_image}
 					<img src={item_image} alt={item_title || `Preview for item ${index} in ${field.label}`} />
 				{:else if item_icon}
@@ -143,7 +160,14 @@
 						{item_title}
 					</span>
 				{/if}
-				<Icon icon={is_visible ? 'ph:caret-up-bold' : 'ph:caret-down-bold'} />
+				{#if $mod_key_held}
+					<span class="key-hint">
+						<span>&#8984;</span>
+						<Icon icon="fa6-solid:hand-pointer" />
+					</span>
+				{:else}
+					<Icon icon={is_visible ? 'ph:caret-up-bold' : 'ph:caret-down-bold'} />
+				{/if}
 			</button>
 			<div class="primo-buttons">
 				<button bind:this={drag_handle_element}>
@@ -234,7 +258,7 @@
 			button.title {
 				padding: 0.5rem 0;
 				display: grid;
-				grid-template-columns: auto 1fr;
+				grid-template-columns: auto 1fr auto;
 				gap: 1rem;
 				align-items: center;
 				text-align: left;
@@ -244,6 +268,14 @@
 					border-radius: 2px;
 					aspect-ratio: 1;
 					object-fit: cover;
+				}
+
+				.key-hint {
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					gap: 0.25rem;
+					font-size: 0.75rem;
 				}
 			}
 
