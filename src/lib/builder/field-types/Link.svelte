@@ -72,6 +72,13 @@
 					oninput={(text) => {
 						onchange({ [field.key]: { 0: { value: { ...entry.value, url: text, page: undefined } } } })
 					}}
+					onblur={(text) => {
+						// auto-set protocol if not already set
+						if (text && !text.match(/^http?:\/\//)) {
+							const url_with_protocol = `https://${text}`
+							onchange({ [field.key]: { 0: { value: { ...entry.value, url: url_with_protocol, page: undefined } } } })
+						}
+					}}
 					value={entry.value.url}
 					type="url"
 					placeholder="https://palacms.com"
