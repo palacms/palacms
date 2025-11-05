@@ -71,59 +71,61 @@
 			const [ent] = useEntries(entity, first_subfield, entry) ?? []
 			if (first_subfield.type === 'link') return ent?.value?.label
 			else if (first_subfield.type === 'page') {
-				const page = site_context.get().value?.pages()?.find(p => p.id === ent?.value)
+				const page = site_context
+					.get()
+					.value?.pages()
+					?.find((p) => p.id === ent?.value)
 				return page?.name
-			}
-			else return ent?.value
+			} else return ent?.value
 		} else {
 			return singular_label
 		}
 	}
 
-	let drag_handle_element = $state()
+	// let drag_handle_element = $state()
 	let element = $state()
 
-	onMount(async () => {
-		draggable({
-			element,
-			dragHandle: drag_handle_element,
-			getInitialData: () => ({})
-		})
-		dropTargetForElements({
-			element,
-			getData({ input, element }) {
-				return attachClosestEdge(
-					{},
-					{
-						element,
-						input,
-						allowedEdges: ['top', 'bottom']
-					}
-				)
-			},
-			onDrag({ self, source }) {
-				dispatch('hover', extractClosestEdge(self.data))
-			},
-			onDragLeave() {
-				dispatch('hover', null)
-			},
-			onDrop({ self, source }) {
-				const item_dragged_over = self.data.item
-				const item_being_dragged = source.data.item
-				const closestEdgeOfTarget = extractClosestEdge(self.data)
-				// if (item_dragged_over.index === 0) return // can't place above home
+	// onMount(async () => {
+	// 	draggable({
+	// 		element,
+	// 		dragHandle: drag_handle_element,
+	// 		getInitialData: () => ({})
+	// 	})
+	// 	dropTargetForElements({
+	// 		element,
+	// 		getData({ input, element }) {
+	// 			return attachClosestEdge(
+	// 				{},
+	// 				{
+	// 					element,
+	// 					input,
+	// 					allowedEdges: ['top', 'bottom']
+	// 				}
+	// 			)
+	// 		},
+	// 		onDrag({ self, source }) {
+	// 			dispatch('hover', extractClosestEdge(self.data))
+	// 		},
+	// 		onDragLeave() {
+	// 			dispatch('hover', null)
+	// 		},
+	// 		onDrop({ self, source }) {
+	// 			const item_dragged_over = self.data.item
+	// 			const item_being_dragged = source.data.item
+	// 			const closestEdgeOfTarget = extractClosestEdge(self.data)
+	// 			// if (item_dragged_over.index === 0) return // can't place above home
 
-				if (closestEdgeOfTarget === 'top') {
-					// actions.rearrange(item_being_dragged, item_dragged_over.index)
-					dispatch('move', { item: item_being_dragged, new_index: item_dragged_over.index })
-				} else if (closestEdgeOfTarget === 'bottom') {
-					dispatch('move', { item: item_being_dragged, new_index: item_dragged_over.index + 1 })
-					// actions.rearrange(item_being_dragged, item_dragged_over.index + 1)
-				}
-				dispatch('hover', null)
-			}
-		})
-	})
+	// 			if (closestEdgeOfTarget === 'top') {
+	// 				// actions.rearrange(item_being_dragged, item_dragged_over.index)
+	// 				dispatch('move', { item: item_being_dragged, new_index: item_dragged_over.index })
+	// 			} else if (closestEdgeOfTarget === 'bottom') {
+	// 				dispatch('move', { item: item_being_dragged, new_index: item_dragged_over.index + 1 })
+	// 				// actions.rearrange(item_being_dragged, item_dragged_over.index + 1)
+	// 			}
+	// 			dispatch('hover', null)
+	// 		}
+	// 	})
+	// })
 	let singular_label = $derived(pluralize.singular(field.label))
 	let item_image = $derived(get_image(subfields))
 	let item_icon = $derived(get_icon(subfields))
@@ -170,9 +172,10 @@
 				{/if}
 			</button>
 			<div class="primo-buttons">
-				<button bind:this={drag_handle_element}>
+				<!-- disable for now -->
+				<!-- <button bind:this={drag_handle_element}>
 					<Icon icon="material-symbols:drag-handle" />
-				</button>
+				</button> -->
 				<button title="Delete {singular_label} item" onclick={() => dispatch('remove')}>
 					<Icon icon="ion:trash" />
 				</button>
