@@ -30,7 +30,7 @@
 		}
 	})
 
-	let selected = $derived<'page' | 'url'>('page')
+	let selected = $derived<'page' | 'url'>(entry?.value?.url ? 'url' : 'page')
 </script>
 
 <div class="Link">
