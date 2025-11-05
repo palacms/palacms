@@ -22,7 +22,7 @@
 
 <div class="SelectField">
 	{#if options.length > 0}
-		<UI.Select fullwidth={true} label={field.label} {options} {value} on:input={({ detail }) => onchange({ [field.key]: { 0: { value: detail } } })} />
+		<UI.Select fullwidth={true} label={field.label} {options} {value} disable_auto_highlight={true} on:input={({ detail }) => onchange({ [field.key]: { 0: { value: detail } } })} />
 	{:else}
 		<span>This field doesn't have any options</span>
 	{/if}

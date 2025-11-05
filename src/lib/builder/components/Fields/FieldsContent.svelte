@@ -202,6 +202,7 @@
 					<button
 						data-test-id="field"
 						class:active={active_tab === 'field'}
+						class:showing_key_hint={$mod_key_held && active_tab !== 'field'}
 						ondblclick={() => set_all_tabs('field')}
 						onclick={() => {
 							if ($mod_key_held) {
@@ -210,14 +211,24 @@
 								if (active_tab !== 'field') select_tab(field.id, 'field')
 							}
 						}}
+						title={$mod_key_held ? 'Set all fields to Field tab' : ''}
 					>
-						<Icon icon="fluent:form-48-filled" />
-						<span>Field</span>
+						{#if $mod_key_held && active_tab !== 'field'}
+							<span class="key-hint">
+								<span>&#8984;</span>
+								<Icon icon="fa6-solid:hand-pointer" />
+							</span>
+						{/if}
+						<span class="tab-content">
+							<Icon icon="fluent:form-48-filled" />
+							<span>Field</span>
+						</span>
 					</button>
 					<button
 						data-test-id="entry"
-						class="border-t border-[var(--color-gray-9)]"
+						class="border-t border-(--color-gray-9)"
 						class:active={active_tab === 'entry'}
+						class:showing_key_hint={$mod_key_held && active_tab !== 'entry'}
 						ondblclick={() => set_all_tabs('entry')}
 						onclick={() => {
 							if ($mod_key_held) {
@@ -226,13 +237,22 @@
 								if (active_tab !== 'entry') select_tab(field.id, 'entry')
 							}
 						}}
+						title={$mod_key_held ? 'Set all fields to Entry tab' : ''}
 					>
-						<Icon icon={$fieldTypes.find((f) => f.id === field.type)?.icon} />
-						{#if field.type === 'repeater'}
-							<span>Entries</span>
-						{:else}
-							<span>Entry</span>
+						{#if $mod_key_held && active_tab !== 'entry'}
+							<span class="key-hint">
+								<span>&#8984;</span>
+								<Icon icon="fa6-solid:hand-pointer" />
+							</span>
 						{/if}
+						<span class="tab-content">
+							<Icon icon={$fieldTypes.find((f) => f.id === field.type)?.icon} />
+							{#if field.type === 'repeater'}
+								<span>Entries</span>
+							{:else}
+								<span>Entry</span>
+							{/if}
+						</span>
 					</button>
 				</div>
 			{/if}
@@ -309,6 +329,7 @@
 				align-items: center;
 				gap: 0.5rem;
 				font-size: 0.75rem;
+				position: relative;
 			}
 
 			button:hover {
@@ -327,6 +348,28 @@
 				background: transparent;
 				color: var(--color-gray-2);
 				opacity: 1;
+			}
+
+			button.showing_key_hint .tab-content {
+				visibility: hidden;
+			}
+
+			button .tab-content {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 0.5rem;
+			}
+
+			button .key-hint {
+				position: absolute;
+				inset: 0;
+				font-size: 0.75rem;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 0.25rem;
+				pointer-events: none;
 			}
 		}
 	}

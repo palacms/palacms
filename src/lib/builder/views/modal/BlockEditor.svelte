@@ -115,7 +115,6 @@
 				css,
 				js
 			})
-			console.log('updating')
 			await self.commit()
 			// Reset baselines after successful save
 			initial_code = { html, css, js }
