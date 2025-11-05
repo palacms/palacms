@@ -4,6 +4,7 @@
 	import { onMount, tick } from 'svelte'
 	import { get, set } from 'idb-keyval'
 	import { slide, fade } from 'svelte/transition'
+	import { flip } from 'svelte/animate'
 	import { content_editable, validate_url } from '$lib/builder/utilities'
 	import PageForm from './PageForm.svelte'
 	import MenuPopup from '$lib/builder/ui/Dropdown.svelte'
@@ -431,7 +432,7 @@
 			<div class="drop-indicator-top" class:active={children_hover_position === `${page.id}-children-top`}><div></div></div>
 			<ul class="page-list child" transition:slide={{ duration: has_toggled ? 100 : 0 }}>
 				{#each children as subpage (subpage.id)}
-					<li transition:fade={{ duration: 200 }} class="subpage-item">
+					<li animate:flip={{ duration: 200 }} class="subpage-item">
 						<Item parent={page} page={subpage} active={subpage.id === active_page_id} {page_slug} {active_page_id} {oncreate} bind:hover_position={children_hover_position} on:delete on:create />
 						<div class="drop-indicator-inline" class:active={children_hover_position === `${subpage.id}-bottom`}><div></div></div>
 					</li>
