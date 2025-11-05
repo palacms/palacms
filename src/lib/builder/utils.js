@@ -52,12 +52,7 @@ export class CssCompilationError extends Error {
 function toCssCompilationError(error) {
 	if (error instanceof CssCompilationError) return error
 
-	const message =
-		typeof error === 'string'
-			? error
-			: error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
-			? error.message
-			: 'Unknown CSS compilation error'
+	const message = typeof error === 'string' ? error : error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : 'Unknown CSS compilation error'
 
 	const details = {}
 	if (error && typeof error === 'object') {
@@ -153,8 +148,9 @@ export function get_empty_value(field) {
 	else if (field.type === 'number') return 0
 	else if (field.type === 'page-field') return null
 	else if (field.type === 'site-field') return null
+	else if (field.type === 'info') return null
 	else {
-		console.warn('No placeholder set for field type', field.type)
+		console.warn('No empty set for field type', field.type)
 		return ''
 	}
 }
@@ -253,11 +249,7 @@ export function debounce({ instant, delay }, wait = 200) {
 
 function formatCssCompilationError(error) {
 	const baseMessage =
-		typeof error === 'string'
-			? error
-			: error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
-			? error.message
-			: 'Unknown CSS compilation error'
+		typeof error === 'string' ? error : error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : 'Unknown CSS compilation error'
 
 	if (!error || typeof error !== 'object') {
 		return `CSS Error: ${baseMessage}`
