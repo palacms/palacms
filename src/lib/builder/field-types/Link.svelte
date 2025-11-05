@@ -18,7 +18,67 @@
 
 	const { value: site } = site_context.getOr({ value: null })
 	const entry = $derived(passedEntry || default_entry)
-	const selectable_pages = $derived(site?.pages() ?? [])
+	const all_pages = $derived(site?.pages() ?? [])
+
+	// Build hierarchical page list with visual indicators for subpages
+	const selectable_pages = $derived.by(() => {
+		if (!all_pages.length) return []
+
+		const homepage = site?.homepage()
+		if (!homepage) return all_pages.sort((a, b) => a.index - b.index)
+
+		const result = []
+
+		function add_descendants(page, depth = 0) {
+			const arrows = depth > 0 ? '↳ '.repeat(depth) : ''
+			result.push({
+				...page,
+				label: `${arrows}${page.name}`,
+				value: page.id
+			})
+
+			// Get and sort children
+			const children = all_pages
+				.filter(p => p.parent === page.id)
+				.sort((a, b) => a.index - b.index)
+
+			for (const child of children) {
+				add_descendants(child, depth + 1)
+			}
+		}
+
+		// Add homepage (no arrow)
+		result.push({
+			...homepage,
+			label: homepage.name,
+			value: homepage.id
+		})
+
+		// Get homepage's direct children (same level as homepage, no arrows)
+		const top_level_children = all_pages
+			.filter(p => p.parent === homepage.id)
+			.sort((a, b) => a.index - b.index)
+
+		// For each top-level child, add it and its descendants
+		for (const child of top_level_children) {
+			result.push({
+				...child,
+				label: child.name,
+				value: child.id
+			})
+
+			// Add this child's descendants with arrows
+			const grandchildren = all_pages
+				.filter(p => p.parent === child.id)
+				.sort((a, b) => a.index - b.index)
+
+			for (const grandchild of grandchildren) {
+				add_descendants(grandchild, 1)
+			}
+		}
+
+		return result
+	})
 
 	// Auto-select first page on open
 	$effect(() => {
@@ -59,9 +119,9 @@
 				<UI.Select
 					fullwidth={true}
 					value={entry.value.page}
-					options={selectable_pages.sort((a, b) => a.index - b.index).map((p) => ({ ...p, label: p.name, value: p.id }))}
+					options={selectable_pages}
 					on:input={({ detail: pageId }) => {
-						const page = selectable_pages.find((p) => p.id === pageId)
+						const page = all_pages.find((p) => p.id === pageId)
 						if (page) {
 							onchange({ [field.key]: { 0: { value: { ...entry.value, page: page.id, url: undefined } } } })
 						}
