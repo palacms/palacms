@@ -119,6 +119,7 @@
 							onclick={() => {
 								dispatch('input', item)
 								showing_popover = false
+								search_query = ''
 							}}
 							type="button"
 						>
@@ -158,6 +159,7 @@
 						dispatch('input', item)
 						// Hide options after selecting an icon in large variant
 						searched = false
+						search_query = ''
 					}}
 					type="button"
 				>
