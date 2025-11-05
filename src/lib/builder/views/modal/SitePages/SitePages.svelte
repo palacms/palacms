@@ -11,6 +11,7 @@
 	import type { Page } from '$lib/common/models/Page'
 	import { self } from '$lib/pocketbase/managers'
 	import { fade } from 'svelte/transition'
+	import { flip } from 'svelte/animate'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 
@@ -138,7 +139,7 @@
 {#if active_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)] page-list">
 		{#each [homepage, ...root_pages].sort((a, b) => a.index - b.index) as page, i (page.id)}
-			<li transition:fade={{ duration: 100 }}>
+			<li animate:flip={{ duration: 200 }}>
 				<Item {page} {page_slug} active_page_id={!pageState.params.page_type ? active_page.id : null} oncreate={create_page_with_sections} bind:hover_position />
 				<div class="drop-indicator-inline" class:active={hover_position === `${page.id}-bottom`}><div></div></div>
 				<div class="drop-target-gap" use:gapDropTarget={page}></div>
