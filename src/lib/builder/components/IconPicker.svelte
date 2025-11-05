@@ -33,9 +33,11 @@
 		search()
 	}
 
-	// hide icons when clearing search text
+	// Auto-search when search_query changes and has content
 	$effect(() => {
-		if (search_query === '') {
+		if (search_query && search_query.trim()) {
+			search()
+		} else if (search_query === '') {
 			searched = false
 		}
 	})
