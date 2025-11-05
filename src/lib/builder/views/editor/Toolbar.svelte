@@ -49,8 +49,8 @@
 
 	const pages_at_current_level = $derived.by(() => {
 		if (!active_page || !homepage) return []
-		if (active_page.id === homepage.id || active_page.parent === homepage.id) return [homepage, ...all_pages.filter((p) => p.parent === homepage.id)].sort((a, b) => a.index - b.index) // home page or direct sibling
-		return all_pages.filter((p) => p.parent === active_page?.parent).sort((a, b) => a.index - b.index) // standard children
+		if (active_page.id === homepage.id || active_page.parent === homepage.id) return [homepage, ...all_pages.filter((p) => p.parent === homepage.id)].sort((a, b) => b.index - a.index) // home page or direct sibling (descending order)
+		return all_pages.filter((p) => p.parent === active_page?.parent).sort((a, b) => b.index - a.index) // standard children (descending order)
 	})
 
 	const can_navigate_up = $derived(active_page ? active_page.index > 0 : false)
