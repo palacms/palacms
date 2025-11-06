@@ -478,6 +478,10 @@
 							should_autofocus = false
 						}
 					}}
+					onblur={() => {
+						// Stop auto-populating key when label field loses focus
+						key_edited = true
+					}}
 				/>
 			</div>
 			<!-- svelte-ignore a11y_label_has_associated_control -->
