@@ -11,7 +11,7 @@ const sveltePromiseWorker = new PromiseWorker(new svelteWorker())
 
 // Based on https://github.com/pngwn/REPLicant & the Svelte REPL package (https://github.com/sveltejs/sites/tree/master/packages/repl)
 
-// Use esm.sh for all remote module resolution, like the original worker
+// Use esm.sh for all remote module resolution
 const CDN_URL = 'https://esm.sh'
 const SVELTE_CDN = `${CDN_URL}/svelte@${SVELTE_VERSION}`
 
@@ -20,7 +20,7 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 	const final = {
 		ssr: '',
 		dom: '',
-		error: null
+		error: ''
 	}
 
 	const component_lookup = new Map()
@@ -216,12 +216,13 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 	return final
 
 	function noteBuildError(error, id) {
+		const error_message = error instanceof Error ? error.message : String(error)
+		console.error('Build error:', error_message, error)
+
 		if (final.error) return
 		final.error = formatRollupError(error, id)
 	}
 }
-
-/** Removed legacy remote resolution helpers; esm.sh handles bare specifiers. */
 
 function formatRollupError(error, id) {
 	if (!error) return 'Unknown build error'
