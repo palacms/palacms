@@ -14,7 +14,13 @@ const CACHE_SIZE_LIMIT = 100
 export async function processCode({ component, head = { code: '', data: {} }, buildStatic = true, format = 'esm', locale = 'en', hydrated = true }) {
 	let css = ''
 	if (component.css) {
-		css = await processCSS(component.css || '')
+		try {
+			css = await processCSS(component.css || '')
+		} catch (error) {
+			return {
+				error: formatCssCompilationError(error)
+			}
+		}
 	}
 
 	const res = await processors.html({
@@ -34,14 +40,48 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 
 const css_cache = new Map()
 let requesting = new Set()
+
+export class CssCompilationError extends Error {
+	constructor(message, details = {}) {
+		super(message)
+		this.name = 'CssCompilationError'
+		Object.assign(this, details)
+	}
+}
+
+function toCssCompilationError(error) {
+	if (error instanceof CssCompilationError) return error
+
+	const message =
+		typeof error === 'string'
+			? error
+			: error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+			? error.message
+			: 'Unknown CSS compilation error'
+
+	const details = {}
+	if (error && typeof error === 'object') {
+		if ('line' in error && typeof error.line === 'number') {
+			details.line = error.line
+		}
+		if ('column' in error && typeof error.column === 'number') {
+			details.column = error.column
+		}
+		if ('reason' in error && typeof error.reason === 'string') {
+			details.reason = error.reason
+		}
+	}
+
+	return new CssCompilationError(message, details)
+}
+
 export async function processCSS(raw) {
 	if (css_cache.has(raw)) {
 		return css_cache.get(raw)
 	} else if (requesting.has(raw)) {
-		// idk what this was doing
-		// await new Promise((resolve) => {
-		// 	setTimeout(resolve, 200)
-		// })
+		while (requesting.has(raw)) {
+			await new Promise((resolve) => setTimeout(resolve, 25))
+		}
 		if (css_cache.has(raw)) {
 			return css_cache.get(raw)
 		}
@@ -51,19 +91,26 @@ export async function processCSS(raw) {
 	try {
 		requesting.add(raw)
 		res = (await processors.css(raw)) || {}
-	} catch (e) {
-		console.error(e)
+	} catch (error) {
+		throw toCssCompilationError(error)
+	} finally {
+		requesting.delete(raw)
 	}
+
 	if (!res) {
 		return ''
-	} else if (res.error) {
-		console.log('CSS Error:', res.error)
-		return raw
-	} else if (res.css) {
+	}
+
+	if (res.error) {
+		throw toCssCompilationError(res.error)
+	}
+
+	if (res.css) {
 		css_cache.set(raw, res.css)
-		requesting.delete(raw)
 		return res.css
 	}
+
+	return ''
 }
 
 // Lets us debounce from reactive statements
@@ -202,4 +249,29 @@ export function debounce({ instant, delay }, wait = 200) {
 		clearTimeout(timeout)
 		timeout = setTimeout(() => delay(...args), wait)
 	}
+}
+
+function formatCssCompilationError(error) {
+	const baseMessage =
+		typeof error === 'string'
+			? error
+			: error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+			? error.message
+			: 'Unknown CSS compilation error'
+
+	if (!error || typeof error !== 'object') {
+		return `CSS Error: ${baseMessage}`
+	}
+
+	const positions = []
+	if ('line' in error && typeof error.line === 'number') {
+		positions.push(`line ${error.line}`)
+	}
+	if ('column' in error && typeof error.column === 'number') {
+		positions.push(`column ${error.column}`)
+	}
+
+	const suffix = positions.length ? ` (${positions.join(', ')})` : ''
+
+	return `CSS Error: ${baseMessage}${suffix}`
 }

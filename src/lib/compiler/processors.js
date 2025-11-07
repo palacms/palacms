@@ -124,16 +124,50 @@ export async function css(raw) {
 	if (cssMap.has(raw)) {
 		return { css: cssMap.get(raw) }
 	}
-	const processed = await postcss_worker.postMessage({
-		css: raw
-	})
-	if (processed.message) {
+	let payload
+	try {
+		payload = await postcss_worker.postMessage({
+			css: raw
+		})
+	} catch (error) {
 		return {
-			error: processed.message
+			error: serializeCssWorkerError(error)
 		}
 	}
-	cssMap.set(raw, processed)
-	return {
-		css: processed
+
+	if (!payload) {
+		return { css: '' }
 	}
+
+	if (payload.error) {
+		return {
+			error: serializeCssWorkerError(payload.error)
+		}
+	}
+
+	const processedCss = typeof payload.css === 'string' ? payload.css : typeof payload === 'string' ? payload : ''
+
+	if (!processedCss) {
+		return { css: '' }
+	}
+
+	cssMap.set(raw, processedCss)
+	return {
+		css: processedCss
+	}
+}
+
+function serializeCssWorkerError(error) {
+	if (!error) return 'Unknown CSS error'
+	if (typeof error === 'string') return error
+
+	const name = error.name || 'CssError'
+	const reason = error.reason || error.message || String(error)
+	const line = error.line || error?.input?.line
+	const column = error.column || error?.input?.column
+	const location = line || column ? ` (line ${line ?? '?'}${column ? `, column ${column}` : ''})` : ''
+
+	let message = `${name}: ${reason}${location}`
+
+	return message
 }
