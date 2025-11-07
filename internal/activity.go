@@ -35,13 +35,17 @@ func cleanupUserActivity(pb *pocketbase.PocketBase) error {
 }
 
 func RegisterUserActivity(pb *pocketbase.PocketBase) error {
-	terminated := make(chan bool)
+	var terminated chan bool
 	pb.OnTerminate().BindFunc(func(terminateEvent *core.TerminateEvent) error {
-		terminated <- true
+		if terminated != nil {
+			terminated <- true
+		}
 		return terminateEvent.Next()
 	})
 
 	pb.OnServe().BindFunc(func(serveEvent *core.ServeEvent) error {
+		terminated := make(chan bool)
+
 		// Spawn goroutine for cleanup
 		go func() {
 			ticker := time.NewTicker(userActivityCleanupInterval)
