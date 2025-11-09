@@ -209,8 +209,6 @@
 			if (event === 'INITIALIZED') {
 				iframe_loaded = true
 			} else if (event === 'BEGIN') {
-				// reset log & runtime error
-				consoleLog = null
 				compilation_error = null
 				error_source = null
 				error_token = error_token + 1

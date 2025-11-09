@@ -40,8 +40,11 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
         }
 
         function update(props) {
-          // Reset logs and runtime error display in parent
+          // Reset runtime error display in parent
           try { channel.postMessage({ event: 'BEGIN' }); } catch (_) {}
+
+          // Reset log tracking for this render
+          logsThisRender = false;
 
           const previous_html = document.body.innerHTML;
           document.body.innerHTML = '';
@@ -58,6 +61,13 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
             })
             last_rendered_html = document.body.innerHTML;
             channel.postMessage({ event: 'MOUNTED' })
+            // After enough time for console logs to be called and sent, check if any were produced
+            // Wait longer than the throttle delay (120ms) to ensure any mount-time logs are sent first
+            setTimeout(() => {
+              if (!logsThisRender) {
+                try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: null } }); } catch (_) {}
+              }
+            }, 300)
           } catch(e) {
             c = null;
             if (last_rendered_html) {
@@ -75,6 +85,7 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
         }
 
         // Install a safe console proxy that forwards logs to the parent
+        let logsThisRender = false;
         (function setupConsoleBridge(){
           try {
             const methods = ['log','info','warn','error'];
@@ -93,6 +104,7 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
             let lastSent = undefined;
             const sendThrottled = (value) => {
               lastQueued = value;
+              logsThisRender = true;
               if (timer) return;
               timer = setTimeout(() => {
                 timer = null;
