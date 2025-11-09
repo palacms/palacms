@@ -151,7 +151,7 @@
 					<PaneGroup direction="vertical" autoSaveId="SiteEditor-vertical">
 						<Pane>
 							<div class="container" style="margin-bottom: 1rem">
-								<span class="primo--field-label">Head</span>
+								<span class="primo--field-label">Head HTML</span>
 								<CodeEditor mode="html" bind:value={head} on:save={saveComponent} />
 							</div>
 						</Pane>
@@ -162,7 +162,7 @@
 						</PaneResizer>
 						<Pane>
 							<div class="container">
-								<span class="primo--field-label">Foot</span>
+								<span class="primo--field-label">Body Footer HTML</span>
 								<CodeEditor mode="html" bind:value={foot} on:save={saveComponent} />
 							</div>
 						</Pane>
