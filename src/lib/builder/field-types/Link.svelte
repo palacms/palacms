@@ -133,8 +133,10 @@
 						onchange({ [field.key]: { 0: { value: { ...entry.value, url: text, page: undefined } } } })
 					}}
 					onblur={(text) => {
-						// auto-set protocol if not already set
-						if (text && !text.match(/^http?:\/\//)) {
+						// auto-set https protocol only if no protocol exists and it's not a relative URL
+						const has_protocol = text.includes('://')
+						const is_relative = text.startsWith('/') || text.startsWith('#')
+						if (text && !has_protocol && !is_relative) {
 							const url_with_protocol = `https://${text}`
 							onchange({ [field.key]: { 0: { value: { ...entry.value, url: url_with_protocol, page: undefined } } } })
 						}
