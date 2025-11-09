@@ -127,8 +127,8 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 		try {
 			return await rollup({
 				input: './App.svelte',
-				// Keep remote modules external; browser will fetch them by URL
-				external: (id) => /^https?:/.test(id),
+				// Keep remote modules external EXCEPT .svelte files (which need to be compiled)
+				external: (id) => /^https?:/.test(id) && !/\.svelte$/.test(id),
 				plugins: [
 					commonjs,
 					{
@@ -167,6 +167,21 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 								return `export const DEV = false; export const PROD = true; export const BROWSER = true;`
 							}
 							if (component_lookup.has(id)) return component_lookup.get(id)
+
+							// Fetch external .svelte files so they can be compiled
+							if (/^https?:/.test(id) && /\.svelte$/.test(id)) {
+								try {
+									const response = await fetch(id)
+									if (!response.ok) {
+										throw new Error(`Failed to fetch ${id}: ${response.status} ${response.statusText}`)
+									}
+									return await response.text()
+								} catch (error) {
+									console.error(`Error loading external Svelte component: ${id}`, error)
+									throw error
+								}
+							}
+
 							return null
 						},
 						async transform(code, id) {
