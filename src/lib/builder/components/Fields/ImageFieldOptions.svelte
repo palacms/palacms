@@ -6,33 +6,32 @@
 
 	let { field } = $props()
 
-	// Initialize config object if it doesn't exist
-	if (!field.config) field.config = {}
+	// Use default values from field.config or fallback to defaults
+	const max_size_mb = $derived(field.config?.maxSizeMB ?? 1)
+	const max_width_or_height = $derived(field.config?.maxWidthOrHeight ?? 1920)
 
-	// Listen for changes to dispatch updates to parent
-	function handle_change() {
-		dispatch('input', { config: field.config })
+	function update_config(updates) {
+		const next = { ...(field.config || {}), ...updates }
+		dispatch('input', { config: next })
 	}
-
-	$effect(() => {
-		// Set defaults if values don't exist
-		if (field.config.maxSizeMB === undefined) {
-			field.config.maxSizeMB = 1
-			handle_change()
-		}
-		if (field.config.maxWidthOrHeight === undefined) {
-			field.config.maxWidthOrHeight = 1920
-			handle_change()
-		}
-	})
 </script>
 
 <div class="ImageFieldOptions">
 	<div class="option-group">
-		<UI.TextInput type="number" label="Max Size (MB)" bind:value={field.config.maxSizeMB} on:input={handle_change} />
+		<UI.TextInput
+			type="number"
+			label="Max Size (MB)"
+			value={max_size_mb}
+			oninput={(value) => update_config({ maxSizeMB: Number(value) })}
+		/>
 	</div>
 	<div class="option-group">
-		<UI.TextInput type="number" label="Max Dimension (px)" bind:value={field.config.maxWidthOrHeight} on:input={handle_change} />
+		<UI.TextInput
+			type="number"
+			label="Max Dimension (px)"
+			value={max_width_or_height}
+			oninput={(value) => update_config({ maxWidthOrHeight: Number(value) })}
+		/>
 	</div>
 </div>
 
