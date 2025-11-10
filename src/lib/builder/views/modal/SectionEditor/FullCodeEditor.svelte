@@ -21,9 +21,20 @@
 	let { data = {}, completions, html = $bindable(''), css = $bindable(''), js = $bindable(''), storage_key, onmod_e = () => {}, onmod_r = () => {}, oninput = () => {} } = $props()
 
 	// Local pane sizes (Paneforge persists via autoSaveId)
-	const left_pane_size = writable(48)
-	const center_pane_size = writable(48)
-	const right_pane_size = writable(4)
+	const left_pane_size = writable(96)
+	const center_pane_size = writable(2)
+	const right_pane_size = writable(2)
+
+	// Smart default sizes based on content
+	const has_html = $derived(html && html.trim().length > 0)
+	const has_css = $derived(css && css.trim().length > 0)
+	const has_js = $derived(js && js.trim().length > 0)
+	const pane_count = $derived([has_html, has_css, has_js].filter(Boolean).length || 1)
+
+	// Default sizes: if only HTML, make it 96%. If 2 panes, 50/50. If 3 panes, 48/48/4
+	const default_html_size = $derived(pane_count === 1 ? 96 : pane_count === 2 ? 50 : 48)
+	const default_css_size = $derived(!has_css ? 2 : pane_count === 2 && has_css ? 50 : 48)
+	const default_js_size = $derived(!has_js ? 2 : pane_count === 2 && has_js ? 50 : 4)
 
 	// Set up keyboard shortcuts for tab switching
 	// Use a simple global keydown listener for when CodeMirror isn't focused
@@ -189,6 +200,7 @@
 <PaneGroup direction="horizontal" class="flex h-full" autoSaveId={storage_key ? `fullcode:${storage_key}` : 'fullcode:default'}>
 	<Pane
 		bind:this={html_pane_component}
+		defaultSize={default_html_size}
 		minSize={4}
 		collapsible={true}
 		collapsedSize={4}
@@ -244,6 +256,7 @@
 	</PaneResizer>
 	<Pane
 		bind:this={css_pane_component}
+		defaultSize={default_css_size}
 		minSize={4}
 		collapsible={true}
 		collapsedSize={4}
@@ -297,6 +310,7 @@
 		</span>
 	</PaneResizer>
 	<Pane
+		defaultSize={default_js_size}
 		minSize={4}
 		collapsible={true}
 		collapsedSize={4}
