@@ -255,7 +255,7 @@
 								renaming = true
 							}}
 						>
-							<Icon icon="clarity:edit-solid" />
+							<Icon icon="material-symbols:edit" />
 						</button>
 						<button class="delete" onclick={() => dispatch('delete')}>
 							<Icon icon="ic:outline-delete" />
@@ -284,7 +284,7 @@
 							},
 							{
 								label: 'Rename',
-								icon: 'clarity:edit-solid',
+								icon: 'material-symbols:edit',
 								on_click: () => {
 									new_name = symbol.name
 									renaming = true
