@@ -14,7 +14,7 @@ import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
 export const usePublishSite = (site_id?: string) => {
 	const worker = useSvelteWorker(
 		() => !!site_id,
-		() => !!site && !!pages && !!page_types && !!data && !!site_content && !!page_type_content && !!section_content,
+		() => !!site && !!pages && !!page_types && !!data && !!site_content && !!page_content && !!section_content,
 		async () => {
 			if (!data) {
 				throw new Error('Not loaded')
@@ -177,7 +177,7 @@ export const usePublishSite = (site_id?: string) => {
 
 			const site_data = {
 				...site_content?.[locale],
-				...page_type_content?.[page.page_type]?.[locale]
+				...page_content?.[page.id]?.[locale]
 			}
 
 			const head = {
@@ -283,10 +283,8 @@ export const usePublishSite = (site_id?: string) => {
 	const { data } = $derived(shouldLoad && site && pages ? usePageData(site, pages) : { data: undefined })
 
 	const site_content = $derived(shouldLoad && site ? useContent(site, { target: 'live' }) : undefined)
-	const page_type_content = $derived(
-		shouldLoad && page_types && page_types.every((page_type) => !!useContent(page_type, { target: 'live' }))
-			? Object.fromEntries(page_types.map((page_type) => [page_type.id, useContent(page_type, { target: 'live' })]))
-			: undefined
+	const page_content = $derived(
+		shouldLoad && pages && pages.every((page) => !!useContent(page, { target: 'live' })) ? Object.fromEntries(pages.map((page) => [page.id, useContent(page, { target: 'live' })])) : undefined
 	)
 	const symbol_content = $derived(
 		shouldLoad && data && data.symbols.every((symbol) => !!useContent(symbol, { target: 'live' }))
