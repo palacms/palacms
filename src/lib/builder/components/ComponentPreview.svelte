@@ -330,6 +330,7 @@
 	}
 
 	async function setIframeApp() {
+		if (!channel) return
 		channel.postMessage({
 			event: 'SET_APP',
 			payload: { componentApp, data }
@@ -347,7 +348,7 @@
 		const div = iframe?.contentDocument?.querySelector('#page')
 		if (div?.innerHTML === '') {
 			setIframeApp()
-		} else if (iframe_loaded) {
+		} else if (iframe_loaded && channel) {
 			channel.postMessage({
 				event: 'SET_APP_DATA',
 				payload: { data }
@@ -416,11 +417,27 @@
 	)
 
 	let last_data = _.cloneDeep(data)
+	let last_data_keys = Object.keys(data || {})
+		.sort()
+		.join(',')
 	watch(
 		() => data,
 		(data) => {
 			if (!data || _.isEqual(last_data, data)) return
-			setIframeData()
+
+			// Check if new fields have been added (new keys in data object)
+			const current_keys = Object.keys(data).sort().join(',')
+			const fields_added = current_keys !== last_data_keys
+
+			if (fields_added) {
+				// New fields detected - need to recompile to include them in props
+				last_data_keys = current_keys
+				debouncedCompile()
+			} else {
+				// Just data values changed - update iframe data
+				setIframeData()
+			}
+
 			last_data = _.cloneDeep(data)
 		}
 	)
