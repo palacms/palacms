@@ -14,7 +14,6 @@
     enable = true;
   };
   env = {
-    PALA_VERSION = "dev";
     PALA_SUPERUSER_EMAIL = "admin@palacms.internal";
     PALA_SUPERUSER_PASSWORD = "test1234";
     PALA_USER_EMAIL = "user@palacms.internal";
