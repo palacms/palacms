@@ -53,7 +53,7 @@
 	const related_activities = $derived(getUserActivity({ filter: (activity) => activity.page?.id === page.id }))
 
 	let showing_children = $state(false)
-	let children = $derived((page.children() ?? []).sort((a, b) => a.index - b.index))
+	let children = $derived((page.children() ?? []).sort((a, b) => b.index - a.index))
 	let has_children = $derived(children.length > 0 && page.slug !== '')
 	let has_toggled = $state(false)
 	const active = $derived(page.id === active_page_id)
