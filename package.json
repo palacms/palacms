@@ -60,7 +60,7 @@
 		"prettier-plugin-svelte": "^3.4.0",
 		"promise-worker": "^2.0.1",
 		"prosemirror-schema-basic": "^1.2.4",
-		"runed": "^0.35.1",
+		"runed": "^0.36.0",
 		"svelte": "^5.43.5",
 		"svelte-awesome-color-picker": "^4.1.0",
 		"svelte-check": "^4.3.2",
