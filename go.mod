@@ -5,7 +5,7 @@ go 1.24.5
 require (
 	github.com/dop251/goja v0.0.0-20251008123653-cf18d89f3cf6
 	github.com/pocketbase/dbx v1.11.0
-	github.com/pocketbase/pocketbase v0.31.0
+	github.com/pocketbase/pocketbase v0.32.0
 )
 
 require (
@@ -41,5 +41,5 @@ require (
 	modernc.org/libc v1.66.10 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.39.1 // indirect
+	modernc.org/sqlite v1.40.0 // indirect
 )
