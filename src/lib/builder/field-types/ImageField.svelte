@@ -40,30 +40,40 @@
 		try {
 			loading = true
 
-			// Get compression options from field config or use defaults
-			const maxSizeMB = field.config.maxSizeMB ?? 1
-			const maxWidthOrHeight = field.config.maxWidthOrHeight ?? 1920
+			// Check if the image is an SVG - if so, upload as-is without compression
+			const is_svg = image.type === 'image/svg+xml' || image.name.toLowerCase().endsWith('.svg')
 
-			// Compression options
-			const options = {
-				maxSizeMB, // Maximum size in MB
-				maxWidthOrHeight, // Resize large images to this dimension
-				useWebWorker: true // Use web worker for better UI performance
+			let file_to_upload: File
+
+			if (is_svg) {
+				// SVGs are vector graphics and should not be compressed
+				file_to_upload = image
+			} else {
+				// Get compression options from field config or use defaults
+				const maxSizeMB = field.config.maxSizeMB ?? 1
+				const maxWidthOrHeight = field.config.maxWidthOrHeight ?? 1920
+
+				// Compression options
+				const options = {
+					maxSizeMB, // Maximum size in MB
+					maxWidthOrHeight, // Resize large images to this dimension
+					useWebWorker: true // Use web worker for better UI performance
+				}
+
+				// Compress the image
+				// NOTE: browser-image-compression returns Blob instead of File
+				const compressedImage: Blob = await imageCompression(image, options)
+				file_to_upload = new File([compressedImage], image.name)
 			}
 
-			// Compress the image
-			// NOTE: browser-image-compression returns Blob instead of File
-			const compressedImage: Blob = await imageCompression(image, options)
-			const compressedImageFile = new File([compressedImage], image.name)
-
 			if (upload && site) {
-				SiteUploads.update(upload.id, { file: compressedImageFile })
+				SiteUploads.update(upload.id, { file: file_to_upload })
 			} else if (upload) {
-				LibraryUploads.update(upload.id, { file: compressedImageFile })
+				LibraryUploads.update(upload.id, { file: file_to_upload })
 			} else if (site) {
-				upload = SiteUploads.create({ file: compressedImageFile, site: site.id })
+				upload = SiteUploads.create({ file: file_to_upload, site: site.id })
 			} else {
-				upload = LibraryUploads.create({ file: compressedImageFile })
+				upload = LibraryUploads.create({ file: file_to_upload })
 			}
 
 			onchange({ [field.key]: { 0: { value: { ...entry.value, upload: upload.id, url: '' } } } })
