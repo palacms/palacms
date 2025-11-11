@@ -19,15 +19,17 @@ const COMPILED_COMPONENTS_CACHE = new Map()
  * @param {"injected" | "external"} [options.css] - Indicates whether to include CSS in the JavaScript bundle.
  * @param {string} [options.format='esm'] - The module format to use, such as 'esm' for ES Modules.
  * @param {boolean} [options.dev_mode=false] - Whether Svelte should be compiled in dev mode (i.e. attaches LOC for inspecting) or not
+ * @param {string[]} [options.runtime=[]] - Svelte runtime functions to include in bundle (eg. mount, unmount, hydrate).
  * @returns {Promise<Object>} Returns a payload containing the rendered HTML, CSS, JS, and other relevant data.
  * @throws {Error} Throws an error if the compilation or rendering fails.
  */
-export async function html({ component, head, buildStatic = true, css = 'external', format = 'esm', dev_mode = false }) {
+export async function html({ component, head, buildStatic = true, css = 'external', format = 'esm', dev_mode = false, runtime = [] }) {
 	let cache_key
 	if (!buildStatic) {
 		cache_key = JSON.stringify({
 			component,
-			format
+			format,
+			runtime
 		})
 		if (COMPILED_COMPONENTS_CACHE.has(cache_key)) {
 			return COMPILED_COMPONENTS_CACHE.get(cache_key)
@@ -46,7 +48,8 @@ export async function html({ component, head, buildStatic = true, css = 'externa
 			buildStatic,
 			css,
 			format,
-			dev_mode
+			dev_mode,
+			runtime
 		})
 	} catch (e) {
 		// swallow logging here; callers handle error state

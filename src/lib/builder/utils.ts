@@ -7,11 +7,27 @@ import { rich_text_extensions } from '$lib/builder/rich-text/extensions'
 
 import { processors } from './component.js'
 
-const componentsCache = new Map()
-const errorCache = new Map()
-const CACHE_SIZE_LIMIT = 100
-
-export async function processCode({ component, head = { code: '', data: {} }, buildStatic = true, format = 'esm', locale = 'en', hydrated = true }) {
+export async function processCode({
+	component,
+	head = { code: '', data: {} },
+	buildStatic = true,
+	format = 'esm',
+	hydrated = true,
+	runtime = []
+}: {
+	component: {
+		head?: string
+		html?: string
+		css?: string
+		js?: string
+		data?: object
+	}
+	head?: { code: string; data: object }
+	buildStatic?: boolean
+	format?: 'esm'
+	hydrated?: boolean
+	runtime?: string[]
+}) {
 	let css = ''
 	if (component.css) {
 		try {
@@ -32,8 +48,8 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		buildStatic,
 		css: 'injected',
 		format,
-		locale,
-		hydrated
+		hydrated,
+		runtime
 	})
 	return res
 }

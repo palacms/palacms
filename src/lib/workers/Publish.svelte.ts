@@ -37,7 +37,10 @@ export const usePublishSite = (site_id?: string) => {
 							data: symbol_content?.[symbol.id]?.[locale] ?? {}
 						},
 						buildStatic: false,
-						css: 'external'
+						css: 'external',
+
+						// TODO: Svelte runtime needs to be in common bundle shared by all symbol modules.
+						runtime: ['hydrate']
 					})
 					.then(async (res) => {
 						if (!res.js) {
@@ -168,7 +171,7 @@ export const usePublishSite = (site_id?: string) => {
 			res.head +
 			'</head><body id="page">' +
 			res.body +
-			(no_js ? `` : '<script type="module">' + `import { hydrate } from "https://esm.sh/svelte@${SVELTE_VERSION}";` + fetch_modules(page_symbols_with_js) + '</script>') +
+			(no_js ? `` : '<script type="module">' + fetch_modules(page_symbols_with_js) + '</script>') +
 			site?.foot +
 			'</body></html>'
 
@@ -183,7 +186,7 @@ export const usePublishSite = (site_id?: string) => {
 			return symbols
 				.map(
 					(symbol) =>
-						`import('/_symbols/${symbol.id}.js').then(({ default: App }) => {` +
+						`import('/_symbols/${symbol.id}.js').then(({ default: App, hydrate }) => {` +
 						sections
 							.filter((section) => section.symbol === symbol.id)
 							.map((section) => {

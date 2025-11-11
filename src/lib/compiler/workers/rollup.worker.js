@@ -16,7 +16,7 @@ const CDN_URL = 'https://esm.sh'
 const SVELTE_CDN = `${CDN_URL}/svelte@${SVELTE_VERSION}`
 
 registerPromiseWorker(rollup_worker)
-async function rollup_worker({ component, head, hydrated, buildStatic = true, css = 'external', format = 'esm', dev_mode = false }) {
+async function rollup_worker({ component, head, hydrated, buildStatic = true, css = 'external', format = 'esm', dev_mode = false, runtime = [] }) {
 	const final = {
 		ssr: '',
 		dom: '',
@@ -59,6 +59,12 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
           ${css ? `<style>${css}</style>` : ``}`
 	}
 
+	const Entrypoint = () => {
+		let code = `export { default } from './App.svelte';\n`
+		if (runtime.length > 0) code += `export { ${runtime.join(', ')} } from 'svelte'\n`
+		return code
+	}
+
 	function generate_lookup(component, head) {
 		if (Array.isArray(component)) {
 			// build page (sections as components)
@@ -67,10 +73,11 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 				component_lookup.set(`./Component_${i}.svelte`, code)
 			})
 			component_lookup.set(`./App.svelte`, App_Wrapper(component, head))
+			component_lookup.set(`./entry.js`, Entrypoint())
 		} else {
 			// build individual component
-			const app_code = Component(component)
-			component_lookup.set(`./App.svelte`, app_code)
+			component_lookup.set(`./App.svelte`, Component(component))
+			component_lookup.set(`./entry.js`, Entrypoint())
 		}
 	}
 
@@ -126,9 +133,7 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 	async function compile(svelteOptions = {}) {
 		try {
 			return await rollup({
-				input: './App.svelte',
-				// Keep remote modules external EXCEPT .svelte files (which need to be compiled)
-				external: (id) => /^https?:/.test(id) && !/\.svelte$/.test(id),
+				input: './entry.js',
 				plugins: [
 					commonjs,
 					{
@@ -168,8 +173,8 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 							}
 							if (component_lookup.has(id)) return component_lookup.get(id)
 
-							// Fetch external .svelte files so they can be compiled
-							if (/^https?:/.test(id) && /\.svelte$/.test(id)) {
+							// Fetch external modules so they can be compiled
+							if (/^https?:/.test(id)) {
 								try {
 									const response = await fetch(id)
 									if (!response.ok) {
@@ -177,7 +182,7 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 									}
 									return await response.text()
 								} catch (error) {
-									console.error(`Error loading external Svelte component: ${id}`, error)
+									console.error(`Error loading external module: ${id}`, error)
 									throw error
 								}
 							}

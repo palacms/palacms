@@ -16,7 +16,7 @@
 	import { Inspect } from 'svelte-inspect-value'
 	import Icon from '@iconify/svelte'
 	import { content_editable } from '../utilities'
-	import { processCode, processCSS } from '../utils.js'
+	import { processCode, processCSS } from '../utils'
 	import { debounce } from 'lodash-es'
 	import { watch } from 'runed'
 	import { site_html } from '$lib/builder/stores/app/page.js'
@@ -96,7 +96,8 @@
 					js: code.js || '',
 					data
 				},
-				buildStatic: false
+				buildStatic: false,
+				runtime: ['mount', 'unmount']
 			})
 
 			if (error) {

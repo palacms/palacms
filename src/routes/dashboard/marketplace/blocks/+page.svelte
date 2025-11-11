@@ -1,7 +1,6 @@
 <script lang="ts">
 	import * as Popover from '$lib/components/ui/popover'
 	import * as Sidebar from '$lib/components/ui/sidebar'
-	import { processCode } from '$lib/builder/utils.js'
 	import { Separator } from '$lib/components/ui/separator'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Cuboid, CirclePlus, CircleCheck } from 'lucide-svelte'

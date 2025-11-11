@@ -96,7 +96,8 @@
 				js: block.js,
 				data: safeData
 			},
-			buildStatic: false
+			buildStatic: false,
+			runtime: ['mount', 'unmount']
 		})
 
 		if (res.error) {
