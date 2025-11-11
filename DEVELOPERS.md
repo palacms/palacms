@@ -1,8 +1,8 @@
 # Developer Guide
 
-This guide covers the technical aspects of working **on the PalaCMS codebase itself** - whether you're contributing, forking, or just trying to understand how it works.
+This guide covers the technical aspects of working **on the Pala codebase itself** - whether you're contributing, forking, or just trying to understand how it works.
 
-> **Looking to build with PalaCMS?** If you want to learn how to create blocks, templates, or sites using PalaCMS, check out our user documentation at [palacms.com/docs](https://palacms.com/docs).
+> **Looking to build with Pala?** If you want to learn how to create blocks, templates, or sites using Pala, check out our user documentation at [palacms.com/docs](https://palacms.com/docs).
 
 ## 🏗️ Architecture Overview
 
@@ -236,7 +236,7 @@ The app uses these environment variables during the initial start to optionally 
 - For initial superuser:
   - PALA_SUPERUSER_EMAIL
   - PALA_SUPERUSER_PASSWORD
-- For initial PalaCMS user:
+- For initial Pala user:
   - PALA_USER_EMAIL
   - PALA_USER_PASSWORD
 
@@ -272,7 +272,7 @@ For production deployments, see the [PocketBase deployment documentation](https:
 - Use consistent naming across similar features
 - Follow existing patterns in the codebase
 
-## 🔌 Extending PalaCMS
+## 🔌 Extending Pala
 
 ### Adding New Field Types
 

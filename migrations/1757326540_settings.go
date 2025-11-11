@@ -16,7 +16,7 @@ func init() {
 				settings.Meta.AppURL = appURL
 			}
 
-			settings.Meta.AppName = "PalaCMS"
+			settings.Meta.AppName = "Pala CMS"
 			app.Save(settings)
 
 			superuserEmail := os.Getenv("PALA_SUPERUSER_EMAIL")
@@ -44,7 +44,7 @@ func init() {
 				record := core.NewRecord(collection)
 				record.Set("email", userEmail)
 				record.Set("password", userPassword)
-				record.Set("name", "PalaCMS Admin")
+				record.Set("name", "Pala Admin")
 				record.Set("serverRole", "developer")
 				record.SetVerified(true)
 				app.Save(record)
