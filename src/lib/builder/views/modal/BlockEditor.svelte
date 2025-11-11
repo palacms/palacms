@@ -52,7 +52,7 @@
 		symbol_type?: 'site' | 'library'
 	} = $props()
 
-	if (existing_block) {
+	if (existing_block && symbol_type === 'site') {
 		setUserActivity({ site_symbol: existing_block.id })
 	}
 
