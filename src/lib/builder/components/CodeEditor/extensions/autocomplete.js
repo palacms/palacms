@@ -1,6 +1,4 @@
-import { svelteLanguage } from '@replit/codemirror-lang-svelte'
 import { cssLanguage } from '@codemirror/lang-css'
-import { snippetCompletion, autocompletion } from '@codemirror/autocomplete'
 import * as _ from 'lodash-es'
 
 const Completion_Label = (value) => {
