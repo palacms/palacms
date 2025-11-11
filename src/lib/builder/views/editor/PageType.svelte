@@ -662,7 +662,7 @@
 <!-- Page Type Layout -->
 <main id="#Page" data-test bind:this={page_el} class:fadein={page_mounted} class:dragging={$dragging_symbol} lang={$locale}>
 	<!-- Head Zone -->
-	<div class="zone-label">Head</div>
+	<div class="zone-label">Head HTML</div>
 	<section class="code-zone head-zone">
 		<CodeEditor mode="html" bind:value={head} on:save={save_page_type_code} />
 	</section>
@@ -856,7 +856,7 @@
 	</section>
 
 	<!-- Foot Zone -->
-	<div class="zone-label">Foot</div>
+	<div class="zone-label">Body Footer HTML</div>
 	<section class="code-zone foot-zone">
 		<CodeEditor mode="html" bind:value={foot} on:save={save_page_type_code} />
 	</section>
