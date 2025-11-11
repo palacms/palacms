@@ -48,34 +48,45 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 		return
 	}
 
+	// Initialize context with only the required fields and actual override values
+	const initialValue: UserActivityValues = {
+		user: '',
+		site: '',
+		...overrides
+	}
+	// Clean up empty optional fields
+	if (!initialValue.page_type) delete initialValue.page_type
+	if (!initialValue.page) delete initialValue.page
+	if (!initialValue.site_symbol) delete initialValue.site_symbol
+	if (!initialValue.page_type_section) delete initialValue.page_type_section
+	if (!initialValue.page_section) delete initialValue.page_section
+
 	let context = $state<{ value: UserActivityValues }>({
-		value: {
-			user: '',
-			site: '',
-			page_type: '',
-			page: '',
-			site_symbol: ''
-		}
+		value: initialValue
 	})
 	user_activity_context.set(context)
 	watch(
 		() => overrides,
 		() => {
-			context.value = {
+			// Only include fields that have actual values
+			const newValue: UserActivityValues = {
 				user: '',
 				site: '',
-				page_type: '',
-				page: '',
-				site_symbol: '',
-				page_type_section: '',
-				page_section: '',
 				...overrides
 			}
+			// Clean up empty string values for optional fields
+			if (!newValue.page_type) delete newValue.page_type
+			if (!newValue.page) delete newValue.page
+			if (!newValue.site_symbol) delete newValue.site_symbol
+			if (!newValue.page_type_section) delete newValue.page_type_section
+			if (!newValue.page_section) delete newValue.page_section
+			context.value = newValue
 		}
 	)
 
 	let task: number | undefined
 	let activity: ObjectOf<typeof UserActivities> | null = null
+
 	const track = async () => {
 		clearTimeout(task)
 
@@ -84,12 +95,18 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 			return
 		}
 
-		if (activity) {
-			activity = UserActivities.update(activity.id, context.value)
-			await manager.commit()
-		} else {
-			activity = UserActivities.create(context.value)
-			await manager.commit()
+		try {
+			if (activity) {
+				activity = UserActivities.update(activity.id, context.value)
+				await manager.commit()
+			} else {
+				activity = UserActivities.create(context.value)
+				await manager.commit()
+			}
+		} catch (error) {
+			console.warn('Failed to track user activity:', error)
+			// Reset activity on error to retry creation
+			activity = null
 		}
 
 		task = setTimeout(track, 5000)
@@ -140,7 +157,14 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 
 export const getUserActivity = ({ filter }: { filter?: (activity: UserActivityInfo) => unknown } = {}) => {
 	const { value: site } = site_context.get()
-	return (UserActivities.list({ filter: { site: site.id } }) ?? [])
+	let activities
+	try {
+		activities = UserActivities.list({ filter: { site: site.id } }) ?? []
+	} catch (error) {
+		console.warn('Failed to load user activities:', error)
+		return []
+	}
+	return activities
 		.filter((activity) => activity.user !== get(current_user)?.id)
 		.flatMap((activity): UserActivityInfo[] => {
 			const site = Sites.one(activity.site)

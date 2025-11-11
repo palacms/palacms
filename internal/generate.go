@@ -176,7 +176,8 @@ func RegisterGenerateEndpoint(pb *pocketbase.PocketBase) error {
 				return err
 			}
 
-			canAccess, err := requestEvent.App.CanAccessRecord(site, info, site.Collection().UpdateRule)
+			// Check if user can view the site (includes both server role and site_role_assignment)
+			canAccess, err := requestEvent.App.CanAccessRecord(site, info, site.Collection().ViewRule)
 			if !canAccess {
 				return requestEvent.ForbiddenError("", err)
 			}
