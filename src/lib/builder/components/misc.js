@@ -141,7 +141,11 @@ export const static_iframe_srcdoc = ({ head = '', html, css, foot = '' }) => {
 	return `
     <!DOCTYPE html>
     <html>
-      <head>${head}</head>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        ${head}
+      </head>
       <body id="page" style="margin:0">
         ${html}
         <style>${css}</style>
@@ -157,6 +161,7 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
     <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <script type="module">
           import { mount, unmount } from "https://esm.sh/svelte@${SVELTE_VERSION}"
 

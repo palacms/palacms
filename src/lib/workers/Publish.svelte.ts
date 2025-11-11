@@ -164,7 +164,7 @@ export const usePublishSite = (site_id?: string) => {
 		no_js ||= page_symbols_with_js.length === 0
 
 		const final =
-			`<!DOCTYPE html><html lang="${locale}"><head><meta name="generator" content="PalaCMS" />` +
+			`<!DOCTYPE html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="Pala" />` +
 			res.head +
 			'</head><body id="page">' +
 			res.body +
@@ -226,5 +226,5 @@ export const usePublishSite = (site_id?: string) => {
 
 const deduplicate =
 	<T>(key: keyof T) =>
-	(item: T, index: number, array: T[]) =>
-		array.findIndex((value) => value[key] === item[key]) === index
+		(item: T, index: number, array: T[]) =>
+			array.findIndex((value) => value[key] === item[key]) === index
