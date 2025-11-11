@@ -40,6 +40,7 @@
 	const entries = $derived('page_type' in section ? section.entries() : 'page' in section ? section.entries() : undefined)
 	const data = $derived(useContent(section, { target: 'cms' }))
 	const component_data = $derived(data && (data[$locale] ?? {}))
+	const zone = $derived('zone' in section ? section.zone : 'body')
 	const related_activities = $derived(
 		getUserActivity({ filter: (activity) => activity.site_symbol?.id === block.id || activity.page_type_section?.id === section.id || activity.page_section?.id === section.id })
 	)
@@ -1238,7 +1239,10 @@
 		bind:this={node}
 		title="block"
 		srcdoc={component_iframe_srcdoc({
-			head: $site_html
+			head: $site_html,
+			zone,
+			section_id: section.id,
+			symbol_id: block.id
 		})}
 		onload={setup_component_iframe}
 	></iframe>

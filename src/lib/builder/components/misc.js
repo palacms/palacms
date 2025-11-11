@@ -151,7 +151,12 @@ export const static_iframe_srcdoc = ({ head = '', html, css, foot = '' }) => {
   `
 }
 
-export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
+export const component_iframe_srcdoc = ({ head = '', foot = '', zone = 'body', section_id = '', symbol_id = '' }) => {
+	// Determine semantic wrapper based on zone
+	const wrapper_tag = zone === 'header' ? 'header' : zone === 'footer' ? 'footer' : 'main'
+	const wrapper_start = `<${wrapper_tag}>`
+	const wrapper_end = `</${wrapper_tag}>`
+
 	return `
     <!DOCTYPE html>
     <html>
@@ -215,7 +220,11 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
         ${head}
       </head>
       <body style="margin:0;overflow:hidden;">
-        <div id="component"></div>
+        ${wrapper_start}
+        <div data-section="${section_id}" id="section-${section_id}" data-symbol="${symbol_id}">
+          <div id="component"></div>
+        </div>
+        ${wrapper_end}
         ${foot}
         <style>
           [contenteditable="true"] { outline: 0 !important; }

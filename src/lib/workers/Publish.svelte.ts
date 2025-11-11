@@ -115,28 +115,31 @@ export const usePublishSite = (site_id?: string) => {
 
 		const sections = [...(header_sections ?? []), ...(body_sections ?? []), ...(footer_sections ?? [])].filter(deduplicate('id'))
 
-		const component = (
-			await Promise.all(
-				sections.map(async (section: PageTypeSection | PageSection) => {
-					const symbol = data?.symbols.find((symbol) => symbol.id === section.symbol)
-					if (!symbol) return []
+		// Helper to build components for a section group
+		const build_components = async (section_group: (PageTypeSection | PageSection)[]) => {
+			return (
+				await Promise.all(
+					section_group.map(async (section: PageTypeSection | PageSection) => {
+						const symbol = data?.symbols.find((symbol) => symbol.id === section.symbol)
+						if (!symbol) return []
 
-					const { html, css: postcss, js } = symbol
+						const { html, css: postcss, js } = symbol
 
-					const { css } = await processors.css(postcss || '')
-					return [
-						{
-							html,
-							js,
-							css,
-							data: section_content?.[section.id]?.[locale] ?? {},
-							wrapper_start: `<div data-section="${section.id}" id="section-${section.id}" data-symbol="${symbol.id}">`,
-							wrapper_end: '</div>'
-						}
-					]
-				})
-			)
-		).flat()
+						const { css } = await processors.css(postcss || '')
+						return [
+							{
+								html,
+								js,
+								css,
+								data: section_content?.[section.id]?.[locale] ?? {},
+								wrapper_start: `<div data-section="${section.id}" id="section-${section.id}" data-symbol="${symbol.id}">`,
+								wrapper_end: '</div>'
+							}
+						]
+					})
+				)
+			).flat()
+		}
 
 		const site_data = {
 			...site_content?.[locale],
@@ -148,12 +151,39 @@ export const usePublishSite = (site_id?: string) => {
 			data: site_data
 		}
 
-		const res = await processors.html({
-			component,
-			head,
-			locale,
-			css: 'external'
-		})
+		// Process each zone separately and collect CSS from each
+		// Pass head to all zones (needed for head.data), but only include head.code once
+		const head_without_code = { code: '', data: head.data }
+
+		const header_result = header_sections && header_sections.length > 0
+			? await processors.html({
+				component: await build_components(header_sections),
+				head, // Include custom head code in first zone processing
+				locale,
+				css: 'external'
+			})
+			: { body: '', head: '' }
+
+		const body_result = body_sections && body_sections.length > 0
+			? await processors.html({
+				component: await build_components(body_sections),
+				head: head_without_code, // Pass head.data but no code to avoid duplication
+				locale,
+				css: 'external'
+			})
+			: { body: '', head: '' }
+
+		const footer_result = footer_sections && footer_sections.length > 0
+			? await processors.html({
+				component: await build_components(footer_sections),
+				head: head_without_code, // Pass head.data but no code to avoid duplication
+				locale,
+				css: 'external'
+			})
+			: { body: '', head: '' }
+
+		// Combine CSS from all zones (header includes custom head.code)
+		const combined_head = header_result.head + body_result.head + footer_result.head
 
 		const page_symbols_with_js = sections
 			.map((section) => ({ symbol_id: section.symbol }))
@@ -163,19 +193,25 @@ export const usePublishSite = (site_id?: string) => {
 			.filter((symbol) => !!symbol.js)
 		no_js ||= page_symbols_with_js.length === 0
 
+		// Build body with semantic wrappers
+		let body_content = ''
+		if (header_result.body) body_content += `<header>${header_result.body}</header>`
+		body_content += `<main>${body_result.body}</main>`
+		if (footer_result.body) body_content += `<footer>${footer_result.body}</footer>`
+
 		const final =
 			`<!DOCTYPE html><html lang="${locale}"><head><meta name="generator" content="PalaCMS" />` +
-			res.head +
-			'</head><body id="page">' +
-			res.body +
-			(no_js ? `` : '<script type="module">' + `import { hydrate } from "https://esm.sh/svelte@${SVELTE_VERSION}";` + fetch_modules(page_symbols_with_js) + '</script>') +
+			combined_head +
+			'</head><body>' +
+			body_content +
+			(no_js ? `` : '<script type="module">' + `import { hydrate} from "https://esm.sh/svelte@${SVELTE_VERSION}";` + fetch_modules(page_symbols_with_js) + '</script>') +
 			site?.foot +
 			'</body></html>'
 
 		return {
-			success: !!res.body,
+			success: !!body_content,
 			html: final,
-			js: res.js
+			js: header_result.js || body_result.js || footer_result.js || ''
 		}
 
 		// fetch module to hydrate component, include hydration data
@@ -226,5 +262,5 @@ export const usePublishSite = (site_id?: string) => {
 
 const deduplicate =
 	<T>(key: keyof T) =>
-	(item: T, index: number, array: T[]) =>
-		array.findIndex((value) => value[key] === item[key]) === index
+		(item: T, index: number, array: T[]) =>
+			array.findIndex((value) => value[key] === item[key]) === index
