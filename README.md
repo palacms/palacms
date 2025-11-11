@@ -1,4 +1,4 @@
-# PalaCMS V3 Beta
+# Pala V3 Beta
 
 **Pala is a modern monolithic CMS that gives developers the control they need and content editors the simplicity they've always wanted.** 
 
@@ -35,7 +35,7 @@
 
 ### New in V3
 
-- **Self-hosting with PocketBase** - Run PalaCMS on your own infrastructure with PocketBase as the backend
+- **Self-hosting with PocketBase** - Run Pala on your own infrastructure with PocketBase as the backend
 - **Custom Page Types** - Create flexible content types for different kinds of pages
 - **Dynamic Content Fields** - Site fields, page fields, and relational content that updates across pages
 - **Block/Starter Library** - Reusable components and starter templates
@@ -51,7 +51,7 @@
 
 ### Coming in Beta
 
-- **Framework Integration** - Embed PalaCMS content in your existing Next.js, SvelteKit, or other apps
+- **Framework Integration** - Embed Pala content in your existing Next.js, SvelteKit, or other apps
 - **AI Block Generation** - Generate blocks with AI assistance
 - **Local Development Tools** - Full local development environment and CLI tools
 - **Marketplace Integration** - Browse and install community blocks and starters
