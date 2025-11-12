@@ -434,7 +434,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const safe_url = url ?? ''
 
 				const label = entry.value.label ?? ''
-				content[entry.locale]![field.key] = { url: safe_url, label }
+				content[entry.locale]![field.key] = { url: safe_url, label, text: label }
 			}
 
 			// If field has a key but no entries, fill with empty value

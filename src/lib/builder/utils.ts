@@ -158,6 +158,7 @@ export function get_empty_value(field) {
 	else if (field.type === 'link')
 		return {
 			label: '',
+			text: '',
 			url: ''
 		}
 	else if (field.type === 'url') return ''
@@ -183,7 +184,7 @@ function get_markdown_renderer() {
 				if (lang && hljs.getLanguage(lang)) {
 					try {
 						return '<pre><code class="hljs">' + hljs.highlight(str, { language: lang, ignoreIllegals: true }).value + '</code></pre>'
-					} catch (__) {}
+					} catch (__) { }
 				}
 
 				return '<pre><code class="hljs">' + markdown_renderer.utils.escapeHtml(str) + '</code></pre>'
