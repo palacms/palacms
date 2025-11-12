@@ -76,17 +76,25 @@
 	// TABS - Simple persistent approach
 	let selected_tabs = $state<Record<string, 'field' | 'entry'>>($field_tabs_by_entity?.[entity?.id] || {})
 
+	// Track field IDs to detect newly created fields
+	const current_field_ids = () => (fields || []).filter((f) => !f.parent || f.parent === '').map((f) => f.id)
+	let previous_field_ids = $state<string[]>(current_field_ids())
+
 	// Initialize tabs for new fields when they appear, using an explicit watch
 	watch(
-		() => (fields || []).filter((f) => !f.parent || f.parent === '').map((f) => f.id),
+		current_field_ids,
 		(parent_field_ids) => {
 			let changed = false
 			for (const id of parent_field_ids) {
 				if (!(id in selected_tabs)) {
-					selected_tabs[id] = $current_user?.siteRole === 'developer' ? 'field' : 'entry'
+					// If this is a newly created field (not in previous list), show field tab
+					// Otherwise, show entry tab by default for existing fields
+					const is_new_field = !previous_field_ids.includes(id)
+					selected_tabs[id] = (is_new_field && $current_user?.siteRole === 'developer') ? 'field' : 'entry'
 					changed = true
 				}
 			}
+			previous_field_ids = [...parent_field_ids]
 			if (changed) persist_tabs()
 		}
 	)
