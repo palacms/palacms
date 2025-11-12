@@ -70,7 +70,9 @@
 			// Use RAF to throttle updates
 			resize_raf = requestAnimationFrame(() => {
 				const delta = e.clientY - resize_start_y
-				head_editor_height = Math.max(50, Math.min(600, resize_start_height + delta))
+				const editor_wrapper = document.querySelector('.head-editor-container .editor-wrapper')
+				const max_height = editor_wrapper ? editor_wrapper.clientHeight : 600
+				head_editor_height = Math.max(0, Math.min(max_height, resize_start_height + delta))
 			})
 		}
 
