@@ -25,16 +25,16 @@
 	const center_pane_size = writable(2)
 	const right_pane_size = writable(2)
 
-	// Smart default sizes based on content
-	const has_html = $derived(html && html.trim().length > 0)
-	const has_css = $derived(css && css.trim().length > 0)
-	const has_js = $derived(js && js.trim().length > 0)
-	const pane_count = $derived([has_html, has_css, has_js].filter(Boolean).length || 1)
+	// Smart default sizes based on initial content (not reactive)
+	const has_html = html && html.trim().length > 0
+	const has_css = css && css.trim().length > 0
+	const has_js = js && js.trim().length > 0
+	const pane_count = [has_html, has_css, has_js].filter(Boolean).length || 1
 
 	// Default sizes: if only HTML, make it 96%. If 2 panes, 50/50. If 3 panes, 48/48/4
-	const default_html_size = $derived(pane_count === 1 ? 96 : pane_count === 2 ? 50 : 48)
-	const default_css_size = $derived(!has_css ? 2 : pane_count === 2 && has_css ? 50 : 48)
-	const default_js_size = $derived(!has_js ? 2 : pane_count === 2 && has_js ? 50 : 4)
+	const default_html_size = pane_count === 1 ? 96 : pane_count === 2 ? 50 : 48
+	const default_css_size = !has_css ? 2 : pane_count === 2 && has_css ? 50 : 48
+	const default_js_size = !has_js ? 2 : pane_count === 2 && has_js ? 50 : 4
 
 	// Set up keyboard shortcuts for tab switching
 	// Use a simple global keydown listener for when CodeMirror isn't focused
