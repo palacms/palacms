@@ -12,7 +12,7 @@ import { useSvelteWorker } from './Worker.svelte'
 export const usePublishSite = (site_id?: string) => {
 	const worker = useSvelteWorker(
 		() => !!site_id,
-		() => !!site && !!pages && !!page_types && !!data && !!site_content && !!page_type_content,
+		() => !!site && !!pages && !!page_types && !!data && !!site_content && !!page_type_content && !!section_content,
 		async () => {
 			if (!data) {
 				throw new Error('Not loaded')
@@ -144,9 +144,6 @@ export const usePublishSite = (site_id?: string) => {
 			}
 
 			console.log(`Generating page "${page.name || page.id}" with ${sections.length} sections`)
-
-			// Compute section content for this specific page (needed for link active state)
-			const section_content = Object.fromEntries(sections.map((section) => [section.id, useContent(section, { target: 'live' })]).filter(([_, content]) => !!content))
 
 			const component = (
 				await Promise.all(
@@ -295,6 +292,11 @@ export const usePublishSite = (site_id?: string) => {
 	const symbol_content = $derived(
 		shouldLoad && data && data.symbols.every((symbol) => !!useContent(symbol, { target: 'live' }))
 			? Object.fromEntries(data.symbols.map((symbol) => [symbol.id, useContent(symbol, { target: 'live' })]))
+			: undefined
+	)
+	const section_content = $derived(
+		shouldLoad && data && [...data.page_type_sections, ...data.page_sections].every((section) => !!useContent(section, { target: 'live' }))
+			? Object.fromEntries([...data.page_type_sections, ...data.page_sections].map((section) => [section.id, useContent(section, { target: 'live' })]))
 			: undefined
 	)
 
