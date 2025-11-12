@@ -18,7 +18,6 @@
 	import { self as pb } from '$lib/pocketbase/managers'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { setUserActivity } from '$lib/UserActivity.svelte'
-	import { PaneGroup, Pane, PaneResizer } from 'paneforge'
 	import Icon from '@iconify/svelte'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
@@ -46,6 +45,53 @@
 	let head = $state(page_type.head || '')
 	let foot = $state(page_type.foot || '')
 	let save_timeout = null
+
+	// Head editor resize state
+	const storage_key = `head-editor-height-${page_type.id}`
+	let head_editor_height = $state(
+		typeof localStorage !== 'undefined'
+			? parseInt(localStorage.getItem(storage_key) || '200')
+			: 200
+	)
+	let is_resizing = $state(false)
+	let resize_start_y = $state(0)
+	let resize_start_height = $state(0)
+	let resize_raf = null
+
+	function start_resize(event: MouseEvent) {
+		is_resizing = true
+		resize_start_y = event.clientY
+		resize_start_height = head_editor_height
+
+		const handle_mouse_move = (e: MouseEvent) => {
+			if (!is_resizing) return
+
+			// Cancel any pending animation frame
+			if (resize_raf) {
+				cancelAnimationFrame(resize_raf)
+			}
+
+			// Use RAF to throttle updates
+			resize_raf = requestAnimationFrame(() => {
+				const delta = e.clientY - resize_start_y
+				head_editor_height = Math.max(100, Math.min(600, resize_start_height + delta))
+			})
+		}
+
+		const handle_mouse_up = () => {
+			is_resizing = false
+			document.removeEventListener('mousemove', handle_mouse_move)
+			document.removeEventListener('mouseup', handle_mouse_up)
+
+			// Save to localStorage
+			if (typeof localStorage !== 'undefined') {
+				localStorage.setItem(storage_key, head_editor_height.toString())
+			}
+		}
+
+		document.addEventListener('mousemove', handle_mouse_move)
+		document.addEventListener('mouseup', handle_mouse_up)
+	}
 
 	async function save_page_type_code() {
 		if (!page_type) return
@@ -663,28 +709,26 @@
 {/if}
 
 <!-- Page Type Layout -->
-<main id="#Page" data-test bind:this={page_el} class:fadein={page_mounted} class:dragging={$dragging_symbol} lang={$locale}>
-	<PaneGroup direction="vertical" class="h-full" autoSaveId="page-type-{page_type?.id}">
-		<Pane defaultSize={15} minSize={5} collapsible={true} collapsedSize={3}>
-			<!-- Head Zone -->
+<main id="#Page" data-test bind:this={page_el} class:fadein={page_mounted} class:dragging={$dragging_symbol} class:resizing-editor={is_resizing} lang={$locale}>
+	<div class="page-content">
+		<!-- Head HTML Editor (Resizable) -->
+		<div class="head-editor-container">
 			<div class="zone-label">Head HTML</div>
-			<section class="code-zone head-zone">
+			<div class="code-zone head-zone" style="height: {head_editor_height}px;">
 				<CodeEditor mode="html" bind:value={head} on:save={save_page_type_code} />
-			</section>
-		</Pane>
-		<PaneResizer
-			class="PaneResizer-horizontal"
-			style="display: flex; justify-content: center; align-items: center; height: 8px; background: var(--color-gray-900); border-top: 1px solid var(--color-gray-800); border-bottom: 1px solid var(--color-gray-800); cursor: row-resize;"
-		>
-			<span class="grab-handle" style="transform: rotate(90deg);">
-				<Icon icon="mdi:drag-vertical-variant" />
-			</span>
-		</PaneResizer>
-		<Pane defaultSize={85} minSize={20}>
-			<div class="zones-container">
-				<!-- Header Zone -->
-				<div class="zone-label">Header</div>
-				<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header">
+			</div>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="resize-handle" onmousedown={start_resize} class:resizing={is_resizing}>
+				<span class="grab-handle">
+					<Icon icon="mdi:drag-vertical-variant" />
+				</span>
+			</div>
+		</div>
+
+		<div class="zones-container">
+			<!-- Header Zone -->
+			<div class="zone-label">Header</div>
+			<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header">
 					{#each header_sections as section (section.id)}
 						{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
 						<div
@@ -870,14 +914,13 @@
 					{/if}
 				</section>
 
-				<!-- Foot Zone -->
-				<div class="zone-label">Body Footer HTML</div>
-				<section class="code-zone foot-zone">
-					<CodeEditor mode="html" bind:value={foot} on:save={save_page_type_code} />
-				</section>
-			</div>
-		</Pane>
-	</PaneGroup>
+			<!-- Foot Zone -->
+			<div class="zone-label">Body Footer HTML</div>
+			<section class="code-zone foot-zone">
+				<CodeEditor mode="html" bind:value={foot} on:save={save_page_type_code} />
+			</section>
+		</div>
+	</div>
 </main>
 
 <!-- {@html html_below || ''} -->
@@ -904,56 +947,60 @@
 		opacity: 0;
 		border-top: 0;
 		height: 100%;
-		/* padding-top: 42px; */
-		overflow: hidden;
+		overflow-y: auto;
 		box-sizing: border-box;
 	}
 
-	main :global(.h-full) {
-		height: 100%;
-		display: flex;
-		flex-direction: column;
+	.page-content {
+		padding: 1rem 0.5rem;
+		min-height: 100%;
 	}
 
-	main :global(.PaneResizer-horizontal) {
+	.head-editor-container {
+		margin-bottom: 1rem;
+	}
+
+	.resize-handle {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 8px;
+		background: var(--color-gray-900);
+		border-top: 1px solid var(--color-gray-800);
+		border-bottom: 1px solid var(--color-gray-800);
+		cursor: row-resize;
 		user-select: none;
 		-webkit-user-select: none;
+		margin-top: -1px;
 	}
 
-	main :global(.PaneResizer-horizontal:hover) {
-		background: var(--color-gray-800) !important;
+	.resize-handle:hover,
+	.resize-handle.resizing {
+		background: var(--color-gray-800);
 	}
 
-	main :global(.PaneResizer-horizontal .grab-handle) {
+	.resize-handle .grab-handle {
 		color: var(--color-gray-600);
 		transition: color 0.2s;
+		transform: rotate(90deg);
 	}
 
-	main :global(.PaneResizer-horizontal:hover .grab-handle) {
+	.resize-handle:hover .grab-handle,
+	.resize-handle.resizing .grab-handle {
 		color: var(--color-gray-400);
 	}
 
-	/* Add padding and scrolling to pane contents */
-	main :global([data-pane]) {
-		overflow-y: auto;
-	}
-
-	/* First pane (Head HTML) has padding */
-	main :global([data-pane]:first-child) {
-		padding: 1rem 0.5rem;
-	}
-
-	/* Second pane (zones) uses zones-container for padding/scrolling */
 	.zones-container {
-		padding: 1rem 0.5rem;
-		height: 100%;
-		overflow-y: auto;
+		padding: 0;
 	}
 
 	main.fadein {
 		opacity: 1;
 	}
 	main.dragging :global(iframe) {
+		pointer-events: none !important;
+	}
+	main.resizing-editor [data-section] {
 		pointer-events: none !important;
 	}
 
@@ -1051,13 +1098,13 @@
 
 	.code-zone {
 		position: relative;
+		overflow: hidden;
 		/* border: 2px solid rgba(255, 255, 255, 0.2); */
 		/* background: var(--color-gray-900); */
 	}
 
 	.code-zone.head-zone {
 		border-color: rgba(76, 175, 80, 0.3);
-		margin-bottom: 1rem;
 	}
 
 	.code-zone.foot-zone {
