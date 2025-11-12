@@ -87,23 +87,39 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 			} else if (change) {
 				data = Object.assign({}, data, change.data)
 			} else if (!data) {
-				$effect(() => {
-					// If no cached record exists, start loading it
+				try {
+					$effect(() => {
+						// If no cached record exists, start loading it
+						if (!records.has(id)) {
+							untrack(() => {
+								records.set(id, undefined)
+								collection
+									.getOne(id)
+									.then((record) => {
+										records.set(id, { data: record })
+									})
+									.catch((error) => {
+										console.error(error)
+										records.set(id, null)
+									})
+							})
+						}
+					})
+				} catch (e) {
+					// Not in reactive context - fetch immediately without effect
 					if (!records.has(id)) {
-						untrack(() => {
-							records.set(id, undefined)
-							collection
-								.getOne(id)
-								.then((record) => {
-									records.set(id, { data: record })
-								})
-								.catch((error) => {
-									console.error(error)
-									records.set(id, null)
-								})
-						})
+						records.set(id, undefined)
+						collection
+							.getOne(id)
+							.then((record) => {
+								records.set(id, { data: record })
+							})
+							.catch((error) => {
+								console.error(error)
+								records.set(id, null)
+							})
 					}
-				})
+				}
 				return data
 			}
 
@@ -116,33 +132,59 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 				.map(([key, value]) => `${key} = "${value}"`)
 				.join(' && ')
 
-			$effect(() => {
-				// If no cached list exists or it's invalidated, start loading it
+			try {
+				$effect(() => {
+					// If no cached list exists or it's invalidated, start loading it
+					const existingList = lists.get(listId)
+					if (!lists.has(listId) || existingList?.invalidated) {
+						untrack(() => {
+							lists.set(listId, existingList ? { invalidated: false, ids: existingList?.ids } : undefined)
+							collection
+								.getFullList({
+									...options,
+									filter,
+									requestKey: listId
+								})
+								.then((fetchedRecords) => {
+									// Store the full records
+									fetchedRecords.forEach((record) => {
+										records.set(record.id, { data: record })
+									})
+									// Store the list of IDs
+									lists.set(listId, { invalidated: false, ids: fetchedRecords.map(({ id }) => id) })
+								})
+								.catch((error) => {
+									console.error(error)
+									lists.set(listId, null)
+								})
+						})
+					}
+				})
+			} catch (e) {
+				// Not in reactive context - fetch immediately without effect
 				const existingList = lists.get(listId)
 				if (!lists.has(listId) || existingList?.invalidated) {
-					untrack(() => {
-						lists.set(listId, existingList ? { invalidated: false, ids: existingList?.ids } : undefined)
-						collection
-							.getFullList({
-								...options,
-								filter,
-								requestKey: listId
+					lists.set(listId, existingList ? { invalidated: false, ids: existingList?.ids } : undefined)
+					collection
+						.getFullList({
+							...options,
+							filter,
+							requestKey: listId
+						})
+						.then((fetchedRecords) => {
+							// Store the full records
+							fetchedRecords.forEach((record) => {
+								records.set(record.id, { data: record })
 							})
-							.then((fetchedRecords) => {
-								// Store the full records
-								fetchedRecords.forEach((record) => {
-									records.set(record.id, { data: record })
-								})
-								// Store the list of IDs
-								lists.set(listId, { invalidated: false, ids: fetchedRecords.map(({ id }) => id) })
-							})
-							.catch((error) => {
-								console.error(error)
-								lists.set(listId, null)
-							})
-					})
+							// Store the list of IDs
+							lists.set(listId, { invalidated: false, ids: fetchedRecords.map(({ id }) => id) })
+						})
+						.catch((error) => {
+							console.error(error)
+							lists.set(listId, null)
+						})
 				}
-			})
+			}
 
 			const list = [...(lists.get(listId)?.ids ?? [])]
 			for (const [id, change] of changes) {

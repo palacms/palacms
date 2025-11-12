@@ -36,6 +36,14 @@ export type UseContentOptions = {
 	 * when resolving page fields for example.
 	 */
 	page?: ObjectOf<typeof Pages>
+	/**
+	 * Optional page_type context for computing page-type-specific values
+	 */
+	page_type?: ObjectOf<typeof PageTypes>
+	/**
+	 * Optional site context for computing site-specific values
+	 */
+	site?: ObjectOf<typeof Sites>
 }
 
 export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(entity: EntityOf<Collection>, options: UseContentOptions) => {
@@ -136,7 +144,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			.filter((field) => !!field.key)
 
 		for (const field of filteredFields) {
-			const fieldEntries = resolveEntries({ entity, field, entries, parentEntry })
+			const fieldEntries = resolveEntries({ entity, field, entries, parentEntry, options })
 			if (!fieldEntries || !field.key) return
 
 			// Handle page-field fields specially - get content from the page entity
@@ -159,8 +167,9 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 				let data: ReturnType<typeof getContent> | null = null
 
-				const { value: page } = page_context.getOr({ value: null })
-				const { value: pageType } = page_type_context.getOr({ value: null })
+				const page = options.page ?? page_context.getOr({ value: null }).value
+				const pageType = options.page_type ?? page_type_context.getOr({ value: null }).value
+				const site = options.site ?? site_context.getOr({ value: null }).value
 
 				if (options.page) {
 					// Override current page from options
@@ -471,7 +480,13 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const safe_url = url ?? ''
 
 				const label = entry.value.label ?? ''
-				content[entry.locale]![field.key] = { url: safe_url, label, text: label }
+
+				// Determine if link points to current page
+				// Prefer the passed page over the context
+				const current_page = options.page ?? page_context.getOr({ value: null }).value
+				const active = entry.value.page && current_page ? entry.value.page === current_page.id : false
+
+				content[entry.locale]![field.key] = { url: safe_url, label, text: label, active }
 			}
 
 			// If field has a key but no entries, fill with empty value
@@ -534,7 +549,7 @@ export const useEntries = (entity: Entity, field: Field, parentEntry?: Entry) =>
 	return entries && resolveEntries({ entity, field, entries, parentEntry })
 }
 
-const resolveEntries = ({ entity, field, entries, parentEntry }: { entity: Entity; field: Field; entries: Entry[]; parentEntry?: Entry | null }): Entry[] | undefined => {
+const resolveEntries = ({ entity, field, entries, parentEntry, options }: { entity: Entity; field: Field; entries: Entry[]; parentEntry?: Entry | null; options?: UseContentOptions }): Entry[] | undefined => {
 	const fieldEntries = entries
 		.filter((entry) => entry.field === field.id && (!('section' in entry) || entry.section === entity.id))
 		.filter((entry) => (parentEntry ? entry.parent === parentEntry.id : !entry.parent))
@@ -549,9 +564,10 @@ const resolveEntries = ({ entity, field, entries, parentEntry }: { entity: Entit
 
 		let sourceEntity: ObjectOf<typeof Pages> | ObjectOf<typeof PageTypes> | undefined | null = null
 
-		// Try to use the page or page_type context first
-		const { value: page } = page_context.getOr({ value: null })
-		const { value: pageType } = page_type_context.getOr({ value: null })
+		// Try to use the page or page_type context first (with options fallback)
+		const page = options?.page ?? page_context.getOr({ value: null }).value
+		const pageType = options?.page_type ?? page_type_context.getOr({ value: null }).value
+		const site = options?.site ?? site_context.getOr({ value: null }).value
 		if (page) {
 			// Page context found
 			sourceEntity = page
@@ -575,7 +591,7 @@ const resolveEntries = ({ entity, field, entries, parentEntry }: { entity: Entit
 		if (sourceEntries === null) return []
 		if (!sourceEntries) return
 
-		return resolveEntries({ entity: sourceEntity, field: sourceField, entries: sourceEntries })
+		return resolveEntries({ entity: sourceEntity, field: sourceField, entries: sourceEntries, options })
 	}
 
 	// Handle site fields specially - get entries from the site entity
@@ -593,7 +609,7 @@ const resolveEntries = ({ entity, field, entries, parentEntry }: { entity: Entit
 		if (siteEntries === null) return []
 		if (!siteEntries) return
 
-		return resolveEntries({ entity: site, field: siteField, entries: siteEntries })
+		return resolveEntries({ entity: site, field: siteField, entries: siteEntries, options })
 	}
 
 	// Otherwise, return direct entries

@@ -145,6 +145,12 @@ export const usePublishSite = (site_id?: string) => {
 
 			console.log(`Generating page "${page.name || page.id}" with ${sections.length} sections`)
 
+			// Compute section content for this specific page (needed for link active state)
+			const page_section_content = Object.fromEntries(
+				sections.map((section) => [section.id, useContent(section, { target: 'live', page, page_type, site })])
+					.filter(([_, content]) => !!content)
+			)
+
 			const component = (
 				await Promise.all(
 					sections.map(async (section: PageTypeSection | PageSection, index: number) => {
@@ -163,7 +169,7 @@ export const usePublishSite = (site_id?: string) => {
 									html,
 									js,
 									css,
-									data: section_content?.[section.id]?.[locale] ?? {},
+									data: page_section_content?.[section.id]?.[locale] ?? {},
 									wrapper_start: `<div data-section="${section.id}" id="section-${section.id}" data-symbol="${symbol.id}">`,
 									wrapper_end: '</div>'
 								}
@@ -236,7 +242,7 @@ export const usePublishSite = (site_id?: string) => {
 							sections
 								.filter((section) => section.symbol === symbol.id)
 								.map((section) => {
-									const content = section_content?.[section.id]?.[locale]
+									const content = page_section_content?.[section.id]?.[locale]
 									return `hydrate(App, { target: document.querySelector('#section-${section.id}'), props: ${JSON.stringify(content)} });`
 								})
 								.join('') +
