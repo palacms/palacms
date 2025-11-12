@@ -48,11 +48,7 @@
 
 	// Head editor resize state
 	const storage_key = `head-editor-height-${page_type.id}`
-	let head_editor_height = $state(
-		typeof localStorage !== 'undefined'
-			? parseInt(localStorage.getItem(storage_key) || '200')
-			: 200
-	)
+	let head_editor_height = $state(typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem(storage_key) || '50') : 50)
 	let is_resizing = $state(false)
 	let resize_start_y = $state(0)
 	let resize_start_height = $state(0)
@@ -74,7 +70,7 @@
 			// Use RAF to throttle updates
 			resize_raf = requestAnimationFrame(() => {
 				const delta = e.clientY - resize_start_y
-				head_editor_height = Math.max(100, Math.min(600, resize_start_height + delta))
+				head_editor_height = Math.max(50, Math.min(600, resize_start_height + delta))
 			})
 		}
 
@@ -729,190 +725,190 @@
 			<!-- Header Zone -->
 			<div class="zone-label">Header</div>
 			<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header">
-					{#each header_sections as section (section.id)}
-						{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
-						<div
-							role="region"
-							use:drag_item={section}
-							data-section={section.id}
-							data-symbol={symbol?.id}
-							id="section-{section.id}"
-							onmousemove={() => {
-								if (!moving && !showing_block_toolbar) {
-									show_block_toolbar()
+				{#each header_sections as section (section.id)}
+					{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
+					<div
+						role="region"
+						use:drag_item={section}
+						data-section={section.id}
+						data-symbol={symbol?.id}
+						id="section-{section.id}"
+						onmousemove={() => {
+							if (!moving && !showing_block_toolbar) {
+								show_block_toolbar()
+							}
+						}}
+						onmouseenter={async ({ target }) => {
+							hovered_section_id = section.id
+							hovered_block_el = target
+							if (!moving) {
+								show_block_toolbar()
+							}
+						}}
+						onmouseleave={() => {
+							setTimeout(() => {
+								if (hovered_section_id === section.id) {
+									hide_block_toolbar()
 								}
-							}}
-							onmouseenter={async ({ target }) => {
-								hovered_section_id = section.id
-								hovered_block_el = target
-								if (!moving) {
-									show_block_toolbar()
-								}
-							}}
-							onmouseleave={() => {
-								setTimeout(() => {
-									if (hovered_section_id === section.id) {
-										hide_block_toolbar()
+							}, 50)
+						}}
+						animate:flip={{ duration: 100 }}
+						data-test-id="page-type-section-{section.id}"
+						style="min-height: 3rem;overflow:hidden;position: relative;"
+					>
+						{#if symbol}
+							<ComponentNode
+								{section}
+								block={symbol}
+								on:mount={() => sections_mounted++}
+								on:resize={() => {
+									if (showing_block_toolbar) {
+										position_block_toolbar()
 									}
-								}, 50)
-							}}
-							animate:flip={{ duration: 100 }}
-							data-test-id="page-type-section-{section.id}"
-							style="min-height: 3rem;overflow:hidden;position: relative;"
-						>
-							{#if symbol}
-								<ComponentNode
-									{section}
-									block={symbol}
-									on:mount={() => sections_mounted++}
-									on:resize={() => {
-										if (showing_block_toolbar) {
-											position_block_toolbar()
-										}
-									}}
-								/>
-							{:else}
-								<div style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
-									⚠️ Symbol not found: {section.symbol}
-								</div>
-							{/if}
-						</div>
-					{/each}
-					{#if header_sections.length === 0}
-						<div class="empty-zone" use:empty_zone_drop={'header'}>
-							<span>Drag blocks here for the header</span>
-						</div>
-					{/if}
-				</section>
+								}}
+							/>
+						{:else}
+							<div in:fade={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
+								⚠️ Symbol not found: {section.symbol}
+							</div>
+						{/if}
+					</div>
+				{/each}
+				{#if header_sections.length === 0}
+					<div class="empty-zone" use:empty_zone_drop={'header'}>
+						<span>Drag blocks here for the header</span>
+					</div>
+				{/if}
+			</section>
 
-				<!-- Body Zone -->
-				<div class="zone-label">
-					Body
-					{#if is_static_page_type}
-						<span class="zone-mode">(Static)</span>
-					{:else}
-						<span class="zone-mode">(Dynamic)</span>
-					{/if}
-				</div>
-				<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body">
-					{#each body_sections as section (section.id)}
-						{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
-						<div
-							role="region"
-							use:drag_item={section}
-							data-section={section.id}
-							data-symbol={symbol?.id}
-							id="section-{section.id}"
-							onmousemove={() => {
-								if (!moving && !showing_block_toolbar) {
-									show_block_toolbar()
+			<!-- Body Zone -->
+			<div class="zone-label">
+				Body
+				{#if is_static_page_type}
+					<span class="zone-mode">(Static)</span>
+				{:else}
+					<span class="zone-mode">(Dynamic)</span>
+				{/if}
+			</div>
+			<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body">
+				{#each body_sections as section (section.id)}
+					{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
+					<div
+						role="region"
+						use:drag_item={section}
+						data-section={section.id}
+						data-symbol={symbol?.id}
+						id="section-{section.id}"
+						onmousemove={() => {
+							if (!moving && !showing_block_toolbar) {
+								show_block_toolbar()
+							}
+						}}
+						onmouseenter={async ({ target }) => {
+							hovered_section_id = section.id
+							hovered_block_el = target
+							if (!moving) {
+								show_block_toolbar()
+							}
+						}}
+						onmouseleave={() => {
+							setTimeout(() => {
+								if (hovered_section_id === section.id) {
+									hide_block_toolbar()
 								}
-							}}
-							onmouseenter={async ({ target }) => {
-								hovered_section_id = section.id
-								hovered_block_el = target
-								if (!moving) {
-									show_block_toolbar()
-								}
-							}}
-							onmouseleave={() => {
-								setTimeout(() => {
-									if (hovered_section_id === section.id) {
-										hide_block_toolbar()
+							}, 50)
+						}}
+						animate:flip={{ duration: 100 }}
+						data-test-id="page-type-section-{section.id}"
+						style="min-height: 3rem;overflow:hidden;position: relative;"
+					>
+						{#if symbol}
+							<ComponentNode
+								{section}
+								block={symbol}
+								on:mount={() => sections_mounted++}
+								on:resize={() => {
+									if (showing_block_toolbar) {
+										position_block_toolbar()
 									}
-								}, 50)
-							}}
-							animate:flip={{ duration: 100 }}
-							data-test-id="page-type-section-{section.id}"
-							style="min-height: 3rem;overflow:hidden;position: relative;"
-						>
-							{#if symbol}
-								<ComponentNode
-									{section}
-									block={symbol}
-									on:mount={() => sections_mounted++}
-									on:resize={() => {
-										if (showing_block_toolbar) {
-											position_block_toolbar()
-										}
-									}}
-								/>
-							{:else}
-								<div style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
-									⚠️ Symbol not found: {section.symbol}
-								</div>
-							{/if}
-						</div>
-					{/each}
-					{#if body_sections.length === 0}
-						<div class="empty-zone main-body" use:empty_zone_drop={'body'}>
-							{#if is_static_page_type}
-								<span>Drag blocks here for static body content</span>
-							{:else}
-								<span>Drag blocks here for default body content (users can modify)</span>
-							{/if}
-						</div>
-					{/if}
-				</section>
+								}}
+							/>
+						{:else}
+							<div in:fade={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
+								⚠️ Symbol not found: {section.symbol}
+							</div>
+						{/if}
+					</div>
+				{/each}
+				{#if body_sections.length === 0}
+					<div class="empty-zone main-body" use:empty_zone_drop={'body'}>
+						{#if is_static_page_type}
+							<span>Drag blocks here for static body content</span>
+						{:else}
+							<span>Drag blocks here for default body content (users can modify)</span>
+						{/if}
+					</div>
+				{/if}
+			</section>
 
-				<!-- Footer Zone -->
-				<div class="zone-label">Footer</div>
-				<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer">
-					{#each footer_sections as section (section.id)}
-						{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
-						<div
-							role="region"
-							use:drag_item={section}
-							data-section={section.id}
-							data-symbol={symbol?.id}
-							id="section-{section.id}"
-							onmousemove={() => {
-								if (!moving && !showing_block_toolbar) {
-									show_block_toolbar()
+			<!-- Footer Zone -->
+			<div class="zone-label">Footer</div>
+			<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer">
+				{#each footer_sections as section (section.id)}
+					{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
+					<div
+						role="region"
+						use:drag_item={section}
+						data-section={section.id}
+						data-symbol={symbol?.id}
+						id="section-{section.id}"
+						onmousemove={() => {
+							if (!moving && !showing_block_toolbar) {
+								show_block_toolbar()
+							}
+						}}
+						onmouseenter={async ({ target }) => {
+							hovered_section_id = section.id
+							hovered_block_el = target
+							if (!moving) {
+								show_block_toolbar()
+							}
+						}}
+						onmouseleave={() => {
+							setTimeout(() => {
+								if (hovered_section_id === section.id) {
+									hide_block_toolbar()
 								}
-							}}
-							onmouseenter={async ({ target }) => {
-								hovered_section_id = section.id
-								hovered_block_el = target
-								if (!moving) {
-									show_block_toolbar()
-								}
-							}}
-							onmouseleave={() => {
-								setTimeout(() => {
-									if (hovered_section_id === section.id) {
-										hide_block_toolbar()
+							}, 50)
+						}}
+						animate:flip={{ duration: 100 }}
+						data-test-id="page-type-section-{section.id}"
+						style="min-height: 3rem;overflow:hidden;position: relative;"
+					>
+						{#if symbol}
+							<ComponentNode
+								{section}
+								block={symbol}
+								on:mount={() => sections_mounted++}
+								on:resize={() => {
+									if (showing_block_toolbar) {
+										position_block_toolbar()
 									}
-								}, 50)
-							}}
-							animate:flip={{ duration: 100 }}
-							data-test-id="page-type-section-{section.id}"
-							style="min-height: 3rem;overflow:hidden;position: relative;"
-						>
-							{#if symbol}
-								<ComponentNode
-									{section}
-									block={symbol}
-									on:mount={() => sections_mounted++}
-									on:resize={() => {
-										if (showing_block_toolbar) {
-											position_block_toolbar()
-										}
-									}}
-								/>
-							{:else}
-								<div in:fade={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
-									⚠️ Symbol not found: {section.symbol}
-								</div>
-							{/if}
-						</div>
-					{/each}
-					{#if footer_sections.length === 0}
-						<div class="empty-zone" use:empty_zone_drop={'footer'}>
-							<span>Drag blocks here for the footer</span>
-						</div>
-					{/if}
-				</section>
+								}}
+							/>
+						{:else}
+							<div in:fade={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
+								⚠️ Symbol not found: {section.symbol}
+							</div>
+						{/if}
+					</div>
+				{/each}
+				{#if footer_sections.length === 0}
+					<div class="empty-zone" use:empty_zone_drop={'footer'}>
+						<span>Drag blocks here for the footer</span>
+					</div>
+				{/if}
+			</section>
 
 			<!-- Foot Zone -->
 			<div class="zone-label">Body Footer HTML</div>
