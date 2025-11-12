@@ -604,7 +604,7 @@
 	})
 
 	function update_menu_positions() {
-		if (!node.contentDocument) return
+		if (!node?.contentDocument) return
 		if (editing_link || editing_image || editing_video) {
 			hide_menus()
 			return
