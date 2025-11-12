@@ -321,7 +321,7 @@
 
 	.format-hint {
 		position: absolute;
-		bottom: 1rem;
+		top: 1rem;
 		right: 1rem;
 		background: var(--color-gray-9);
 		border: 1px solid var(--color-gray-8);
