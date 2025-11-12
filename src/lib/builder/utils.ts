@@ -144,7 +144,9 @@ export function get_empty_value(field) {
 			url: '',
 			src: '',
 			alt: '',
-			size: null
+			size: null,
+			width: null,
+			height: null
 		}
 	else if (field.type === 'text') return ''
 	else if (field.type === 'markdown') return ''
