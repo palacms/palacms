@@ -52,20 +52,23 @@ export async function html({ component, head, buildStatic = true, css = 'externa
 			runtime
 		})
 	} catch (e) {
-		// swallow logging here; callers handle error state
+		console.error('Rollup worker error:', e)
 		res = {
-			error: e.toString()
+			error: e instanceof Error ? e.message : String(e)
 		}
 	}
 
 	let payload
 
 	if (!res) {
+		console.error('Compilation failed: No response from rollup worker')
 		payload = {
-			html: '<h1 style="text-align: center">could not render</h1>'
+			html: '<h1 style="text-align: center">could not render</h1>',
+			error: 'No response from rollup worker'
 		}
 		res = {}
 	} else if (res.error) {
+		console.error('Compilation error from rollup worker:', res.error)
 		payload = {
 			error: escapeHtml(res.error)
 		}
@@ -100,10 +103,13 @@ export async function html({ component, head, buildStatic = true, css = 'externa
 				js: res.dom
 			}
 		} catch (e) {
+			console.error('Svelte render error:', e)
+			const error_msg = e instanceof Error ? e.message : String(e)
 			payload = {
 				head: '',
 				body: '',
-				js: ''
+				js: '',
+				error: `Render error: ${error_msg}`
 			}
 		}
 	} else {
