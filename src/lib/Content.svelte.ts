@@ -282,7 +282,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 					const data = getContent({ entity, fields, entries, parentField: field, parentEntry: entry })
 					if (!data) continue
-					;(content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
+						; (content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
 				}
 			}
 
@@ -324,6 +324,9 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const input_url: string | undefined = entry.value.url
 				const url = input_url || upload_url
 				const alt: string = entry.value.alt
+				const width: number | null | undefined = entry.value.width
+				const height: number | null | undefined = entry.value.height
+				content[entry.locale]![field.key] = { alt, url, width, height }
 				content[entry.locale]![field.key] = { alt, url }
 			}
 

@@ -10,6 +10,7 @@
 	import { LibraryUploads, SiteUploads } from '$lib/pocketbase/collections'
 	import { site_context } from '../stores/context'
 	import { self } from '$lib/pocketbase/managers'
+	import { watch } from 'runed'
 
 	const {
 		field,
@@ -25,16 +26,41 @@
 		alt: string
 		url: string
 		upload?: string | null
+		width?: number | null
+		height?: number | null
 	}
 
 	const default_value: ImageFieldValue = {
 		alt: '',
 		url: '',
-		upload: null
+		upload: null,
+		width: null,
+		height: null
 	}
 
 	const entry = $derived(passedEntry || { value: default_value }) as Omit<Entry, 'value'> & { value: ImageFieldValue }
 	const { value: site } = site_context.getOr({ value: null })
+
+	// Helper function to extract image dimensions
+	async function get_image_dimensions(source: File | string): Promise<{ width: number; height: number } | null> {
+		return new Promise((resolve) => {
+			const img = new Image()
+
+			img.onload = () => {
+				resolve({ width: img.naturalWidth, height: img.naturalHeight })
+			}
+
+			img.onerror = () => {
+				resolve(null)
+			}
+
+			if (typeof source === 'string') {
+				img.src = source
+			} else {
+				img.src = URL.createObjectURL(source)
+			}
+		})
+	}
 
 	async function upload_image(image: File) {
 		try {
@@ -66,6 +92,9 @@
 				file_to_upload = new File([compressedImage], image.name)
 			}
 
+			// Extract dimensions from the compressed/final image
+			const dimensions = await get_image_dimensions(file_to_upload)
+
 			if (upload && site) {
 				SiteUploads.update(upload.id, { file: file_to_upload })
 			} else if (upload) {
@@ -76,7 +105,19 @@
 				upload = LibraryUploads.create({ file: file_to_upload })
 			}
 
-			onchange({ [field.key]: { 0: { value: { ...entry.value, upload: upload.id, url: '' } } } })
+			onchange({
+				[field.key]: {
+					0: {
+						value: {
+							...entry.value,
+							upload: upload.id,
+							url: '',
+							width: dimensions?.width ?? null,
+							height: dimensions?.height ?? null
+						}
+					}
+				}
+			})
 		} finally {
 			loading = false
 		}
@@ -93,6 +134,30 @@
 	)
 	let input_url = $derived(entry.value.url)
 	let url = $derived(input_url || upload_url)
+
+	// Extract dimensions when URL changes (for external URLs)
+	watch(
+		() => input_url,
+		(current_url) => {
+			if (current_url && !entry.value.width && !entry.value.height) {
+				get_image_dimensions(current_url).then((dimensions) => {
+					if (dimensions) {
+						onchange({
+							[field.key]: {
+								0: {
+									value: {
+										...entry.value,
+										width: dimensions.width,
+										height: dimensions.height
+									}
+								}
+							}
+						})
+					}
+				})
+			}
+		}
+	)
 </script>
 
 <div class="ImageField" bind:clientWidth={width} class:collapsed>
@@ -107,6 +172,11 @@
 				{#if image_size}
 					<span class="field-size">
 						{image_size}KB
+					</span>
+				{/if}
+				{#if entry.value.width && entry.value.height}
+					<span class="field-dimensions">
+						{entry.value.width} × {entry.value.height}
 					</span>
 				{/if}
 				{#if url}
@@ -240,6 +310,18 @@
 			font-size: var(--font-size-1);
 			font-weight: 600;
 			border-bottom-right-radius: 0.25rem;
+		}
+
+		.field-dimensions {
+			background: var(--color-gray-8);
+			color: var(--color-gray-3);
+			position: absolute;
+			bottom: 0;
+			right: 0;
+			z-index: 1;
+			padding: 2px 4px;
+			font-size: 0.5rem;
+			border-top-left-radius: 0.25rem;
 		}
 
 		img {
