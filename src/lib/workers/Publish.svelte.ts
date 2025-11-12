@@ -8,12 +8,11 @@ import { usePageData } from '../PageData.svelte'
 import { Sites } from '../pocketbase/collections'
 import { self } from '../pocketbase/managers'
 import { useSvelteWorker } from './Worker.svelte'
-import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
 
 export const usePublishSite = (site_id?: string) => {
 	const worker = useSvelteWorker(
 		() => !!site_id,
-		() => !!site && !!pages && !!page_types && !!data && !!site_content && !!page_type_content && !!section_content,
+		() => !!site && !!pages && !!page_types && !!data && !!site_content && !!page_type_content,
 		async () => {
 			if (!data) {
 				throw new Error('Not loaded')
@@ -43,13 +42,22 @@ export const usePublishSite = (site_id?: string) => {
 						runtime: ['hydrate']
 					})
 					.then(async (res) => {
+						if (res.error) {
+							console.error(`Symbol compilation error for "${symbol.name || symbol.id}":`, res.error)
+							throw new Error(`Compiling symbol "${symbol.name || symbol.id}" failed: ${res.error}`)
+						}
 						if (!res.js) {
-							throw new Error('Compiling symbol not successful')
+							console.error(`Symbol compilation failed for "${symbol.name || symbol.id}": No JavaScript output`)
+							throw new Error(`Compiling symbol "${symbol.name || symbol.id}" not successful: No JavaScript output`)
 						}
 
 						await self.instance.collection('site_symbols').update(symbol.id, {
 							compiled_js: new File([res.js], 'symbol.js', { type: 'text/javascript' })
 						})
+					})
+					.catch((error) => {
+						console.error(`Failed to compile symbol "${symbol.name || symbol.id}":`, error)
+						throw error // Re-throw to be caught by Promise.all
 					})
 				promises.push(promise)
 			}
@@ -57,9 +65,10 @@ export const usePublishSite = (site_id?: string) => {
 			for (const page of data.pages) {
 				if (!page.parent) {
 					// Generate site preview from homepage
-					const promise = generate_page(page, true).then(async ({ success, html }) => {
+					const promise = generate_page(page, true).then(async ({ success, html, error }) => {
 						if (!success) {
-							throw new Error('Generating site preview not successful')
+							console.error(`Site preview generation failed for page "${page.name || page.id}":`, error || 'Unknown error')
+							throw new Error(`Generating site preview not successful for page "${page.name || page.id}": ${error || 'Unknown error'}`)
 						}
 						if (!site) {
 							throw new Error('No site')
@@ -73,9 +82,16 @@ export const usePublishSite = (site_id?: string) => {
 				}
 
 				const promise = generate_page(page)
-					.then(async ({ success, html }) => {
+					.then(async ({ success, html, error, page_info }) => {
 						if (!success) {
-							throw new Error('Generating page not successful')
+							console.error(`Page generation failed for "${page.name || page.id}":`, {
+								page_id: page.id,
+								page_name: page.name,
+								page_slug: page.slug,
+								error: error || 'Unknown error',
+								...page_info
+							})
+							throw new Error(`Generating page "${page.name || page.id}" (${page.slug || '/'}) not successful: ${error || 'Unknown error'}`)
 						}
 
 						await self.instance.collection('pages').update(page.id, {
@@ -83,7 +99,7 @@ export const usePublishSite = (site_id?: string) => {
 						})
 					})
 					.catch((error) => {
-						console.error('Page compilation error:', error)
+						console.error(`Page compilation error for "${page.name || page.id}":`, error)
 						throw error // Re-throw to be caught by Promise.all
 					})
 				promises.push(promise)
@@ -107,96 +123,159 @@ export const usePublishSite = (site_id?: string) => {
 
 	const generate_page = async (page: Page, no_js = false) => {
 		const locale = 'en' as const
+		let error_details = ''
+		let page_info: Record<string, any> = {}
 
-		const page_type = page_types?.find((page_type) => page_type.id === page.page_type)
-		const page_sections = data?.page_sections.filter((section) => section.page === page.id)
-		const page_type_sections = data?.page_type_sections.filter((section) => section.page_type === page_type?.id)
+		try {
+			const page_type = page_types?.find((page_type) => page_type.id === page.page_type)
+			const page_sections = data?.page_sections.filter((section) => section.page === page.id)
+			const page_type_sections = data?.page_type_sections.filter((section) => section.page_type === page_type?.id)
 
-		const header_sections = page_type_sections?.filter((section) => section.zone === 'header')
-		const footer_sections = page_type_sections?.filter((section) => section.zone === 'footer')
-		const body_sections = page_sections
+			const header_sections = page_type_sections?.filter((section) => section.zone === 'header')
+			const footer_sections = page_type_sections?.filter((section) => section.zone === 'footer')
+			const body_sections = page_sections
 
-		const sections = [...(header_sections ?? []), ...(body_sections ?? []), ...(footer_sections ?? [])].filter(deduplicate('id'))
+			const sections = [...(header_sections ?? []), ...(body_sections ?? []), ...(footer_sections ?? [])].filter(deduplicate('id'))
 
-		const component = (
-			await Promise.all(
-				sections.map(async (section: PageTypeSection | PageSection) => {
-					const symbol = data?.symbols.find((symbol) => symbol.id === section.symbol)
-					if (!symbol) return []
+			page_info = {
+				page_type: page_type?.name || page.page_type,
+				sections_count: sections.length,
+				section_ids: sections.map((s) => s.id)
+			}
 
-					const { html, css: postcss, js } = symbol
+			console.log(`Generating page "${page.name || page.id}" with ${sections.length} sections`)
 
-					const { css } = await processors.css(postcss || '')
-					return [
-						{
-							html,
-							js,
-							css,
-							data: section_content?.[section.id]?.[locale] ?? {},
-							wrapper_start: `<div data-section="${section.id}" id="section-${section.id}" data-symbol="${symbol.id}">`,
-							wrapper_end: '</div>'
+			// Compute section content for this specific page (needed for link active state)
+			const section_content = Object.fromEntries(sections.map((section) => [section.id, useContent(section, { target: 'live' })]).filter(([_, content]) => !!content))
+
+			const component = (
+				await Promise.all(
+					sections.map(async (section: PageTypeSection | PageSection, index: number) => {
+						try {
+							const symbol = data?.symbols.find((symbol) => symbol.id === section.symbol)
+							if (!symbol) {
+								console.warn(`Section ${index} (${section.id}) references missing symbol: ${section.symbol}`)
+								return []
+							}
+
+							const { html, css: postcss, js } = symbol
+
+							const { css } = await processors.css(postcss || '')
+							return [
+								{
+									html,
+									js,
+									css,
+									data: section_content?.[section.id]?.[locale] ?? {},
+									wrapper_start: `<div data-section="${section.id}" id="section-${section.id}" data-symbol="${symbol.id}">`,
+									wrapper_end: '</div>'
+								}
+							]
+						} catch (section_error) {
+							console.error(`Error processing section ${index} (${section.id}):`, section_error)
+							throw new Error(`Failed to process section ${index} (${section.id}): ${section_error}`)
 						}
-					]
-				})
-			)
-		).flat()
-
-		const site_data = {
-			...site_content?.[locale],
-			...page_type_content?.[page.page_type]?.[locale]
-		}
-
-		const head = {
-			code: (site?.head ?? '') + (page_type?.head ?? ''),
-			data: site_data
-		}
-
-		const res = await processors.html({
-			component,
-			head,
-			locale,
-			css: 'external'
-		})
-
-		const page_symbols_with_js = sections
-			.map((section) => ({ symbol_id: section.symbol }))
-			.filter(deduplicate('symbol_id'))
-			.map(({ symbol_id }) => data?.symbols.find((symbol) => symbol.id === symbol_id))
-			.filter((symbol) => !!symbol)
-			.filter((symbol) => !!symbol.js)
-		no_js ||= page_symbols_with_js.length === 0
-
-		const final =
-			`<!DOCTYPE html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="Pala" />` +
-			res.head +
-			'</head><body id="page">' +
-			res.body +
-			(no_js ? `` : '<script type="module">' + fetch_modules(page_symbols_with_js) + '</script>') +
-			site?.foot +
-			'</body></html>'
-
-		return {
-			success: !!res.body,
-			html: final,
-			js: res.js
-		}
-
-		// fetch module to hydrate component, include hydration data
-		function fetch_modules(symbols: SiteSymbol[]) {
-			return symbols
-				.map(
-					(symbol) =>
-						`import('/_symbols/${symbol.id}.js').then(({ default: App, hydrate }) => {` +
-						sections
-							.filter((section) => section.symbol === symbol.id)
-							.map((section) => {
-								const content = section_content?.[section.id]?.[locale]
-								return `hydrate(App, { target: document.querySelector('#section-${section.id}'), props: ${JSON.stringify(content)} });`
-							})
-							.join('') +
-						'}).catch(e => console.error(e));'
+					})
 				)
-				.join('')
+			).flat()
+
+			const site_data = {
+				...site_content?.[locale],
+				...page_type_content?.[page.page_type]?.[locale]
+			}
+
+			const head = {
+				code: (site?.head ?? '') + (page_type?.head ?? ''),
+				data: site_data
+			}
+
+			console.log(`Compiling HTML for page "${page.name || page.id}"`)
+
+			const res = await processors.html({
+				component,
+				head,
+				locale,
+				css: 'external'
+			})
+
+			if (res.error) {
+				error_details = `HTML compilation error: ${res.error}`
+				console.error(`HTML compilation error for page "${page.name || page.id}":`, res.error)
+				return {
+					success: false,
+					html: '',
+					js: '',
+					error: error_details,
+					page_info
+				}
+			}
+
+			if (!res.body) {
+				error_details = 'HTML compilation produced no body output'
+				console.error(`HTML compilation for page "${page.name || page.id}" produced no body output`)
+				return {
+					success: false,
+					html: '',
+					js: '',
+					error: error_details,
+					page_info
+				}
+			}
+
+			const page_symbols_with_js = sections
+				.map((section) => ({ symbol_id: section.symbol }))
+				.filter(deduplicate('symbol_id'))
+				.map(({ symbol_id }) => data?.symbols.find((symbol) => symbol.id === symbol_id))
+				.filter((symbol) => !!symbol)
+				.filter((symbol) => !!symbol.js)
+			no_js ||= page_symbols_with_js.length === 0
+
+			// fetch module to hydrate component, include hydration data
+			function fetch_modules(symbols: SiteSymbol[]) {
+				return symbols
+					.map(
+						(symbol) =>
+							`import('/_symbols/${symbol.id}.js').then(({ default: App, hydrate }) => {` +
+							sections
+								.filter((section) => section.symbol === symbol.id)
+								.map((section) => {
+									const content = section_content?.[section.id]?.[locale]
+									return `hydrate(App, { target: document.querySelector('#section-${section.id}'), props: ${JSON.stringify(content)} });`
+								})
+								.join('') +
+							'}).catch(e => console.error(e));'
+					)
+					.join('')
+			}
+
+			const final =
+				`<!DOCTYPE html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="Pala" />` +
+				res.head +
+				'</head><body id="page">' +
+				res.body +
+				(no_js ? `` : '<script type="module">' + fetch_modules(page_symbols_with_js) + '</script>') +
+				site?.foot +
+				'</body></html>'
+
+			console.log(`Successfully generated page "${page.name || page.id}"`)
+
+			return {
+				success: !!res.body,
+				html: final,
+				js: res.js,
+				error: '',
+				page_info
+			}
+		} catch (e) {
+			error_details = e instanceof Error ? e.message : String(e)
+			console.error(`Fatal error generating page "${page.name || page.id}":`, e)
+			return {
+				success: false,
+				html: '',
+				js: '',
+				error: error_details,
+				page_info
+			}
 		}
 	}
 
@@ -211,11 +290,6 @@ export const usePublishSite = (site_id?: string) => {
 	const page_type_content = $derived(
 		shouldLoad && page_types && page_types.every((page_type) => !!useContent(page_type, { target: 'live' }))
 			? Object.fromEntries(page_types.map((page_type) => [page_type.id, useContent(page_type, { target: 'live' })]))
-			: undefined
-	)
-	const section_content = $derived(
-		shouldLoad && data && [...data.page_type_sections, ...data.page_sections].every((section) => !!useContent(section, { target: 'live' }))
-			? Object.fromEntries([...data.page_type_sections, ...data.page_sections].map((section) => [section.id, useContent(section, { target: 'live' })]))
 			: undefined
 	)
 	const symbol_content = $derived(
