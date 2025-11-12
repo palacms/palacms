@@ -120,23 +120,114 @@
 			if (!selected_block_ids.length) return
 
 			const site = created_site
-			const source_symbols = selected_blocks.filter((symbol) => !!symbol)
-			const source_symbol_fields = selected_block_fields.filter((field) => !!field)
-			const source_symbol_entries = selected_block_entries.filter((entry) => !!entry)
+			if (!site) return
 
-			const site_symbol_map = create_site_symbols({ source_symbols, site })
-			const site_symbol_field_map = create_site_symbol_fields({ source_symbol_fields, site_symbol_map })
-			const site_symbol_entry_map = create_site_symbol_entries({ source_symbol_entries, site_symbol_field_map })
+			// Try to fetch bundles for each symbol
+			for (const { id, source } of selected_block_ids) {
+				const bundle_base_url = source === 'library' ? self.instance.baseURL : marketplace.instance.baseURL
+				const bundle_url = `${bundle_base_url}/api/palacms/symbols/${id}.json`
+
+				try {
+					// Try bundle first
+					const response = await fetch(bundle_url)
+					if (response.ok) {
+						const bundle = await response.json()
+						await copy_symbol_from_bundle(bundle, site)
+						continue
+					}
+				} catch (err) {
+					console.warn(`Bundle not available for symbol ${id}, falling back to database`, err)
+				}
+
+				// Fallback to database
+				const symbol = source === 'library' ? LibrarySymbols.one(id) : LibrarySymbols.from(marketplace).one(id)
+				if (!symbol) continue
+
+				const fields = symbol.fields()
+				const entries = symbol.entries()
+
+				const site_symbol_map = create_site_symbols({ source_symbols: [symbol], site })
+				const site_symbol_field_map = create_site_symbol_fields({ source_symbol_fields: fields ?? [], site_symbol_map })
+				const site_symbol_entry_map = create_site_symbol_entries({ source_symbol_entries: entries ?? [], site_symbol_field_map })
+			}
 		} catch (error) {
-			console.error('Error copying marketplace symbols:', error)
+			console.error('Error copying symbols:', error)
 			throw error
 		}
 	}
+
+	async function copy_symbol_from_bundle(bundle: any, site: any) {
+		// Create symbol
+		const { id: _id, site: _site, compiled_js: _compiled, ...symbol_data } = bundle.symbol
+		const symbol = SiteSymbols.create({
+			...symbol_data,
+			site: site.id
+		})
+
+		const site_symbol_map = new Map([[bundle.symbol.id, symbol]])
+
+		// Create fields recursively
+		const field_map = new Map()
+		const create_fields = (parent_id?: string) => {
+			for (const source_field of bundle.fields) {
+				if ((parent_id === undefined && source_field.parent) || (parent_id && source_field.parent !== parent_id)) {
+					continue
+				}
+
+				const parent_field = source_field.parent ? field_map.get(source_field.parent) : undefined
+
+				const { id: _id, symbol: _symbol, parent: _parent, ...field_data } = source_field
+				const field = SiteSymbolFields.create({
+					...field_data,
+					symbol: symbol.id,
+					parent: parent_field?.id
+				})
+				field_map.set(source_field.id, field)
+				create_fields(source_field.id)
+			}
+		}
+		create_fields()
+
+		// Create entries recursively
+		const entry_map = new Map()
+		const create_entries = (parent_id?: string) => {
+			for (const source_entry of bundle.entries) {
+				if ((parent_id === undefined && source_entry.parent) || (parent_id && source_entry.parent !== parent_id)) {
+					continue
+				}
+
+				const field = field_map.get(source_entry.field)
+				if (!field) continue
+
+				const parent_entry = source_entry.parent ? entry_map.get(source_entry.parent) : undefined
+
+				const { id: _id, field: _field, parent: _parent, ...entry_data } = source_entry
+				const entry = SiteSymbolEntries.create({
+					...entry_data,
+					field: field.id,
+					parent: parent_entry?.id
+				})
+				entry_map.set(source_entry.id, entry)
+				create_entries(source_entry.id)
+			}
+		}
+		create_entries()
+	}
+
+	// Always try bundle first (local or marketplace), fall back to database if not available
+	const bundle_url = $derived(
+		selected_starter_id
+			? selected_starter_source === 'marketplace'
+				? `${marketplace.instance.baseURL}/api/palacms/starters/${selected_starter_id}.json`
+				: `${self.instance.baseURL}/api/palacms/starters/${selected_starter_id}.json`
+			: undefined
+	)
 
 	const cloneSite = $derived(
 		useCloneSite({
 			source_manager: selected_starter_source === 'local' ? self : marketplace,
 			source_site_id: selected_starter_id,
+			bundle_url,
 			site_name: site_name,
 			site_host: pageState.url.host,
 			site_group_id: site_group?.id

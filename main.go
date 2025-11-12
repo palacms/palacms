@@ -61,5 +61,13 @@ func setup(pb *pocketbase.PocketBase) error {
 		return err
 	}
 
+	if err := internal.RegisterStarterBundleGeneration(pb); err != nil {
+		return err
+	}
+
+	if err := internal.RegisterCloneEndpoint(pb); err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -31,62 +31,50 @@ import type { CollectionManager } from '$lib/pocketbase/CollectionManager'
 export const useCloneSite = ({
 	source_manager = self,
 	source_site_id,
+	bundle_url,
 	site_name,
 	site_host,
 	site_group_id
 }: {
 	source_manager?: CollectionManager
 	source_site_id?: string
+	bundle_url?: string
 	site_name?: string
 	site_host?: string
 	site_group_id?: string
 }) => {
 	const worker = useSvelteWorker(
 		() => !!source_site_id || !!site_name || !site_host || !site_group_id,
-		() => !!source_site && !!source_site_pages && !!source_site_data.data,
+		() => true, // Always ready - server-side cloning doesn't need data loaded
 		async () => {
-			const { data } = source_site_data
-			if (!data || !source_site || !site_name || !site_host || !site_group_id) {
-				throw new Error('Not loaded')
+			if (!site_name || !site_host || !site_group_id || !source_site_id) {
+				throw new Error('Missing site details')
 			}
 
-			const site = create_site({ source_site, site_name, site_host, site_group_id })
-			const site_upload_map = await create_site_uploads({ source_site_uploads: data.site_uploads, site })
-			const site_field_map = create_site_fields({ source_site_fields: data.site_fields, site })
-			const site_entry_map = create_site_entries({ source_site_entries: data.site_entries, site_field_map })
-			const site_symbol_map = create_site_symbols({ source_symbols: data.symbols, site })
-			const site_symbol_field_map = create_site_symbol_fields({ source_symbol_fields: data.symbol_fields, site_symbol_map })
-			const site_symbol_entry_map = create_site_symbol_entries({ source_symbol_entries: data.symbol_entries, site_symbol_field_map })
-			const page_type_map = create_page_types({ source_page_types: data.page_types, site })
-			const page_type_field_map = create_page_type_fields({ source_page_type_fields: data.page_type_fields, page_type_map })
-			const page_type_entry_map = create_page_type_entries({ source_page_type_entries: data.page_type_entries, page_type_field_map })
-			const page_type_symbol_map = create_page_type_symbols({ source_page_type_symbols: data.page_type_symbols, page_type_map, site_symbol_map })
-			const page_type_section_map = create_page_type_sections({ source_page_type_sections: data.page_type_sections, page_type_map, site_symbol_map })
-			const page_type_section_entry_map = create_page_type_section_entries({ source_page_type_section_entries: data.page_type_section_entries, page_type_section_map, site_symbol_field_map })
-			const page_map = create_pages({ source_pages: data.pages, site, page_type_map })
-			const page_entry_map = create_page_entries({ source_page_entries: data.page_entries, page_map, page_type_field_map })
-			const page_section_map = create_page_sections({ source_page_sections: data.page_sections, page_map, site_symbol_map })
-			const page_section_entry_map = create_page_section_entries({ source_page_section_entries: data.page_section_entries, page_section_map, site_symbol_field_map })
+			// Use server-side cloning endpoint
+			const response = await fetch(new URL('/api/palacms/clone-starter', source_manager.instance.baseURL), {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${source_manager.instance.authStore.token}`
+				},
+				body: JSON.stringify({
+					starter_id: source_site_id,
+					site_name,
+					site_host,
+					site_group_id
+				})
+			})
 
-			update_field_config_references({ field_collection: SiteFields, field_map: site_field_map, page_type_field_map, page_type_map, site_field_map })
-			update_field_config_references({ field_collection: SiteSymbolFields, field_map: site_symbol_field_map, page_type_field_map, page_type_map, site_field_map })
-			update_field_config_references({ field_collection: PageTypeFields, field_map: page_type_field_map, page_type_field_map, page_type_map, site_field_map })
+			if (!response.ok) {
+				const error = await response.text()
+				throw new Error(`Failed to clone site: ${error}`)
+			}
 
-			update_entry_value_references({ entry_collection: SiteEntries, entry_map: site_entry_map, field_map: site_field_map, page_map, site_upload_map })
-			update_entry_value_references({ entry_collection: SiteSymbolEntries, entry_map: site_symbol_entry_map, field_map: site_symbol_field_map, page_map, site_upload_map })
-			update_entry_value_references({ entry_collection: PageTypeEntries, entry_map: page_type_entry_map, field_map: page_type_field_map, page_map, site_upload_map })
-			update_entry_value_references({ entry_collection: PageTypeSectionEntries, entry_map: page_type_section_entry_map, field_map: site_symbol_field_map, page_map, site_upload_map })
-			update_entry_value_references({ entry_collection: PageEntries, entry_map: page_entry_map, field_map: page_type_field_map, page_map, site_upload_map })
-			update_entry_value_references({ entry_collection: PageSectionEntries, entry_map: page_section_entry_map, field_map: site_symbol_field_map, page_map, site_upload_map })
-
-			await self.commit()
+			const result = await response.json()
+			return result
 		}
 	)
-
-	const shouldLoad = $derived(['loading', 'working'].includes(worker.status))
-	const source_site = $derived(shouldLoad && source_site_id ? Sites.from(source_manager).one(source_site_id) : undefined)
-	const source_site_pages = $derived(shouldLoad && source_site ? source_site.pages() : undefined)
-	const source_site_data = $derived(shouldLoad && source_site && source_site_pages ? usePageData(source_site, source_site_pages, source_manager) : { data: undefined })
 
 	return worker
 }

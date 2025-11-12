@@ -118,6 +118,19 @@ export const usePublishSite = (site_id?: string) => {
 					throw new Error('Failed to generate site: Not OK response')
 				}
 			})
+
+			// Generate starter bundle for fast cloning
+			await fetch(new URL('/api/palacms/generate-starter-bundle', self.instance.baseURL), {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${self.instance.authStore.token}`
+				},
+				body: JSON.stringify({ site_id })
+			}).catch((err) => {
+				console.warn('Failed to generate starter bundle:', err)
+				// Don't fail publish if bundle generation fails
+			})
 		}
 	)
 
