@@ -311,7 +311,8 @@
 		overflow-y: scroll;
 		overscroll-behavior-x: contain; /* prevent from swiping back */
 		font-family: 'Fira Code', monospace !important;
-		height: calc(100% - 34px);
+		/* height: calc(100% - 34px); */
+		height: 100%; /* making full height for page type head html, can't remember what -34px was for */
 	}
 
 	.editor-wrapper {
