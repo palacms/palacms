@@ -1,16 +1,28 @@
 package internal
 
 import (
-	"os"
+	"time"
 
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/security"
 )
 
+var buildTime string
+var buildVersion string
+
+// Get build time
+func getBuildTime() (time.Time, error) {
+	if buildTime == "" {
+		return time.Now(), nil
+	}
+
+	return time.Parse(time.RFC3339, buildTime)
+}
+
 // Get version
-func getVersion() string {
-	return os.Getenv("PALA_VERSION") // or unknown
+func getBuildVersion() string {
+	return buildVersion
 }
 
 // Get or create unique instance ID
@@ -46,6 +58,11 @@ func getInstanceId(pb *pocketbase.PocketBase) (string, error) {
 	return instanceId, nil
 }
 
+func RegisterVersion(pb *pocketbase.PocketBase) error {
+	pb.RootCmd.Version = getBuildVersion()
+	return nil
+}
+
 func RegisterInfoEndpoint(pb *pocketbase.PocketBase) error {
 	pb.OnServe().BindFunc(func(serveEvent *core.ServeEvent) error {
 		serveEvent.Router.GET("/api/palacms/info", func(requestEvent *core.RequestEvent) error {
@@ -54,7 +71,7 @@ func RegisterInfoEndpoint(pb *pocketbase.PocketBase) error {
 				return err
 			}
 
-			version := getVersion()
+			version := getBuildVersion()
 			telemetryEnabled := isUsageStateEnabled()
 			smtpEnabled := pb.Settings().SMTP.Enabled
 			return requestEvent.JSON(200, struct {

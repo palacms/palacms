@@ -21,7 +21,7 @@
 	import { watch } from 'runed'
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { onModKey } from '$lib/builder/utils/keyboard'
-	import _ from 'lodash-es'
+	import * as _ from 'lodash-es'
 
 	/**
 	 * @typedef {Object} Props
@@ -44,7 +44,7 @@
 			css: '',
 			js: ''
 		},
-		view = $bindable('small'),
+		view = $bindable<'small' | 'large'>('small'),
 		orientation = $bindable('horizontal'),
 		loading = $bindable(false),
 		hideControls = false,
@@ -58,7 +58,6 @@
 	type PreviewError = {
 		detail: string
 		has_details: boolean
-		is_html: boolean
 		source: PreviewErrorSource
 		title: string
 	}
@@ -126,13 +125,10 @@
 				return maybeMessage
 			}
 		}
-		return value != null ? String(value) : ''
-	}
-
-	function looksLikeHtml(value: string) {
-		const trimmed = value.trim()
-		if (!trimmed.startsWith('<')) return false
-		return /^<([a-zA-Z!/?][\s\S]*)>/.test(trimmed)
+		if (value) {
+			return String(value)
+		}
+		return ''
 	}
 
 	function formatErrorTitle(source: PreviewErrorSource | null) {
@@ -142,27 +138,22 @@
 		return 'Component error'
 	}
 
+	function decodeHTMLEntities(value: string) {
+		const text = document.createElement('textarea')
+		text.innerHTML = value
+		return text.value
+	}
+
 	function normalizeError(message: string, source: PreviewErrorSource | null): PreviewError {
-		const raw = toErrorMessage(message).trim()
-		const baseSource = source ?? 'unknown'
-		const is_html = looksLikeHtml(raw)
-		const detail = is_html ? raw : decodeEntities(raw)
+		const detail = decodeHTMLEntities(toErrorMessage(message).trim())
 		const has_details = !!detail
+		const baseSource = source ?? 'unknown'
 		return {
 			detail,
 			has_details,
-			is_html,
 			source: baseSource,
 			title: formatErrorTitle(baseSource)
 		}
-	}
-
-	function decodeEntities(value: string) {
-		const HTML_ENTITY_PATTERN = /&(?:[a-zA-Z]+|#\d+|#x[\da-fA-F]+);/
-		if (!HTML_ENTITY_PATTERN.test(value)) return value
-		const text = document.createElement('textarea')
-		text.innerHTML = value
-		return text.value || value
 	}
 
 	const showErrorAfterPause = debounce((payload: { message: unknown; source: PreviewErrorSource | null }) => {
@@ -175,7 +166,7 @@
 	}, 350)
 
 	watch(
-		() => [compilation_error, error_source, error_token],
+		() => [compilation_error, error_source, error_token] as const,
 		([message, source]) => {
 			if (!message) {
 				showErrorAfterPause.cancel()
@@ -462,14 +453,8 @@
 				</div>
 			</div>
 			{#if visible_error?.has_details}
-				<div class="error-body" class:has-html={visible_error && visible_error.is_html}>
-					{#if visible_error?.is_html}
-						<div class="error-html">
-							{@html visible_error?.detail || ''}
-						</div>
-					{:else}
-						<code>{visible_error?.detail}</code>
-					{/if}
+				<div class="error-body">
+					<code>{visible_error?.detail}</code>
 				</div>
 			{/if}
 		</div>
@@ -599,29 +584,10 @@
 			line-height: 1.4;
 		}
 
-		.error-body.has-html {
-			padding: 0;
-		}
-
 		.error-body code {
 			display: block;
 			white-space: pre-wrap;
 			word-break: break-word;
-		}
-
-		.error-html {
-			padding: 0.75rem;
-			max-height: 18rem;
-			overflow: auto;
-		}
-
-		.error-html :global(pre) {
-			margin: 0;
-		}
-
-		.error-html :global(code) {
-			font-family: var(--font-mono, 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace);
-			font-size: 0.85rem;
 		}
 
 		.logs {
