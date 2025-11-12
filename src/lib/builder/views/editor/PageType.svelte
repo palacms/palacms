@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as _ from 'lodash-es'
 	import { tick } from 'svelte'
+	import { fade } from 'svelte/transition'
 	import { site_context, page_type_context } from '$lib/builder/stores/context'
 	import { flip } from 'svelte/animate'
 	import UI from '../../ui/index.js'
@@ -17,6 +18,8 @@
 	import { self as pb } from '$lib/pocketbase/managers'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { setUserActivity } from '$lib/UserActivity.svelte'
+	import { PaneGroup, Pane, PaneResizer } from 'paneforge'
+	import Icon from '@iconify/svelte'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
 
@@ -661,205 +664,220 @@
 
 <!-- Page Type Layout -->
 <main id="#Page" data-test bind:this={page_el} class:fadein={page_mounted} class:dragging={$dragging_symbol} lang={$locale}>
-	<!-- Head Zone -->
-	<div class="zone-label">Head HTML</div>
-	<section class="code-zone head-zone">
-		<CodeEditor mode="html" bind:value={head} on:save={save_page_type_code} />
-	</section>
+	<PaneGroup direction="vertical" class="h-full" autoSaveId="page-type-{page_type?.id}">
+		<Pane defaultSize={15} minSize={5} collapsible={true} collapsedSize={3}>
+			<!-- Head Zone -->
+			<div class="zone-label">Head HTML</div>
+			<section class="code-zone head-zone">
+				<CodeEditor mode="html" bind:value={head} on:save={save_page_type_code} />
+			</section>
+		</Pane>
+		<PaneResizer
+			class="PaneResizer-horizontal"
+			style="display: flex; justify-content: center; align-items: center; height: 8px; background: var(--color-gray-900); border-top: 1px solid var(--color-gray-800); border-bottom: 1px solid var(--color-gray-800); cursor: row-resize;"
+		>
+			<span class="grab-handle" style="transform: rotate(90deg);">
+				<Icon icon="mdi:drag-vertical-variant" />
+			</span>
+		</PaneResizer>
+		<Pane defaultSize={85} minSize={20}>
+			<div class="zones-container">
+				<!-- Header Zone -->
+				<div class="zone-label">Header</div>
+				<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header">
+					{#each header_sections as section (section.id)}
+						{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
+						<div
+							role="region"
+							use:drag_item={section}
+							data-section={section.id}
+							data-symbol={symbol?.id}
+							id="section-{section.id}"
+							onmousemove={() => {
+								if (!moving && !showing_block_toolbar) {
+									show_block_toolbar()
+								}
+							}}
+							onmouseenter={async ({ target }) => {
+								hovered_section_id = section.id
+								hovered_block_el = target
+								if (!moving) {
+									show_block_toolbar()
+								}
+							}}
+							onmouseleave={() => {
+								setTimeout(() => {
+									if (hovered_section_id === section.id) {
+										hide_block_toolbar()
+									}
+								}, 50)
+							}}
+							animate:flip={{ duration: 100 }}
+							data-test-id="page-type-section-{section.id}"
+							style="min-height: 3rem;overflow:hidden;position: relative;"
+						>
+							{#if symbol}
+								<ComponentNode
+									{section}
+									block={symbol}
+									on:mount={() => sections_mounted++}
+									on:resize={() => {
+										if (showing_block_toolbar) {
+											position_block_toolbar()
+										}
+									}}
+								/>
+							{:else}
+								<div style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
+									⚠️ Symbol not found: {section.symbol}
+								</div>
+							{/if}
+						</div>
+					{/each}
+					{#if header_sections.length === 0}
+						<div class="empty-zone" use:empty_zone_drop={'header'}>
+							<span>Drag blocks here for the header</span>
+						</div>
+					{/if}
+				</section>
 
-	<!-- Header Zone -->
-	<div class="zone-label">Header</div>
-	<section class="page-zone header-zone" class:dragging-over={hovering_over_zone === 'header'} data-zone="header">
-		{#each header_sections as section (section.id)}
-			{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
-			<div
-				role="region"
-				use:drag_item={section}
-				data-section={section.id}
-				data-symbol={symbol?.id}
-				id="section-{section.id}"
-				onmousemove={() => {
-					if (!moving && !showing_block_toolbar) {
-						show_block_toolbar()
-					}
-				}}
-				onmouseenter={async ({ target }) => {
-					hovered_section_id = section.id
-					hovered_block_el = target
-					if (!moving) {
-						show_block_toolbar()
-					}
-				}}
-				onmouseleave={() => {
-					setTimeout(() => {
-						if (hovered_section_id === section.id) {
-							hide_block_toolbar()
-						}
-					}, 50)
-				}}
-				animate:flip={{ duration: 100 }}
-				data-test-id="page-type-section-{section.id}"
-				style="min-height: 3rem;overflow:hidden;position: relative;"
-			>
-				{#if symbol}
-					<ComponentNode
-						{section}
-						block={symbol}
-						on:mount={() => sections_mounted++}
-						on:resize={() => {
-							if (showing_block_toolbar) {
-								position_block_toolbar()
-							}
-						}}
-					/>
-				{:else}
-					<div style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
-						⚠️ Symbol not found: {section.symbol}
-					</div>
-				{/if}
-			</div>
-		{/each}
-		{#if header_sections.length === 0}
-			<div class="empty-zone" use:empty_zone_drop={'header'}>
-				<span>Drag blocks here for the header</span>
-			</div>
-		{/if}
-	</section>
+				<!-- Body Zone -->
+				<div class="zone-label">
+					Body
+					{#if is_static_page_type}
+						<span class="zone-mode">(Static)</span>
+					{:else}
+						<span class="zone-mode">(Dynamic)</span>
+					{/if}
+				</div>
+				<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body">
+					{#each body_sections as section (section.id)}
+						{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
+						<div
+							role="region"
+							use:drag_item={section}
+							data-section={section.id}
+							data-symbol={symbol?.id}
+							id="section-{section.id}"
+							onmousemove={() => {
+								if (!moving && !showing_block_toolbar) {
+									show_block_toolbar()
+								}
+							}}
+							onmouseenter={async ({ target }) => {
+								hovered_section_id = section.id
+								hovered_block_el = target
+								if (!moving) {
+									show_block_toolbar()
+								}
+							}}
+							onmouseleave={() => {
+								setTimeout(() => {
+									if (hovered_section_id === section.id) {
+										hide_block_toolbar()
+									}
+								}, 50)
+							}}
+							animate:flip={{ duration: 100 }}
+							data-test-id="page-type-section-{section.id}"
+							style="min-height: 3rem;overflow:hidden;position: relative;"
+						>
+							{#if symbol}
+								<ComponentNode
+									{section}
+									block={symbol}
+									on:mount={() => sections_mounted++}
+									on:resize={() => {
+										if (showing_block_toolbar) {
+											position_block_toolbar()
+										}
+									}}
+								/>
+							{:else}
+								<div style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
+									⚠️ Symbol not found: {section.symbol}
+								</div>
+							{/if}
+						</div>
+					{/each}
+					{#if body_sections.length === 0}
+						<div class="empty-zone main-body" use:empty_zone_drop={'body'}>
+							{#if is_static_page_type}
+								<span>Drag blocks here for static body content</span>
+							{:else}
+								<span>Drag blocks here for default body content (users can modify)</span>
+							{/if}
+						</div>
+					{/if}
+				</section>
 
-	<!-- Body Zone -->
-	<div class="zone-label">
-		Body
-		{#if is_static_page_type}
-			<span class="zone-mode">(Static)</span>
-		{:else}
-			<span class="zone-mode">(Dynamic)</span>
-		{/if}
-	</div>
-	<section class="page-zone body-zone" class:dragging-over={hovering_over_zone === 'body'} data-zone="body">
-		{#each body_sections as section (section.id)}
-			{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
-			<div
-				role="region"
-				use:drag_item={section}
-				data-section={section.id}
-				data-symbol={symbol?.id}
-				id="section-{section.id}"
-				onmousemove={() => {
-					if (!moving && !showing_block_toolbar) {
-						show_block_toolbar()
-					}
-				}}
-				onmouseenter={async ({ target }) => {
-					hovered_section_id = section.id
-					hovered_block_el = target
-					if (!moving) {
-						show_block_toolbar()
-					}
-				}}
-				onmouseleave={() => {
-					setTimeout(() => {
-						if (hovered_section_id === section.id) {
-							hide_block_toolbar()
-						}
-					}, 50)
-				}}
-				animate:flip={{ duration: 100 }}
-				data-test-id="page-type-section-{section.id}"
-				style="min-height: 3rem;overflow:hidden;position: relative;"
-			>
-				{#if symbol}
-					<ComponentNode
-						{section}
-						block={symbol}
-						on:mount={() => sections_mounted++}
-						on:resize={() => {
-							if (showing_block_toolbar) {
-								position_block_toolbar()
-							}
-						}}
-					/>
-				{:else}
-					<div style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
-						⚠️ Symbol not found: {section.symbol}
-					</div>
-				{/if}
-			</div>
-		{/each}
-		{#if body_sections.length === 0}
-			<div class="empty-zone main-body" use:empty_zone_drop={'body'}>
-				{#if is_static_page_type}
-					<span>Drag blocks here for static body content</span>
-				{:else}
-					<span>Drag blocks here for default body content (users can modify)</span>
-				{/if}
-			</div>
-		{/if}
-	</section>
+				<!-- Footer Zone -->
+				<div class="zone-label">Footer</div>
+				<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer">
+					{#each footer_sections as section (section.id)}
+						{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
+						<div
+							role="region"
+							use:drag_item={section}
+							data-section={section.id}
+							data-symbol={symbol?.id}
+							id="section-{section.id}"
+							onmousemove={() => {
+								if (!moving && !showing_block_toolbar) {
+									show_block_toolbar()
+								}
+							}}
+							onmouseenter={async ({ target }) => {
+								hovered_section_id = section.id
+								hovered_block_el = target
+								if (!moving) {
+									show_block_toolbar()
+								}
+							}}
+							onmouseleave={() => {
+								setTimeout(() => {
+									if (hovered_section_id === section.id) {
+										hide_block_toolbar()
+									}
+								}, 50)
+							}}
+							animate:flip={{ duration: 100 }}
+							data-test-id="page-type-section-{section.id}"
+							style="min-height: 3rem;overflow:hidden;position: relative;"
+						>
+							{#if symbol}
+								<ComponentNode
+									{section}
+									block={symbol}
+									on:mount={() => sections_mounted++}
+									on:resize={() => {
+										if (showing_block_toolbar) {
+											position_block_toolbar()
+										}
+									}}
+								/>
+							{:else}
+								<div in:fade={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
+									⚠️ Symbol not found: {section.symbol}
+								</div>
+							{/if}
+						</div>
+					{/each}
+					{#if footer_sections.length === 0}
+						<div class="empty-zone" use:empty_zone_drop={'footer'}>
+							<span>Drag blocks here for the footer</span>
+						</div>
+					{/if}
+				</section>
 
-	<!-- Footer Zone -->
-	<div class="zone-label">Footer</div>
-	<section class="page-zone footer-zone" class:dragging-over={hovering_over_zone === 'footer'} data-zone="footer">
-		{#each footer_sections as section (section.id)}
-			{@const symbol = site_symbols.find((s) => s.id === section.symbol)}
-			<div
-				role="region"
-				use:drag_item={section}
-				data-section={section.id}
-				data-symbol={symbol?.id}
-				id="section-{section.id}"
-				onmousemove={() => {
-					if (!moving && !showing_block_toolbar) {
-						show_block_toolbar()
-					}
-				}}
-				onmouseenter={async ({ target }) => {
-					hovered_section_id = section.id
-					hovered_block_el = target
-					if (!moving) {
-						show_block_toolbar()
-					}
-				}}
-				onmouseleave={() => {
-					setTimeout(() => {
-						if (hovered_section_id === section.id) {
-							hide_block_toolbar()
-						}
-					}, 50)
-				}}
-				animate:flip={{ duration: 100 }}
-				data-test-id="page-type-section-{section.id}"
-				style="min-height: 3rem;overflow:hidden;position: relative;"
-			>
-				{#if symbol}
-					<ComponentNode
-						{section}
-						block={symbol}
-						on:mount={() => sections_mounted++}
-						on:resize={() => {
-							if (showing_block_toolbar) {
-								position_block_toolbar()
-							}
-						}}
-					/>
-				{:else}
-					<div style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
-						⚠️ Symbol not found: {section.symbol}
-					</div>
-				{/if}
+				<!-- Foot Zone -->
+				<div class="zone-label">Body Footer HTML</div>
+				<section class="code-zone foot-zone">
+					<CodeEditor mode="html" bind:value={foot} on:save={save_page_type_code} />
+				</section>
 			</div>
-		{/each}
-		{#if footer_sections.length === 0}
-			<div class="empty-zone" use:empty_zone_drop={'footer'}>
-				<span>Drag blocks here for the footer</span>
-			</div>
-		{/if}
-	</section>
-
-	<!-- Foot Zone -->
-	<div class="zone-label">Body Footer HTML</div>
-	<section class="code-zone foot-zone">
-		<CodeEditor mode="html" bind:value={foot} on:save={save_page_type_code} />
-	</section>
+		</Pane>
+	</PaneGroup>
 </main>
 
 <!-- {@html html_below || ''} -->
@@ -880,16 +898,58 @@
 		--Spinner-color-opaque: rgba(248, 68, 73, 0.2);
 	}
 	main {
-		padding: 1rem 0.5rem;
+		padding: 0;
 		background-color: var(--color-gray-950);
 		transition: 0.2s opacity;
 		opacity: 0;
 		border-top: 0;
 		height: 100%;
 		/* padding-top: 42px; */
-		overflow: auto;
+		overflow: hidden;
 		box-sizing: border-box;
 	}
+
+	main :global(.h-full) {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	main :global(.PaneResizer-horizontal) {
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	main :global(.PaneResizer-horizontal:hover) {
+		background: var(--color-gray-800) !important;
+	}
+
+	main :global(.PaneResizer-horizontal .grab-handle) {
+		color: var(--color-gray-600);
+		transition: color 0.2s;
+	}
+
+	main :global(.PaneResizer-horizontal:hover .grab-handle) {
+		color: var(--color-gray-400);
+	}
+
+	/* Add padding and scrolling to pane contents */
+	main :global([data-pane]) {
+		overflow-y: auto;
+	}
+
+	/* First pane (Head HTML) has padding */
+	main :global([data-pane]:first-child) {
+		padding: 1rem 0.5rem;
+	}
+
+	/* Second pane (zones) uses zones-container for padding/scrolling */
+	.zones-container {
+		padding: 1rem 0.5rem;
+		height: 100%;
+		overflow-y: auto;
+	}
+
 	main.fadein {
 		opacity: 1;
 	}
