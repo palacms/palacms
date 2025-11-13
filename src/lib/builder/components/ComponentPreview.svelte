@@ -34,6 +34,7 @@
 	 * @property {boolean} [loading]?
 	 * @property {boolean} [hideControls]?
 	 * @property {any} [data]
+	 * @property {Array} [fields]?
 	 * @property {string | null} [head]?
 	 * @property {string} [append]?
 	 */
@@ -51,6 +52,7 @@
 		loading = $bindable(false),
 		hideControls = false,
 		data = undefined,
+		fields = undefined,
 		append = ''
 	} = $props()
 
@@ -363,6 +365,33 @@
 		}
 	})
 
+	// Order data keys by field index
+	const ordered_data = $derived(
+		(() => {
+			if (!data || !fields) return data
+
+			// Sort fields by index
+			const sorted_fields = [...fields].sort((a, b) => (a.index || 0) - (b.index || 0))
+
+			// Create new object with keys in field order
+			const ordered = {}
+			for (const field of sorted_fields) {
+				if (field.key && data.hasOwnProperty(field.key)) {
+					ordered[field.key] = data[field.key]
+				}
+			}
+
+			// Add any remaining keys not in fields
+			for (const key in data) {
+				if (!ordered.hasOwnProperty(key)) {
+					ordered[key] = data[key]
+				}
+			}
+
+			return ordered
+		})()
+	)
+
 	const static_widths = {
 		phone: 300,
 		tablet: 600,
@@ -476,13 +505,15 @@
 	{#if $current_user?.siteRole === 'developer' && data}
 		<div class="block-data">
 			<button class="block-data-header" onclick={() => (show_block_data = !show_block_data)}>
-				<Icon icon={show_block_data ? 'mdi:chevron-down' : 'mdi:chevron-right'} height="1rem" />
+				<div class="chevron" class:rotated={show_block_data}>
+					<Icon icon="lucide:chevron-right" height="1rem" />
+				</div>
 				<span>Block Data</span>
 			</button>
 			{#if show_block_data}
 				<div class="block-data-content" transition:slide|local={{ duration: 100 }}>
 					<InspectOptionsProvider options={{ theme: 'dark', borderless: true, noanimate: true, showTools: false }}>
-						<Inspect.Values {...data} />
+						<Inspect.Values {...ordered_data} />
 					</InspectOptionsProvider>
 				</div>
 			{/if}
@@ -638,6 +669,16 @@
 
 			&:hover {
 				background: var(--color-gray-8);
+			}
+
+			.chevron {
+				display: flex;
+				align-items: center;
+				transition: transform 0.1s;
+			}
+
+			.chevron.rotated {
+				transform: rotate(90deg);
 			}
 		}
 
