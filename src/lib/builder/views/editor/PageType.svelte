@@ -1086,12 +1086,6 @@
 		overflow: hidden;
 		position: relative;
 		min-height: 3rem;
-		border: 1px solid transparent;
-		transition: border-color 0.2s ease;
-	}
-
-	[data-section]:hover {
-		border-color: rgba(255, 255, 255, 0.1);
 	}
 
 	.code-zone {
