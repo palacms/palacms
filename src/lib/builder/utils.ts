@@ -168,6 +168,7 @@ export function get_empty_value(field) {
 	else if (field.type === 'page-field') return null
 	else if (field.type === 'site-field') return null
 	else if (field.type === 'info') return null
+	else if (field.type === 'icon') return ''
 	else {
 		console.warn('No empty set for field type', field.type)
 		return ''
