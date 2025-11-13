@@ -103,7 +103,7 @@
 			<EyeOff size="14" />
 			<span>
 				<strong>{field.label}</strong>
-				 isn't available on this page type and is hidden from content editors.
+				isn't available on this page type and is hidden from content editors.
 			</span>
 		</div>
 	{/if}
@@ -126,13 +126,13 @@
 		<Field_Component {entity} {field} {fields} {entries} {entry} {level} {onchange} {ondelete} {parent} />
 	</Card>
 {:else if $current_user?.siteRole === 'developer' && !is_visible}
-	<div class="hidden-field">
+	<!-- <div class="hidden-field">
 		<EyeOff size="14" />
 		<span>
 			<strong>{field.label}</strong>
 			 will be hidden from content editors
 		</span>
-	</div>
+	</div> -->
 {/if}
 
 <style>
