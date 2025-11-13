@@ -13,7 +13,7 @@
 	import { slide, fade } from 'svelte/transition'
 	import { dynamic_iframe_srcdoc } from './misc.js'
 	import { highlightedElement } from '../stores/app/misc'
-	import { Inspect } from 'svelte-inspect-value'
+	import { InspectOptionsProvider, Inspect } from 'svelte-inspect-value'
 	import Icon from '@iconify/svelte'
 	import { content_editable } from '../utilities'
 	import { processCode, processCSS } from '../utils'
@@ -22,6 +22,8 @@
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import * as _ from 'lodash-es'
+	import { browser } from '$app/environment'
+	import { current_user } from '$lib/pocketbase/user'
 
 	/**
 	 * @typedef {Object} Props
@@ -350,6 +352,17 @@
 
 	let previewWidth = $state()
 
+	// Load saved preference or default to true for developers
+	const saved_block_data_state = browser ? localStorage.getItem('show_block_data') : null
+	let show_block_data = $state(saved_block_data_state !== null ? saved_block_data_state === 'true' : $current_user?.siteRole === 'developer')
+
+	// Save preference when it changes
+	$effect(() => {
+		if (browser) {
+			localStorage.setItem('show_block_data', String(show_block_data))
+		}
+	})
+
 	const static_widths = {
 		phone: 300,
 		tablet: 600,
@@ -455,6 +468,22 @@
 			{#if visible_error?.has_details}
 				<div class="error-body">
 					<code>{visible_error?.detail}</code>
+				</div>
+			{/if}
+		</div>
+	{/if}
+
+	{#if $current_user?.siteRole === 'developer' && data}
+		<div class="block-data">
+			<button class="block-data-header" onclick={() => (show_block_data = !show_block_data)}>
+				<Icon icon={show_block_data ? 'mdi:chevron-down' : 'mdi:chevron-right'} height="1rem" />
+				<span>Block Data</span>
+			</button>
+			{#if show_block_data}
+				<div class="block-data-content" transition:slide|local={{ duration: 100 }}>
+					<InspectOptionsProvider options={{ theme: 'dark', borderless: true, noanimate: true, showTools: false }}>
+						<Inspect.Values {...data} />
+					</InspectOptionsProvider>
 				</div>
 			{/if}
 		</div>
@@ -588,6 +617,31 @@
 			display: block;
 			white-space: pre-wrap;
 			word-break: break-word;
+		}
+
+		.block-data {
+			background: var(--color-gray-9);
+			border-bottom: 1px solid var(--color-gray-8);
+		}
+
+		.block-data-header {
+			display: flex;
+			align-items: center;
+			width: 100%;
+			gap: 0.25rem;
+			padding: 5px;
+			background: var(--color-gray-9);
+			color: #eee;
+			font-size: 0.675rem;
+			cursor: pointer;
+			transition: var(--transition-colors);
+
+			&:hover {
+				background: var(--color-gray-8);
+			}
+		}
+
+		.block-data-content {
 		}
 
 		.logs {
