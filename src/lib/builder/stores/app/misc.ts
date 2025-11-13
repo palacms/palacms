@@ -23,7 +23,7 @@ export const last_library_group_id = writable<string | null>(null)
 // Persist Field|Entry tab selection per-entity (cross-tab, per-user)
 const FIELD_TABS_KEY = 'field-tabs-by-entity:v1'
 function load_field_tabs() {
-	if (import.meta.env.SSR || !self.instance.authStore.record) return {}
+	if (import.meta.env.SSR || !self.instance?.authStore.record) return {}
 	try {
 		const key = [FIELD_TABS_KEY, self.instance.authStore.record?.id].join(':')
 		const raw = localStorage.getItem(key)
@@ -38,7 +38,7 @@ export const field_tabs_by_entity = writable<Record<string, Record<string, 'fiel
 if (!import.meta.env.SSR) {
 	// Write-through on change
 	field_tabs_by_entity.subscribe((val) => {
-		if (!self.instance.authStore.record) return
+		if (!self.instance?.authStore.record) return
 		try {
 			const key = [FIELD_TABS_KEY, self.instance.authStore.record?.id].join(':')
 			localStorage.setItem(key, JSON.stringify(val))

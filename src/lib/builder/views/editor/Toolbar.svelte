@@ -4,14 +4,14 @@
 	import { find as _find } from 'lodash-es'
 	import Icon from '@iconify/svelte'
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu'
-	import { LayoutTemplate, Trash2, ChevronDown } from 'lucide-svelte'
+	import { ChevronDown } from 'lucide-svelte'
 	import ToolbarButton from './ToolbarButton.svelte'
 	import { PalaButton } from '$lib/builder/components/buttons'
 	import { mod_key_held } from '$lib/builder/stores/app/misc'
 	import { onNavigate, goto } from '$app/navigation'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
-	import { page as pageState } from '$app/state'
-	import { Collaborators, Pages, PageTypes, Sites, SiteSymbols, UserActivities } from '$lib/pocketbase/collections'
+	import { page, page as pageState } from '$app/state'
+	import { PageTypes, SiteSnapshots } from '$lib/pocketbase/collections'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import * as Popover from '$lib/components/ui/popover/index.js'
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
@@ -26,6 +26,8 @@
 	import { resolve_page, build_cms_page_url } from '$lib/pages'
 	import { self } from '$lib/pocketbase/managers'
 	import { getUserActivity } from '$lib/UserActivity.svelte'
+	import { useSiteSnapshot } from '$lib/Snapshot.svelte'
+	import { Snapshot } from '$lib/common/models/Snapshot'
 
 	let { children }: { children: Snippet } = $props()
 
@@ -41,6 +43,27 @@
 
 	const publish = $derived(usePublishSite(site?.id))
 	const publish_in_progress = $derived(['loading', 'working'].includes(publish.status))
+
+	const existing_snapshots = $derived(SiteSnapshots.list({ filter: { site: site.id }, sort: '-created' }))
+	const create_snapshot = $derived(useSiteSnapshot({ source_site_id: site?.id }))
+	const snapshot_in_progress = $derived(['loading', 'working'].includes(publish.status))
+
+	async function handle_publish() {
+		await publish.run()
+
+		// Create new snapshot and remove all other ones
+		// TODO: The amount of snapshots could be larger once make UI for managing and restoring them
+		const snapshots_to_remove = [...(existing_snapshots ?? [])]
+		const snapshot = await create_snapshot.run()
+		SiteSnapshots.create({
+			site: site.id,
+			file: Snapshot.encode(snapshot)
+		})
+		for (const existing_snapshot of snapshots_to_remove) {
+			SiteSnapshots.delete(existing_snapshot.id)
+		}
+		await self.commit()
+	}
 
 	let going_up = $state(false)
 	let going_down = $state(false)
@@ -173,8 +196,8 @@
 	<Dialog.Content class="z-[999] max-w-[500px] flex flex-col p-0">
 		<Deploy
 			bind:stage={publish_stage}
-			publish_fn={publish.run}
-			loading={publish_in_progress}
+			publish_fn={handle_publish}
+			loading={publish_in_progress || snapshot_in_progress}
 			site_host={site?.host}
 			onClose={() => {
 				publishing = false

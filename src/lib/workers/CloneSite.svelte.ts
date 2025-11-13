@@ -125,9 +125,12 @@ export const create_site_uploads = async ({
 	site: ObjectOf<typeof Sites>
 }): Promise<Map<string, ObjectOf<typeof SiteUploads>>> => {
 	for (const source_upload of source_site_uploads) {
-		const file = await fetch(`${source_upload.collection.manager.instance.baseURL}/api/files/site_uploads/${source_upload.id}/${source_upload.file}`)
-			.then((res) => res.blob())
-			.then((blob) => new File([blob], source_upload.file.toString()))
+		const file =
+			typeof source_upload.file === 'string'
+				? await fetch(`${source_upload.collection.manager.instance?.baseURL}/api/files/site_uploads/${source_upload.id}/${source_upload.file}`)
+						.then((res) => res.blob())
+						.then((blob) => new File([blob], source_upload.file.toString()))
+				: source_upload.file
 
 		const upload = SiteUploads.create({
 			...source_upload.values(),

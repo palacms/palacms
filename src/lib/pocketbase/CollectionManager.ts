@@ -4,9 +4,9 @@ import { OrderedSvelteMap } from './OrderedSvelteMap'
 import type Client from 'pocketbase'
 
 export type Change<T extends ObjectWithId> =
-	| { collection: RecordService<T>; operation: 'create'; committed: boolean; data: Omit<T, 'id'> }
-	| { collection: RecordService<T>; operation: 'update'; committed: boolean; data: Partial<T> }
-	| { collection: RecordService<T>; operation: 'delete'; committed: boolean }
+	| { collection?: RecordService<T>; collection_name: string; operation: 'create'; committed: boolean; data: Omit<T, 'id'> }
+	| { collection?: RecordService<T>; collection_name: string; operation: 'update'; committed: boolean; data: Partial<T> }
+	| { collection?: RecordService<T>; collection_name: string; operation: 'delete'; committed: boolean }
 
 export type TrackedRecord = {
 	data: ObjectWithId
@@ -19,7 +19,7 @@ export type TrackedList = {
 
 export type CollectionManager = ReturnType<typeof createCollectionManager>
 
-export const createCollectionManager = (instance: Client) => {
+export const createCollectionManager = (instance?: Client) => {
 	const changes = new OrderedSvelteMap<string, Change<ObjectWithId>>()
 	const records = new OrderedSvelteMap<string, TrackedRecord | undefined | null>()
 	const lists = new OrderedSvelteMap<string, TrackedList | undefined | null>()
@@ -34,6 +34,10 @@ export const createCollectionManager = (instance: Client) => {
 		commit: async () => {
 			promise = promise.finally(async () => {
 				for (const [id, change] of changes) {
+					if (!change.collection) {
+						throw new Error('No collection')
+					}
+
 					// Avoid re-committing a change if commit is done twice in a row
 					if (change.committed) {
 						continue

@@ -1,10 +1,16 @@
 import { untrack } from 'svelte'
 
-export type DoneCallback = (error?: unknown) => void
+export type DoneCallback<V> = (error: unknown, value?: V) => void
 
-export const useSvelteWorker = (ready: () => boolean, loaded: () => boolean, work: () => void | Promise<void>) => {
+export type SvelteWorker<P extends unknown[], V extends unknown> = {
+	status: 'waiting' | 'standby' | 'loading' | 'working'
+	run: (...params: P) => Promise<V>
+}
+
+export const useSvelteWorker = <P extends unknown[], V extends unknown>(ready: () => boolean, loaded: () => boolean, work: (...params: [...P]) => V | Promise<V>): SvelteWorker<P, V> => {
 	let status = $state<'waiting' | 'standby' | 'loading' | 'working'>('standby')
-	let done = $state<DoneCallback>()
+	let parameters: P
+	let done: DoneCallback<V>
 
 	$effect(() => {
 		if (status === 'waiting' && ready()) {
@@ -17,8 +23,8 @@ export const useSvelteWorker = (ready: () => boolean, loaded: () => boolean, wor
 			status = 'working'
 			untrack(() =>
 				Promise.resolve()
-					.then(() => work())
-					.then(() => done?.())
+					.then(() => work(...parameters))
+					.then((value) => done?.(null, value))
 					.catch((error) => done?.(error))
 			)
 		}
@@ -27,20 +33,21 @@ export const useSvelteWorker = (ready: () => boolean, loaded: () => boolean, wor
 	return new (class {
 		status = $derived(status)
 
-		async run() {
+		async run(...params: P) {
+			parameters = params
 			if (status === 'standby') {
 				status = 'loading'
 			} else {
 				throw new Error('Cannot run, worker not in standby')
 			}
 
-			return new Promise<void>((resolve, reject) => {
-				done = (error) => {
+			return new Promise<V>((resolve, reject) => {
+				done = (error, value) => {
 					status = 'standby'
 					if (error) {
 						reject(error)
 					} else {
-						resolve()
+						resolve(value!)
 					}
 				}
 			})

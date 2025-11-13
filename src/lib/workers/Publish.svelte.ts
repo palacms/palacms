@@ -52,7 +52,7 @@ export const usePublishSite = (site_id?: string) => {
 							throw new Error(`Compiling symbol "${symbol.name || symbol.id}" not successful: No JavaScript output`)
 						}
 
-						await self.instance.collection('site_symbols').update(symbol.id, {
+						await self.instance?.collection('site_symbols').update(symbol.id, {
 							compiled_js: new File([res.js], 'symbol.js', { type: 'text/javascript' })
 						})
 					})
@@ -75,7 +75,7 @@ export const usePublishSite = (site_id?: string) => {
 							throw new Error('No site')
 						}
 
-						await self.instance.collection('sites').update(site.id, {
+						await self.instance?.collection('sites').update(site.id, {
 							preview: new File([html], 'index.html')
 						})
 					})
@@ -95,7 +95,7 @@ export const usePublishSite = (site_id?: string) => {
 							throw new Error(`Generating page "${page.name || page.id}" (${page.slug || '/'}) not successful: ${error || 'Unknown error'}`)
 						}
 
-						await self.instance.collection('pages').update(page.id, {
+						await self.instance?.collection('pages').update(page.id, {
 							compiled_html: new File([html], 'index.html', { type: 'text/html' })
 						})
 					})
@@ -107,11 +107,11 @@ export const usePublishSite = (site_id?: string) => {
 			}
 
 			await Promise.all(promises)
-			await fetch(new URL('/api/palacms/generate', self.instance.baseURL), {
+			await fetch(new URL('/api/palacms/generate', self.instance?.baseURL), {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${self.instance.authStore.token}`
+					Authorization: `Bearer ${self.instance?.authStore.token}`
 				},
 				body: JSON.stringify({ site_id })
 			}).then((res) => {
@@ -339,5 +339,5 @@ export const usePublishSite = (site_id?: string) => {
 
 const deduplicate =
 	<T>(key: keyof T) =>
-		(item: T, index: number, array: T[]) =>
-			array.findIndex((value) => value[key] === item[key]) === index
+	(item: T, index: number, array: T[]) =>
+		array.findIndex((value) => value[key] === item[key]) === index

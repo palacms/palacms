@@ -497,7 +497,7 @@
 	async function copy_symbol_entries_to_section(symbol_id: string, section_id: string) {
 		try {
 			// Get all symbol entries (not just root-level ones)
-			const symbol_entries = await pb.instance.collection('site_symbol_entries').getFullList({
+			const symbol_entries = await pb.instance?.collection('site_symbol_entries').getFullList({
 				filter: `field.symbol = "${symbol_id}"`,
 				expand: 'field',
 				sort: 'index'

@@ -50,9 +50,9 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 	options?: Options
 ): CollectionMapping<T, Options> => {
 	const { instance, changes, records, lists } = manager
-	const collection = instance.collection(name)
+	const collection = instance?.collection(name)
 
-	if (options?.subscribe) {
+	if (collection && options?.subscribe) {
 		collection.subscribe('*', (data) => {
 			const operation = data.action as 'create' | 'update' | 'delete'
 			const values = data.record
@@ -64,7 +64,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 			} else {
 				// Reset position of the change to place it the last
 				changes.delete(id)
-				changes.set(id, { collection, operation, committed: true, data: values })
+				changes.set(id, { collection, collection_name: name, operation, committed: true, data: values })
 			}
 		})
 	}
@@ -89,20 +89,27 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 			} else if (!data) {
 				$effect(() => {
 					// If no cached record exists, start loading it
-					if (!records.has(id)) {
-						untrack(() => {
-							records.set(id, undefined)
-							collection
-								.getOne(id)
-								.then((record) => {
-									records.set(id, { data: record })
-								})
-								.catch((error) => {
-									console.error(error)
-									records.set(id, null)
-								})
-						})
+					if (records.has(id)) {
+						return
 					}
+
+					if (!collection) {
+						records.set(id, null)
+						return
+					}
+
+					untrack(() => {
+						records.set(id, undefined)
+						collection
+							.getOne(id)
+							.then((record) => {
+								records.set(id, { data: record })
+							})
+							.catch((error) => {
+								console.error(error)
+								records.set(id, null)
+							})
+					})
 				})
 				return data
 			}
@@ -119,34 +126,41 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 			$effect(() => {
 				// If no cached list exists or it's invalidated, start loading it
 				const existingList = lists.get(listId)
-				if (!lists.has(listId) || existingList?.invalidated) {
-					untrack(() => {
-						lists.set(listId, existingList ? { invalidated: false, ids: existingList?.ids } : undefined)
-						collection
-							.getFullList({
-								...options,
-								filter,
-								requestKey: listId
-							})
-							.then((fetchedRecords) => {
-								// Store the full records
-								fetchedRecords.forEach((record) => {
-									records.set(record.id, { data: record })
-								})
-								// Store the list of IDs
-								lists.set(listId, { invalidated: false, ids: fetchedRecords.map(({ id }) => id) })
-							})
-							.catch((error) => {
-								console.error(error)
-								lists.set(listId, null)
-							})
-					})
+				if (lists.has(listId) && !existingList?.invalidated) {
+					return
 				}
+
+				if (!collection) {
+					lists.set(listId, { ids: [], invalidated: false })
+					return
+				}
+
+				untrack(() => {
+					lists.set(listId, existingList ? { invalidated: false, ids: existingList?.ids } : undefined)
+					collection
+						.getFullList({
+							...options,
+							filter,
+							requestKey: listId
+						})
+						.then((fetchedRecords) => {
+							// Store the full records
+							fetchedRecords.forEach((record) => {
+								records.set(record.id, { data: record })
+							})
+							// Store the list of IDs
+							lists.set(listId, { invalidated: false, ids: fetchedRecords.map(({ id }) => id) })
+						})
+						.catch((error) => {
+							console.error(error)
+							lists.set(listId, null)
+						})
+				})
 			})
 
 			const list = [...(lists.get(listId)?.ids ?? [])]
 			for (const [id, change] of changes) {
-				if (change.collection !== collection) {
+				if (change.collection_name !== name) {
 					// The change is not for this collection
 					continue
 				}
@@ -155,7 +169,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 				if (change.operation !== 'delete' && !list.includes(id)) {
 					// If sorting by -created (newest first) or index (ascending), prepend new items to match expected sort order
 					// New items get index=0 or the most recent timestamp, so they appear at the start
-					if ((options?.sort === '-created') && change.operation === 'create') {
+					if (options?.sort === '-created' && change.operation === 'create') {
 						list.unshift(id)
 					} else {
 						list.push(id)
@@ -190,9 +204,9 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 			}
 		},
 		create: (values) => {
-			const id = generateId()
+			const id = values.id ?? generateId()
 			const data = { ...values, id }
-			changes.set(id, { collection, operation: 'create', committed: false, data })
+			changes.set(id, { collection, collection_name: name, operation: 'create', committed: false, data })
 			return mapObject(data)
 		},
 		update: (id, values) => {
@@ -203,6 +217,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 					// Create a new operation object to ensure reactivity
 					{
 						collection,
+						collection_name: name,
 						operation: 'create',
 						committed: false,
 						data: { ...change.data, ...values }
@@ -217,6 +232,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 					// Create a new operation object to ensure reactivity
 					{
 						collection,
+						collection_name: name,
 						operation: 'update',
 						committed: false,
 						data: { ...change.data, ...values }
@@ -226,7 +242,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 				// Reset position of the change to place it the last
 				changes.delete(id)
 
-				change = { collection, operation: 'update', committed: false, data: values }
+				change = { collection, collection_name: name, operation: 'update', committed: false, data: values }
 				changes.set(id, change)
 			}
 
@@ -242,10 +258,14 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 				// Reset position of the change to place it the last
 				changes.delete(id)
 
-				changes.set(id, { collection, operation: 'delete', committed: false })
+				changes.set(id, { collection, collection_name: name, operation: 'delete', committed: false })
 			}
 		},
 		authWithPassword: async (usernameOrEmail, password) => {
+			if (!collection) {
+				throw new Error('No collection')
+			}
+
 			const response = await collection.authWithPassword(usernameOrEmail, password)
 			records.set(response.record.id, { data: response.record })
 
@@ -256,9 +276,17 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 			return { ...response, record: mapObject(response.record) }
 		},
 		requestPasswordReset: async (email) => {
+			if (!collection) {
+				throw new Error('No collection')
+			}
+
 			await collection.requestPasswordReset(email)
 		},
 		confirmPasswordReset: async (passwordResetToken, password, passwordConfirm) => {
+			if (!collection) {
+				throw new Error('No collection')
+			}
+
 			await collection.confirmPasswordReset(passwordResetToken, password, passwordConfirm)
 		},
 		from: (manager: CollectionManager) => {

@@ -79,12 +79,12 @@
 							await Users.authWithPassword(invitedEmail, password)
 
 							// Update user with name and avatar if provided
-							const userId = self.instance.authStore.record?.id
+							const userId = self.instance?.authStore.record?.id
 							if ((name || avatarFile) && userId) {
 								const data: any = {}
 								if (name) data.name = name
 								if (avatarFile) data.avatar = avatarFile
-								await self.instance.collection('users').update(userId, data)
+								await self.instance?.collection('users').update(userId, data)
 							}
 							await goto('/admin/site')
 						} else {
