@@ -296,7 +296,7 @@
 			{/if}
 		</div>
 		<div class="options">
-			{#if has_children}
+			{#if has_children && page.id !== homepage?.id}
 				<button class="add-child-btn" onclick={() => (creating_page = true)} aria-label="Create Subpage">
 					<Icon icon="akar-icons:plus" />
 					<span>Create Subpage ({children.length})</span>
@@ -308,7 +308,7 @@
 			<MenuPopup
 				icon="carbon:overflow-menu-vertical"
 				options={[
-					...(!has_children && !creating_page
+					...(!has_children && !creating_page && page.id !== homepage?.id
 						? [
 								{
 									label: `Create Subpage`,
