@@ -9,16 +9,14 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <script type="module">
-        import { mount, unmount } from "https://esm.sh/svelte@${SVELTE_VERSION}";
-
-        let App;
-        let c;
+        let mod;
+        let reset;
         let last_rendered_html = '';
 
         const channel = new BroadcastChannel('${broadcast_id}');
         channel.onmessage = async ({data}) => {
-        const { event, payload = {} } = data
-        if (payload.componentApp) { 
+          const { event, payload = {} } = data
+          if (payload.componentApp) {
             await init(payload.componentApp)
           }
           if (payload.data) {
@@ -32,7 +30,7 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
           const url = URL.createObjectURL(blob)
           await import(url)
             .then((module) => {
-              App = module.default
+              mod = module
             })
             .finally(() => {
               try { URL.revokeObjectURL(url) } catch (_) {}
@@ -40,26 +38,38 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
         }
 
         function update(props) {
-          // Reset logs and runtime error display in parent
+          // Reset runtime error display in parent
           try { channel.postMessage({ event: 'BEGIN' }); } catch (_) {}
+
+          // Reset log tracking for this render
+          logsThisRender = false;
 
           const previous_html = document.body.innerHTML;
           document.body.innerHTML = '';
 
-          if (c) {
-            try { unmount(c) } catch (_) {}
-            c = null;
+          if (reset) {
+            try { reset() } catch (_) {}
+            reset = null;
           }
 
           try {
-            c = mount(App, {
+            const component = mod.mount(mod.default, {
               target: document.body,
               props
             })
+            const { unmount } = mod
+            reset = () => unmount(component)
             last_rendered_html = document.body.innerHTML;
             channel.postMessage({ event: 'MOUNTED' })
+            // After enough time for console logs to be called and sent, check if any were produced
+            // Wait longer than the throttle delay (120ms) to ensure any mount-time logs are sent first
+            setTimeout(() => {
+              if (!logsThisRender) {
+                try { channel.postMessage({ event: 'SET_CONSOLE_LOGS', payload: { logs: null } }); } catch (_) {}
+              }
+            }, 300)
           } catch(e) {
-            c = null;
+            reset = null;
             if (last_rendered_html) {
               document.body.innerHTML = last_rendered_html;
             } else {
@@ -75,6 +85,7 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
         }
 
         // Install a safe console proxy that forwards logs to the parent
+        let logsThisRender = false;
         (function setupConsoleBridge(){
           try {
             const methods = ['log','info','warn','error'];
@@ -93,6 +104,7 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
             let lastSent = undefined;
             const sendThrottled = (value) => {
               lastQueued = value;
+              logsThisRender = true;
               if (timer) return;
               timer = setTimeout(() => {
                 timer = null;
@@ -129,7 +141,11 @@ export const static_iframe_srcdoc = ({ head = '', html, css, foot = '' }) => {
 	return `
     <!DOCTYPE html>
     <html>
-      <head>${head}</head>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        ${head}
+      </head>
       <body id="page" style="margin:0">
         ${html}
         <style>${css}</style>
@@ -145,11 +161,10 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
     <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <script type="module">
-          import { mount, unmount } from "https://esm.sh/svelte@${SVELTE_VERSION}"
-
-          let App;
-          let c;
+          let mod;
+          let reset;
 
           window.addEventListener('message', async ({ data }) => {
             const payload = data && data.payload
@@ -168,7 +183,7 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
             const url = URL.createObjectURL(blob)
             await import(url)
               .then((module) => {
-                App = module.default
+                mod = module
               })
               .catch((e) => {
                 target.innerHTML = ''
@@ -185,12 +200,14 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
           function update(props) {
             const target = document.querySelector('#component')
             if (!target) return
-            if (c) unmount(c)
+            if (reset) reset()
             try {
-              c = mount(App, {
+              const component = mod.mount(mod.default, {
                 target,
                 props
               })
+              const { unmount } = mod
+              reset = () => unmount(component)
               window.parent.postMessage({ type: 'component-error', error: '' }, '*')
             } catch (e) {
               target.innerHTML = ''

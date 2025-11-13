@@ -153,7 +153,13 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 
 				// Only add non-deleted items to the list
 				if (change.operation !== 'delete' && !list.includes(id)) {
-					list.push(id)
+					// If sorting by -created (newest first) or index (ascending), prepend new items to match expected sort order
+					// New items get index=0 or the most recent timestamp, so they appear at the start
+					if ((options?.sort === '-created') && change.operation === 'create') {
+						list.unshift(id)
+					} else {
+						list.push(id)
+					}
 				}
 			}
 

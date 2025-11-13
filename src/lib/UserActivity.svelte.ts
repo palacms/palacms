@@ -79,6 +79,11 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 	const track = async () => {
 		clearTimeout(task)
 
+		// Skip tracking if required fields are missing
+		if (!context.value.user || !context.value.site) {
+			return
+		}
+
 		if (activity) {
 			activity = UserActivities.update(activity.id, context.value)
 			await manager.commit()

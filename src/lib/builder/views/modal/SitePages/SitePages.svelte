@@ -11,8 +11,49 @@
 	import type { Page } from '$lib/common/models/Page'
 	import { self } from '$lib/pocketbase/managers'
 	import { fade } from 'svelte/transition'
+	import { flip } from 'svelte/animate'
+	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
+	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 
-	let hover_position = $state(null)
+	let hover_position = $state<string | null>(null)
+
+	function gapDropTarget(node: HTMLElement, page: ObjectOf<typeof Pages>) {
+		dropTargetForElements({
+			element: node,
+			getData({ input }) {
+				return attachClosestEdge(
+					{ page },
+					{
+						element: node,
+						input,
+						allowedEdges: ['top']
+					}
+				)
+			},
+			onDrag({ self, source }) {
+				const page_being_dragged = source.data.page as ObjectOf<typeof Pages>
+				const same_parent = page.parent === page_being_dragged.parent
+				if (!same_parent) {
+					hover_position = null
+					return
+				}
+
+				const edge = extractClosestEdge(self.data)
+				if (edge === 'top') {
+					hover_position = `${page.id}-bottom`
+				}
+			},
+			onDragLeave() {
+				hover_position = null
+			}
+		})
+
+		return {
+			destroy() {
+				// Cleanup if needed
+			}
+		}
+	}
 
 	// Get site from context (preferred) or fallback to hostname lookup
 	const { value: site } = site_context.get()
@@ -98,9 +139,10 @@
 {#if active_page}
 	<ul class="grid p-2 bg-[var(--primo-color-black)] page-list">
 		{#each [homepage, ...root_pages].sort((a, b) => a.index - b.index) as page, i (page.id)}
-			<li transition:fade={{ duration: 100 }}>
+			<li animate:flip={{ duration: 200 }}>
 				<Item {page} {page_slug} active_page_id={!pageState.params.page_type ? active_page.id : null} oncreate={create_page_with_sections} bind:hover_position />
 				<div class="drop-indicator-inline" class:active={hover_position === `${page.id}-bottom`}><div></div></div>
+				<div class="drop-target-gap" use:gapDropTarget={page}></div>
 			</li>
 		{/each}
 		{#if building_page}
@@ -130,7 +172,7 @@
 			/>
 		</div>
 	{:else}
-		<div class="p-2 bg-[var(--primo-color-black)]">
+		<div class="p-2 bg-(--primo-color-black)">
 			<button class="create-page-btn" onclick={() => (creating_page = true)}>
 				<Icon icon="akar-icons:plus" />
 				<span>Create Page</span>
@@ -141,11 +183,17 @@
 
 <style lang="postcss">
 	.page-list {
-		gap: 0.5rem;
 		overflow: auto;
 
 		> li {
 			position: relative;
+		}
+
+		.drop-target-gap {
+			width: 100%;
+			height: 3px;
+			display: block;
+			pointer-events: auto;
 		}
 
 		.drop-indicator-inline {
@@ -154,7 +202,7 @@
 			align-items: center;
 			padding: 0 8px;
 			position: absolute;
-			bottom: -6px;
+			/* bottom: -6px; */
 			left: 0;
 			right: 0;
 			z-index: 10;

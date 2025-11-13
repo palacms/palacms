@@ -11,7 +11,7 @@
 	import PageType_Sidebar from './components/Sidebar/PageType_Sidebar.svelte'
 	import { PaneGroup, Pane, PaneResizer } from 'paneforge'
 	import { site_html } from '$lib/builder/stores/app/page'
-	import { processCode } from '$lib/builder/utils.js'
+	import { processCode } from '$lib/builder/utils'
 	import { page } from '$app/state'
 	import type { Sites } from '$lib/pocketbase/collections'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'

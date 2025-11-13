@@ -274,9 +274,9 @@
 	{/if}
 
 	{#if step === 'starter'}
-		<Tabs.Root bind:value={starter_tab} class="h-[78vh] min-h-[30rem] w-full grid grid-cols-5 gap-4 flex-1 rounded-lg border bg-[#111] p-3 shadow-sm">
+		<Tabs.Root bind:value={starter_tab} class="h-[78vh] min-h-[30rem] w-full flex gap-4 flex-1 rounded-lg border bg-[#111] p-3 shadow-sm">
 			<!-- Left: groups + grid -->
-			<div class="col-span-5 md:col-span-3 flex flex-col">
+			<div class="flex flex-col flex-6">
 				<Tabs.List
 					class="rounded-9px bg-dark-10 shadow-mini-inset dark:bg-background grid w-full h-11 grid-cols-2 gap-1 p-1 text-sm font-semibold leading-[0.01em] dark:border dark:border-neutral-600/30"
 				>
@@ -289,7 +289,7 @@
 						<span>Marketplace</span>
 					</Tabs.Trigger>
 				</Tabs.List>
-				<Tabs.Content value="sites" class="grid grid-cols-4 flex-1">
+				<Tabs.Content value="sites" class="flex overflow-hidden h-full">
 					{#if active_starters_group_sites === undefined}
 						<!-- Loading skeletons for local starters -->
 						{#each Array.from({ length: 6 }) as _}
@@ -309,7 +309,7 @@
 						/>
 					{:else}
 						<!-- Groups sidebar -->
-						<div class="h-full md:border-r col-span-1">
+						<div class="h-full md:border-r flex-1">
 							<div class="p-2 text-xs text-muted-foreground">Groups</div>
 							<ul class="p-2 pt-0 flex flex-col gap-1">
 								{#each all_site_groups ?? [] as group (group.id)}
@@ -325,11 +325,11 @@
 							</ul>
 						</div>
 						<!-- Server Sites grid -->
-						<div class="col-span-3 p-3">
+						<div class="flex-4 overflow-auto">
 							{#if active_starters_group_sites?.length === 0}
 								<div class="text-sm text-muted-foreground p-6 text-center">No sites in this group.</div>
 							{:else if active_starters_group_sites}
-								<div class="grid gap-4 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+								<div class="p-3 pr-0 grid gap-4 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
 									{#each active_starters_group_sites as site}
 										{@render StarterButton(site)}
 									{/each}
@@ -340,9 +340,9 @@
 				</Tabs.Content>
 
 				<!-- Marketplace-->
-				<Tabs.Content value="marketplace" class="grid grid-cols-4 flex-1">
+				<Tabs.Content value="marketplace" class="flex overflow-hidden h-full">
 					<!-- Groups sidebar -->
-					<div class="h-full md:border-r col-span-1">
+					<div class="h-full md:border-r flex-1">
 						<div class="p-2 text-xs text-muted-foreground">Groups</div>
 						<ul class="p-2 pt-0 flex flex-col gap-1">
 							{#each marketplace_site_groups ?? [] as group (group.id)}
@@ -360,25 +360,27 @@
 						</ul>
 					</div>
 					<!-- Marketplace Sites grid -->
-					<div class="p-3 pr-0 grid gap-4 col-span-3 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-						{#if marketplace_starter_sites === undefined}
-							{#each Array.from({ length: 6 }) as _}
-								<Skeleton class="aspect-video w-full" />
-							{/each}
-						{:else}
-							{#each marketplace_starter_sites as site (site.id)}
-								{@render StarterButton(site, 'marketplace')}
-							{/each}
-							{#if (marketplace_starter_sites?.length ?? 0) === 0}
-								<div class="text-sm text-muted-foreground p-6 text-center">No starters in this group.</div>
+					<div class="flex-4 overflow-auto">
+						<div class="p-3 pr-0 grid gap-4 col-span-3 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+							{#if marketplace_starter_sites === undefined}
+								{#each Array.from({ length: 6 }) as _}
+									<Skeleton class="aspect-video w-full" />
+								{/each}
+							{:else}
+								{#each marketplace_starter_sites as site (site.id)}
+									{@render StarterButton(site, 'marketplace')}
+								{/each}
+								{#if (marketplace_starter_sites?.length ?? 0) === 0}
+									<div class="text-sm text-muted-foreground p-6 text-center">No starters in this group.</div>
+								{/if}
 							{/if}
-						{/if}
+						</div>
 					</div>
 				</Tabs.Content>
 			</div>
 
 			<!-- Right: preview takes 2/5 -->
-			<div class="col-span-5 md:col-span-2">
+			<div class="flex-3">
 				<div class="h-[73vh] rounded-md bg-muted/20 flex flex-col overflow-hidden">
 					{#if selected_starter_site}
 						{@const preview_url = selected_starter_source === 'marketplace' ? `https://${selected_starter_site?.host}` : `/?_site=${selected_starter_site?.id}`}

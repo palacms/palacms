@@ -9,7 +9,6 @@ import { usePageData } from '../PageData.svelte'
 import { Pages, PageSections, PageTypeSections, Sites } from '../pocketbase/collections'
 import { self } from '../pocketbase/managers'
 import { useSvelteWorker } from './Worker.svelte'
-import { VERSION as SVELTE_VERSION } from 'svelte/compiler'
 
 export const usePublishSite = (site_id?: string) => {
 	const worker = useSvelteWorker(
@@ -38,7 +37,10 @@ export const usePublishSite = (site_id?: string) => {
 							data: symbol_content?.[symbol.id]?.[locale] ?? {}
 						},
 						buildStatic: false,
-						css: 'external'
+						css: 'external',
+
+						// TODO: Svelte runtime needs to be in common bundle shared by all symbol modules.
+						runtime: ['hydrate']
 					})
 					.then(async (res) => {
 						if (res.error) {
@@ -231,7 +233,7 @@ export const usePublishSite = (site_id?: string) => {
 				return symbols
 					.map(
 						(symbol) =>
-							`import('/_symbols/${symbol.id}.js').then(({ default: App }) => {` +
+							`import('/_symbols/${symbol.id}.js').then(({ default: App, hydrate }) => {` +
 							sections
 								.filter((section) => section.symbol === symbol.id)
 								.map((section) => {
@@ -245,11 +247,11 @@ export const usePublishSite = (site_id?: string) => {
 			}
 
 			const final =
-				`<!DOCTYPE html><html lang="${locale}"><head><meta name="generator" content="PalaCMS" />` +
+				`<!DOCTYPE html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="Pala" />` +
 				res.head +
 				'</head><body id="page">' +
 				res.body +
-				(no_js ? `` : '<script type="module">' + `import { hydrate } from "https://esm.sh/svelte@${SVELTE_VERSION}";` + fetch_modules(page_symbols_with_js) + '</script>') +
+				(no_js ? `` : '<script type="module">' + fetch_modules(page_symbols_with_js) + '</script>') +
 				site?.foot +
 				'</body></html>'
 
@@ -337,5 +339,5 @@ export const usePublishSite = (site_id?: string) => {
 
 const deduplicate =
 	<T>(key: keyof T) =>
-	(item: T, index: number, array: T[]) =>
-		array.findIndex((value) => value[key] === item[key]) === index
+		(item: T, index: number, array: T[]) =>
+			array.findIndex((value) => value[key] === item[key]) === index

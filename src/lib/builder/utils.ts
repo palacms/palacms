@@ -7,11 +7,27 @@ import { rich_text_extensions } from '$lib/builder/rich-text/extensions'
 
 import { processors } from './component.js'
 
-const componentsCache = new Map()
-const errorCache = new Map()
-const CACHE_SIZE_LIMIT = 100
-
-export async function processCode({ component, head = { code: '', data: {} }, buildStatic = true, format = 'esm', locale = 'en', hydrated = true }) {
+export async function processCode({
+	component,
+	head = { code: '', data: {} },
+	buildStatic = true,
+	format = 'esm',
+	hydrated = true,
+	runtime = []
+}: {
+	component: {
+		head?: string
+		html?: string
+		css?: string
+		js?: string
+		data?: object
+	}
+	head?: { code: string; data: object }
+	buildStatic?: boolean
+	format?: 'esm'
+	hydrated?: boolean
+	runtime?: string[]
+}) {
 	let css = ''
 	if (component.css) {
 		try {
@@ -32,8 +48,8 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		buildStatic,
 		css: 'injected',
 		format,
-		locale,
-		hydrated
+		hydrated,
+		runtime
 	})
 	return res
 }
@@ -52,12 +68,7 @@ export class CssCompilationError extends Error {
 function toCssCompilationError(error) {
 	if (error instanceof CssCompilationError) return error
 
-	const message =
-		typeof error === 'string'
-			? error
-			: error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
-			? error.message
-			: 'Unknown CSS compilation error'
+	const message = typeof error === 'string' ? error : error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : 'Unknown CSS compilation error'
 
 	const details = {}
 	if (error && typeof error === 'object') {
@@ -133,7 +144,9 @@ export function get_empty_value(field) {
 			url: '',
 			src: '',
 			alt: '',
-			size: null
+			size: null,
+			width: null,
+			height: null
 		}
 	else if (field.type === 'text') return ''
 	else if (field.type === 'markdown') return ''
@@ -145,6 +158,7 @@ export function get_empty_value(field) {
 	else if (field.type === 'link')
 		return {
 			label: '',
+			text: '',
 			url: ''
 		}
 	else if (field.type === 'url') return ''
@@ -153,8 +167,9 @@ export function get_empty_value(field) {
 	else if (field.type === 'number') return 0
 	else if (field.type === 'page-field') return null
 	else if (field.type === 'site-field') return null
+	else if (field.type === 'info') return null
 	else {
-		console.warn('No placeholder set for field type', field.type)
+		console.warn('No empty set for field type', field.type)
 		return ''
 	}
 }
@@ -169,7 +184,7 @@ function get_markdown_renderer() {
 				if (lang && hljs.getLanguage(lang)) {
 					try {
 						return '<pre><code class="hljs">' + hljs.highlight(str, { language: lang, ignoreIllegals: true }).value + '</code></pre>'
-					} catch (__) {}
+					} catch (__) { }
 				}
 
 				return '<pre><code class="hljs">' + markdown_renderer.utils.escapeHtml(str) + '</code></pre>'
@@ -253,11 +268,7 @@ export function debounce({ instant, delay }, wait = 200) {
 
 function formatCssCompilationError(error) {
 	const baseMessage =
-		typeof error === 'string'
-			? error
-			: error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
-			? error.message
-			: 'Unknown CSS compilation error'
+		typeof error === 'string' ? error : error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : 'Unknown CSS compilation error'
 
 	if (!error || typeof error !== 'object') {
 		return `CSS Error: ${baseMessage}`

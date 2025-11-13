@@ -107,6 +107,12 @@
 					{ondelete}
 					is_visible={visibleRepeaters[subfield_id]}
 					on:toggle={() => (visibleRepeaters[subfield_id] = !visibleRepeaters[subfield_id])}
+					on:toggleall={() => {
+						const all_visible = repeater_entries.every((e) => visibleRepeaters[`${field.key}-${e.index}`])
+						repeater_entries.forEach((e) => {
+							visibleRepeaters[`${field.key}-${e.index}`] = !all_visible
+						})
+					}}
 					on:hover={({ detail }) => {
 						hover_index = index
 						hover_position = detail

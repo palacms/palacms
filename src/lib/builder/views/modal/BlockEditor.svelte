@@ -52,7 +52,7 @@
 		symbol_type?: 'site' | 'library'
 	} = $props()
 
-	if (existing_block) {
+	if (existing_block && symbol_type === 'site') {
 		setUserActivity({ site_symbol: existing_block.id })
 	}
 
@@ -115,7 +115,6 @@
 				css,
 				js
 			})
-			console.log('updating')
 			await self.commit()
 			// Reset baselines after successful save
 			initial_code = { html, css, js }

@@ -1,12 +1,12 @@
 /**
- * PalaCMS Usage Statistics
+ * Pala CMS Usage Statistics
  *
- * This module collects anonymous usage statistics to help improve PalaCMS.
+ * This module collects anonymous usage statistics to help improve Pala CMS.
  * Data collection is privacy-focused and can be disabled by setting PALA_DISABLE_USAGE_STATS=true
  *
  * What we collect:
  * - Anonymous instance ID (random UUID, not linked to any personal data)
- * - PalaCMS version number
+ * - Pala CMS version number
  * - Count of sites, pages, and users (numbers only, no content)
  * - Basic error events (sanitized, no user data)
  * - Geographic location (city-level only)

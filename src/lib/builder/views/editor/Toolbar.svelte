@@ -49,8 +49,8 @@
 
 	const pages_at_current_level = $derived.by(() => {
 		if (!active_page || !homepage) return []
-		if (active_page.id === homepage.id || active_page.parent === homepage.id) return [homepage, ...all_pages.filter((p) => p.parent === homepage.id)].sort((a, b) => a.index - b.index) // home page or direct sibling
-		return all_pages.filter((p) => p.parent === active_page?.parent).sort((a, b) => a.index - b.index) // standard children
+		if (active_page.id === homepage.id || active_page.parent === homepage.id) return [homepage, ...all_pages.filter((p) => p.parent === homepage.id)].sort((a, b) => b.index - a.index) // home page or direct sibling (descending order)
+		return all_pages.filter((p) => p.parent === active_page?.parent).sort((a, b) => b.index - a.index) // standard children (descending order)
 	})
 
 	const can_navigate_up = $derived(active_page ? active_page.index > 0 : false)
@@ -138,25 +138,25 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] max-w-none h-[calc(100vh_-_1rem)] max-h-none flex flex-col p-4">
+	<Dialog.Content class="z-999 w-[calc(100vw-1rem)] max-w-none h-[calc(100vh-1rem)] max-h-none flex flex-col p-4">
 		<SiteEditor onClose={() => (editing_site = false)} bind:has_unsaved_changes={site_has_unsaved_changes} />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_pages}>
-	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-none flex flex-col p-4">
+	<Dialog.Content class="z-999 max-w-[900px] h-[calc(100vh-1rem)] max-h-none flex flex-col p-4">
 		<SitePages />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_page_types}>
-	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-none flex flex-col p-4">
+	<Dialog.Content class="z-999 max-w-[900px] h-[calc(100vh-1rem)] max-h-none flex flex-col p-4">
 		<PageTypeModal />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_collaborators}>
-	<Dialog.Content class="z-[999] max-w-[600px] flex flex-col p-4">
+	<Dialog.Content class="z-999 max-w-[600px] flex flex-col p-4">
 		<Collaboration {site} />
 	</Dialog.Content>
 </Dialog.Root>

@@ -15,8 +15,11 @@ const sveltePromiseWorker = new PromiseWorker(new svelteWorker())
 const CDN_URL = 'https://esm.sh'
 const SVELTE_CDN = `${CDN_URL}/svelte@${SVELTE_VERSION}`
 
+// In-memory cache for external modules (persists for worker lifetime)
+const module_cache = new Map()
+
 registerPromiseWorker(rollup_worker)
-async function rollup_worker({ component, head, hydrated, buildStatic = true, css = 'external', format = 'esm', dev_mode = false }) {
+async function rollup_worker({ component, head, hydrated, buildStatic = true, css = 'external', format = 'esm', dev_mode = false, runtime = [] }) {
 	const final = {
 		ssr: '',
 		dom: '',
@@ -59,6 +62,12 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
           ${css ? `<style>${css}</style>` : ``}`
 	}
 
+	const Entrypoint = () => {
+		let code = `export { default } from './App.svelte';\n`
+		if (runtime.length > 0) code += `export { ${runtime.join(', ')} } from 'svelte'\n`
+		return code
+	}
+
 	function generate_lookup(component, head) {
 		if (Array.isArray(component)) {
 			// build page (sections as components)
@@ -67,10 +76,11 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 				component_lookup.set(`./Component_${i}.svelte`, code)
 			})
 			component_lookup.set(`./App.svelte`, App_Wrapper(component, head))
+			component_lookup.set(`./entry.js`, Entrypoint())
 		} else {
 			// build individual component
-			const app_code = Component(component)
-			component_lookup.set(`./App.svelte`, app_code)
+			component_lookup.set(`./App.svelte`, Component(component))
+			component_lookup.set(`./entry.js`, Entrypoint())
 		}
 	}
 
@@ -126,9 +136,15 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 	async function compile(svelteOptions = {}) {
 		try {
 			return await rollup({
-				input: './App.svelte',
-				// Keep remote modules external; browser will fetch them by URL
-				external: (id) => /^https?:/.test(id),
+				input: './entry.js',
+				onwarn(warning, warn) {
+					// Suppress circular dependency warnings from esm.sh Svelte modules
+					if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.ids?.some((id) => id.includes('esm.sh/svelte'))) {
+						return
+					}
+					// Use default warning handler for other warnings
+					warn(warning)
+				},
 				plugins: [
 					commonjs,
 					{
@@ -167,6 +183,30 @@ async function rollup_worker({ component, head, hydrated, buildStatic = true, cs
 								return `export const DEV = false; export const PROD = true; export const BROWSER = true;`
 							}
 							if (component_lookup.has(id)) return component_lookup.get(id)
+
+							// Fetch external modules with caching
+							if (/^https?:/.test(id)) {
+								// Check cache first
+								if (module_cache.has(id)) {
+									return module_cache.get(id)
+								}
+
+								try {
+									const response = await fetch(id)
+									if (!response.ok) {
+										throw new Error(`Failed to fetch ${id}: ${response.status} ${response.statusText}`)
+									}
+									const code = await response.text()
+
+									// Cache the result
+									module_cache.set(id, code)
+									return code
+								} catch (error) {
+									console.error(`Error loading external module: ${id}`, error)
+									throw error
+								}
+							}
+
 							return null
 						},
 						async transform(code, id) {

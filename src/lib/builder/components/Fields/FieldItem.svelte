@@ -177,6 +177,9 @@
 		// Icon patterns
 		if (/\b(icon|emoji)\b/.test(combined)) return 'icon'
 
+		// Date patterns
+		if (/\b(date|day|time|when|schedule|deadline|birthday|anniversary|created|updated|published|expired)\b/.test(combined)) return 'date'
+
 		// Number patterns
 		if (/\b(number|num|count|quantity|amount|price|cost|age|weight|height|width)\b/.test(combined)) return 'number'
 
@@ -477,6 +480,10 @@
 						if (text.length > 0) {
 							should_autofocus = false
 						}
+					}}
+					onblur={() => {
+						// Stop auto-populating key when label field loses focus
+						key_edited = true
 					}}
 				/>
 			</div>

@@ -1,8 +1,8 @@
-# Contributing to PalaCMS
+# Contributing to Pala
 
 Thank you for your interest in contributing to Pala! In the interest of full transparency, we want to be up front in this doc to avoid hurting feelings and set clear expectations.
 
-## 💡 About PalaCMS
+## About Pala
 
 Pala is a business-driven open source project (think NextJS, Supabase, Tailwind CSS) rather than a community-driven one like Linux or Apache. We're building a sustainable business around a high-quality open source tool, which means:
 
@@ -10,7 +10,7 @@ Pala is a business-driven open source project (think NextJS, Supabase, Tailwind 
 - We have limited bandwidth for reviewing external contributions
 - We encourage you first to fork and modify for your own needs (hence the MIT license)
 
-## ⚠️ Before You Contribute
+## Before You Contribute
 
 **Always discuss first.** We have limited time for reviews and will likely close PRs submitted without prior discussion.
 
@@ -35,7 +35,7 @@ For detailed technical information including architecture, development setup, an
 
 ## 🔄 If You Want to Contribute
 
-We genuinely appreciate contributions! However, since PalaCMS serves a broad range of users and use cases, we need to be thoughtful about changes to protect the project's general-purpose nature and long-term vision.
+We genuinely appreciate contributions! However, since Pala serves a broad range of users and use cases, we need to be thoughtful about changes to protect the project's general-purpose nature and long-term vision.
 
 ### Step 1: Discuss First
 
@@ -82,9 +82,9 @@ If you've received approval to proceed:
 - Changes that increase complexity significantly
 - Features that duplicate existing functionality
 
-## 🤝 Forking PalaCMS
+## 🤝 Forking Pala
 
-If you want to create your own version of PalaCMS:
+If you want to create your own version of Pala:
 
 1. **Fork freely** - The codebase is open source for a reason
 2. **No approval needed** - Make whatever changes you want in your fork
@@ -101,15 +101,15 @@ If you want to create your own version of PalaCMS:
 
 ## 📄 License
 
-PalaCMS is MIT licensed, which means:
+Pala is MIT licensed, which means:
 
-- **You can build proprietary products** on top of PalaCMS without sharing your code
+- **You can build proprietary products** on top of Pala without sharing your code
 - **You can fork and modify** without contributing back
 - **You can use it commercially** without restrictions
-- **Any code you contribute** to the main PalaCMS repository will be MIT licensed
+- **Any code you contribute** to the main Pala repository will be MIT licensed
 
-By contributing to PalaCMS, you agree that your contributions will be licensed under the MIT License.
+By contributing to Pala, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-**Thank you for your interest in PalaCMS!** Whether you're forking for your own use or contributing back, we appreciate you and hope the code serves you well.
+**Thank you for your interest in Pala!** Whether you're forking for your own use or contributing back, we appreciate you and hope the code serves you well.

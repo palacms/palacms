@@ -4,6 +4,7 @@
 	import { onMount, tick } from 'svelte'
 	import { get, set } from 'idb-keyval'
 	import { slide, fade } from 'svelte/transition'
+	import { flip } from 'svelte/animate'
 	import { content_editable, validate_url } from '$lib/builder/utilities'
 	import PageForm from './PageForm.svelte'
 	import MenuPopup from '$lib/builder/ui/Dropdown.svelte'
@@ -56,6 +57,10 @@
 	let has_children = $derived(children.length > 0 && page.slug !== '')
 	let has_toggled = $state(false)
 	const active = $derived(page.id === active_page_id)
+
+	// Local hover_position for this level's children (separate from parent's hover_position)
+	// This is used to track hover position for subpages when this Item has children
+	let children_hover_position = $state<string | null>(null)
 
 	get(`page-list-toggle--${page.id}`).then((toggled) => {
 		if (toggled !== undefined) showing_children = toggled
@@ -113,11 +118,22 @@
 					}
 				)
 			},
-			onDrag({ self }) {
+			onDrag({ self, source }) {
+				// Only show indicators if dragging within the same parent level
+				const page_being_dragged = source.data.page as ObjectOf<typeof Pages>
+				const same_parent = page.parent === page_being_dragged.parent
+
+				if (!same_parent) {
+					hover_position = null
+					return
+				}
+
 				// Dragging - adjust indicator according to drag position
 				const edge = extractClosestEdge(self.data)
 				if (edge === 'bottom') {
 					// Set hover position to show indicator below this item
+					// For subpages, hover_position prop is passed from parent's children_hover_position
+					// Since hover_position is $bindable, setting it updates the parent's value
 					hover_position = `${page.id}-bottom`
 				} else if (edge === 'top') {
 					// For top edge, we want to show the indicator above this item
@@ -142,8 +158,8 @@
 			},
 			onDrop({ self, source }) {
 				// Dropped - adjust index of moved page and siblings pages
-				const page_dragged_over = self.data.page
-				const page_being_dragged = source.data.page
+				const page_dragged_over = self.data.page as ObjectOf<typeof Pages>
+				const page_being_dragged = source.data.page as ObjectOf<typeof Pages>
 				const closestEdgeOfTarget = extractClosestEdge(self.data)
 
 				// Don't allow dragging onto itself
@@ -175,7 +191,7 @@
 
 				hover_position = null
 
-				// Only allow reordering within same parent (root level only since drag handles are hidden for child pages)
+				// Only allow reordering within same parent
 				if (same_parent) {
 					// Delay the actual updates to prevent jerky animations
 					requestAnimationFrame(() => {
@@ -214,7 +230,7 @@
 							}
 						}
 
-						self.commit()
+						selfManager.commit()
 					})
 				}
 			}
@@ -286,11 +302,9 @@
 					<span>Create Subpage ({children.length})</span>
 				</button>
 			{/if}
-			{#if !parent}
-				<button class="drag-handle" bind:this={drag_handle_element} style:visibility={page.slug === '' ? 'hidden' : 'visible'}>
-					<Icon icon="material-symbols:drag-handle" />
-				</button>
-			{/if}
+			<button class="drag-handle" bind:this={drag_handle_element} style:visibility={page.slug === '' ? 'hidden' : 'visible'}>
+				<Icon icon="material-symbols:drag-handle" />
+			</button>
 			<MenuPopup
 				icon="carbon:overflow-menu-vertical"
 				options={[
@@ -414,13 +428,17 @@
 	{/if}
 
 	{#if showing_children && has_children}
-		<ul class="page-list child" transition:slide={{ duration: has_toggled ? 100 : 0 }}>
-			{#each children as subpage (subpage.id)}
-				<li transition:fade={{ duration: 200 }}>
-					<Item parent={page} page={subpage} active={subpage.id === active_page_id} {page_slug} {active_page_id} {oncreate} bind:hover_position on:delete on:create />
-				</li>
-			{/each}
-		</ul>
+		<div class="children-container">
+			<div class="drop-indicator-top" class:active={children_hover_position === `${page.id}-children-top`}><div></div></div>
+			<ul class="page-list child" transition:slide={{ duration: has_toggled ? 100 : 0 }}>
+				{#each children as subpage (subpage.id)}
+					<li animate:flip={{ duration: 200 }} class="subpage-item">
+						<Item parent={page} page={subpage} active={subpage.id === active_page_id} {page_slug} {active_page_id} {oncreate} bind:hover_position={children_hover_position} on:delete on:create />
+						<div class="drop-indicator-inline" class:active={children_hover_position === `${subpage.id}-bottom`}><div></div></div>
+					</li>
+				{/each}
+			</ul>
+		</div>
 	{/if}
 </div>
 
@@ -487,6 +505,7 @@
 		display: flex;
 		flex-direction: column;
 		position: relative;
+		overflow: visible;
 		/* gap: 4px; */
 		/* padding-bottom: 0.5rem; */
 
@@ -653,10 +672,16 @@
 		}
 	}
 
+	.children-container {
+		position: relative;
+		margin-top: 2px;
+	}
+
 	ul.page-list {
 		margin: 0 1rem 1rem 1rem;
 		/* background: #323334; */
 		border-radius: var(--primo-border-radius);
+		position: relative;
 
 		&.child {
 			font-size: 0.875rem;
@@ -665,10 +690,84 @@
 			/* margin-left: 1rem; */
 			border-top-right-radius: 0;
 			border-top-left-radius: 0;
+			position: relative;
+
+			> li.subpage-item {
+				position: relative;
+				overflow: visible;
+			}
 		}
 
 		&.child:not(.entry) {
 			margin-left: 0.5rem;
+		}
+	}
+
+	.drop-indicator-inline {
+		height: 4px;
+		display: flex;
+		align-items: center;
+		padding: 0 8px;
+		position: absolute;
+		bottom: -6px;
+		left: 0;
+		right: 0;
+		z-index: 10;
+		pointer-events: none;
+
+		div {
+			width: 100%;
+			height: 2px;
+			background: transparent;
+			border-radius: 1px;
+			transition: all 0.2s ease;
+			opacity: 0;
+		}
+
+		&.active div {
+			opacity: 1;
+			background: var(--pala-primary-color);
+			height: 3px;
+			animation: pulse 0.6s ease-in-out infinite;
+		}
+	}
+
+	.drop-indicator-top {
+		height: 4px;
+		display: flex;
+		align-items: center;
+		padding: 0 8px;
+		position: absolute;
+		top: -2px;
+		left: 0.5rem;
+		right: 0;
+		z-index: 100;
+
+		div {
+			width: 100%;
+			height: 2px;
+			background: transparent;
+			border-radius: 1px;
+			transition: all 0.2s ease;
+			opacity: 0;
+		}
+
+		&.active div {
+			opacity: 1;
+			background: var(--pala-primary-color);
+			height: 3px;
+			animation: pulse 0.6s ease-in-out infinite;
+			box-shadow: 0 0 8px var(--pala-primary-color);
+		}
+	}
+
+	@keyframes pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.6;
 		}
 	}
 </style>

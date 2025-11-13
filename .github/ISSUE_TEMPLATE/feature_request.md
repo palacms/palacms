@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for PalaCMS
+about: Suggest an idea for Pala
 title: ''
 labels: ''
 assignees: ''

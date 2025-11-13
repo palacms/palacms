@@ -5,13 +5,14 @@
 <script>
 	import { createEventDispatcher } from 'svelte'
 	import { createDebouncer } from '../../utils'
-	import { highlightedElement } from '../../stores/app/misc'
+	import { highlightedElement, mod_key_held } from '../../stores/app/misc'
 	import { basicSetup } from 'codemirror'
 	import { EditorView, keymap } from '@codemirror/view'
 	import { standardKeymap, indentWithTab } from '@codemirror/commands'
 	import { EditorState, Compartment } from '@codemirror/state'
 	import { autocompletion } from '@codemirror/autocomplete'
 	import { vsCodeDark } from './theme'
+	import Icon from '@iconify/svelte'
 	import { svelteCompletions, cssCompletions } from './extensions/autocomplete'
 	import { getLanguage } from './extensions'
 	import highlight_active_line from './extensions/inspector'
@@ -42,6 +43,7 @@
 	const dispatch = createEventDispatcher()
 
 	let Editor = $state()
+	let is_focused = $state(false)
 
 	const detectModKey = EditorView.domEventHandlers({
 		keydown(event, view) {
@@ -58,6 +60,14 @@
 				dispatch('modkeyup')
 				return false
 			}
+			return false
+		},
+		focus(event, view) {
+			is_focused = true
+			return false
+		},
+		blur(event, view) {
+			is_focused = false
 			return false
 		}
 	})
@@ -283,7 +293,16 @@
 />
 
 <div bind:this={element} class="codemirror-container {mode}" {style}>
-	<div bind:this={editorNode}></div>
+	<div class="editor-wrapper">
+		<div bind:this={editorNode}></div>
+		{#if $mod_key_held && is_focused}
+			<div class="format-hint">
+				<span>&#8984;</span>
+				<span>↵</span>
+				<span>Format</span>
+			</div>
+		{/if}
+	</div>
 </div>
 
 <style lang="postcss">
@@ -292,8 +311,29 @@
 		overflow-y: scroll;
 		overscroll-behavior-x: contain; /* prevent from swiping back */
 		font-family: 'Fira Code', monospace !important;
-		height: calc(100% - 34px);
+		/* height: calc(100% - 34px); */
+		height: 100%; /* making full height for page type head html, can't remember what -34px was for */
+	}
+
+	.editor-wrapper {
 		position: relative;
+	}
+
+	.format-hint {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		background: var(--color-gray-9);
+		border: 1px solid var(--color-gray-8);
+		padding: 0.5rem 0.75rem;
+		border-radius: var(--primo-border-radius);
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.75rem;
+		color: var(--color-gray-2);
+		pointer-events: none;
+		z-index: 10;
 	}
 
 	:global(.highlighted) {

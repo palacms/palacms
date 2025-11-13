@@ -16,7 +16,7 @@
 	import { Inspect } from 'svelte-inspect-value'
 	import Icon from '@iconify/svelte'
 	import { content_editable } from '../utilities'
-	import { processCode, processCSS } from '../utils.js'
+	import { processCode, processCSS } from '../utils'
 	import { debounce } from 'lodash-es'
 	import { watch } from 'runed'
 	import { site_html } from '$lib/builder/stores/app/page.js'
@@ -95,7 +95,8 @@
 					js: code.js || '',
 					data
 				},
-				buildStatic: false
+				buildStatic: false,
+				runtime: ['mount', 'unmount']
 			})
 
 			if (error) {
@@ -200,8 +201,6 @@
 			if (event === 'INITIALIZED') {
 				iframe_loaded = true
 			} else if (event === 'BEGIN') {
-				// reset log & runtime error
-				consoleLog = null
 				compilation_error = null
 				error_source = null
 				error_token = error_token + 1
@@ -323,6 +322,7 @@
 	}
 
 	async function setIframeApp() {
+		if (!channel) return
 		channel.postMessage({
 			event: 'SET_APP',
 			payload: { componentApp, data }
@@ -340,7 +340,7 @@
 		const div = iframe?.contentDocument?.querySelector('#page')
 		if (div?.innerHTML === '') {
 			setIframeApp()
-		} else if (iframe_loaded) {
+		} else if (iframe_loaded && channel) {
 			channel.postMessage({
 				event: 'SET_APP_DATA',
 				payload: { data }
@@ -409,11 +409,27 @@
 	)
 
 	let last_data = _.cloneDeep(data)
+	let last_data_keys = Object.keys(data || {})
+		.sort()
+		.join(',')
 	watch(
 		() => data,
 		(data) => {
 			if (!data || _.isEqual(last_data, data)) return
-			setIframeData()
+
+			// Check if new fields have been added (new keys in data object)
+			const current_keys = Object.keys(data).sort().join(',')
+			const fields_added = current_keys !== last_data_keys
+
+			if (fields_added) {
+				// New fields detected - need to recompile to include them in props
+				last_data_keys = current_keys
+				debouncedCompile()
+			} else {
+				// Just data values changed - update iframe data
+				setIframeData()
+			}
+
 			last_data = _.cloneDeep(data)
 		}
 	)

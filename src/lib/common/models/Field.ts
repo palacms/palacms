@@ -8,6 +8,7 @@ import { LinkField } from './fields/LinkField'
 import { ImageField } from './fields/ImageField'
 import { IconField } from './fields/IconField'
 import { NumberField } from './fields/NumberField'
+import { DateField } from './fields/DateField'
 import { UrlField } from './fields/UrlField'
 import { PageFieldField } from './fields/PageFieldField'
 import { SiteFieldField } from './fields/SiteFieldField'
@@ -28,6 +29,7 @@ export const Field = z.discriminatedUnion('type', [
 	ImageField,
 	IconField,
 	NumberField,
+	DateField,
 	UrlField,
 	PageFieldField,
 	SiteFieldField,
