@@ -287,7 +287,7 @@
 		</Pane>
 		<PaneResizer class="PaneResizer" />
 		<Pane defaultSize={50}>
-			<ComponentPreview id={symbol?.id} {code} data={component_data} bind:orientation={$orientation} view="small" {loading} head={$site_html} />
+			<ComponentPreview id={symbol?.id} {code} data={component_data} {fields} bind:orientation={$orientation} view="small" {loading} head={$site_html} />
 		</Pane>
 	</PaneGroup>
 </main>
