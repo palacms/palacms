@@ -3,9 +3,10 @@ import type { PageSection } from '$lib/common/models/PageSection'
 import type { PageTypeSection } from '$lib/common/models/PageTypeSection'
 import type { SiteSymbol } from '$lib/common/models/SiteSymbol'
 import { useContent } from '$lib/Content.svelte'
+import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 import { processors } from '../builder/component'
 import { usePageData } from '../PageData.svelte'
-import { Sites } from '../pocketbase/collections'
+import { Pages, PageSections, PageTypeSections, Sites } from '../pocketbase/collections'
 import { self } from '../pocketbase/managers'
 import { useSvelteWorker } from './Worker.svelte'
 
@@ -163,7 +164,7 @@ export const usePublishSite = (site_id?: string) => {
 									html,
 									js,
 									css,
-									data: section_content?.[section.id]?.[locale] ?? {},
+									data: section_content?.[page.id]?.[section.id]?.[locale] ?? {},
 									wrapper_start: `<div data-section="${section.id}" id="section-${section.id}" data-symbol="${symbol.id}">`,
 									wrapper_end: '</div>'
 								}
@@ -236,7 +237,7 @@ export const usePublishSite = (site_id?: string) => {
 							sections
 								.filter((section) => section.symbol === symbol.id)
 								.map((section) => {
-									const content = section_content?.[section.id]?.[locale]
+									const content = section_content?.[page.id]?.[section.id]?.[locale]
 									return `hydrate(App, { target: document.querySelector('#section-${section.id}'), props: ${JSON.stringify(content)} });`
 								})
 								.join('') +
@@ -292,9 +293,44 @@ export const usePublishSite = (site_id?: string) => {
 			? Object.fromEntries(data.symbols.map((symbol) => [symbol.id, useContent(symbol, { target: 'live' })]))
 			: undefined
 	)
+
+	const sections = $derived(
+		shouldLoad && pages && data
+			? ([
+					...data.page_type_sections.flatMap((section) =>
+						pages
+							.filter((page) => page.page_type === section.page_type)
+							.map((page) => {
+								const content = useContent(section, { target: 'live', page })
+								if (!content) return
+
+								return [page, section, content]
+							})
+					),
+					...data.page_sections.map((section) => {
+						const page = Pages.one(section.page)
+						if (!page) return
+
+						const content = useContent(section, { target: 'live', page })
+						if (!content) return
+
+						return [page, section, content]
+					})
+				] as ([ObjectOf<typeof PageSections> | ObjectOf<typeof PageTypeSections>, ObjectOf<typeof Pages>, NonNullable<ReturnType<typeof useContent>>] | undefined)[])
+			: undefined
+	)
 	const section_content = $derived(
-		shouldLoad && data && [...data.page_type_sections, ...data.page_sections].every((section) => !!useContent(section, { target: 'live' }))
-			? Object.fromEntries([...data.page_type_sections, ...data.page_sections].map((section) => [section.id, useContent(section, { target: 'live' })]))
+		shouldLoad && sections?.every((s) => !!s)
+			? sections
+					.filter((s) => !!s)
+					.reduce(
+						(data, [page, section, content]) => {
+							if (!data[page.id]) data[page.id] = {}
+							data[page.id][section.id] = content
+							return data
+						},
+						{} as Record<string, Record<string, NonNullable<ReturnType<typeof useContent>>>>
+					)
 			: undefined
 	)
 
