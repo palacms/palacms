@@ -46,6 +46,12 @@
 	let foot = $state(page_type.foot || '')
 	let save_timeout = null
 
+	// Update head and foot when page type changes
+	$effect(() => {
+		head = page_type.head || ''
+		foot = page_type.foot || ''
+	})
+
 	// Head editor resize state
 	const storage_key = `head-editor-height-${page_type.id}`
 	let head_editor_height = $state(typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem(storage_key) || '50') : 50)
