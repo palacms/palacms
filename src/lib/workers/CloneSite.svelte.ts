@@ -644,6 +644,7 @@ const create_page_entries = ({
 			id: undefined,
 			page: page.id,
 			field: field.id,
+			parent: parent?.id,
 			value: source_page_entry.value
 		})
 		page_entry_map.set(source_page_entry.id, entry)
