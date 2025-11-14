@@ -115,11 +115,11 @@
 				email = ''
 				role = 'developer'
 
-				const response = await fetch(`${self.instance.baseURL}/api/palacms/password-link`, {
+				const response = await fetch(`${self.instance?.baseURL}/api/palacms/password-link`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						Authorization: `Bearer ${self.instance.authStore.token}`
+						Authorization: `Bearer ${self.instance?.authStore.token}`
 					},
 					body: JSON.stringify({
 						site_id: site.id,
@@ -301,7 +301,7 @@
 						<li>
 							<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
 								{#if avatar}
-									<Avatar.Image src={avatar && `${self.instance.baseURL}/api/files/collaborators/${id}/${avatar}`} alt={name || email} class="object-cover object-center" />
+									<Avatar.Image src={avatar && `${self.instance?.baseURL}/api/files/collaborators/${id}/${avatar}`} alt={name || email} class="object-cover object-center" />
 								{/if}
 								<Avatar.Fallback class="text-xs">{(name || email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 							</Avatar.Root>
@@ -326,7 +326,7 @@
 					{#each site_collborators ?? [] as { user, assignment }}
 						<li>
 							<Avatar.Root class="ring-background transition-all ring-2 size-[27px]">
-								<Avatar.Image src={user.avatar && `${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}`} alt={user.name || user.email} class="object-cover object-center" />
+								<Avatar.Image src={user.avatar && `${self.instance?.baseURL}/api/files/collaborators/${user.id}/${user.avatar}`} alt={user.name || user.email} class="object-cover object-center" />
 								<Avatar.Fallback class="text-xs">{(user.name || user.email).slice(0, 2).toUpperCase()}</Avatar.Fallback>
 							</Avatar.Root>
 							<span class="email">

@@ -130,7 +130,7 @@
 	let collapsed = $derived(!width || width < 200)
 	let upload = $derived(entry.value.upload ? ('site' in field && site ? SiteUploads.one(entry.value.upload) : LibraryUploads.one(entry.value.upload)) : null)
 	let upload_url = $derived(
-		upload && (typeof upload.file === 'string' ? `${self.instance.baseURL}/api/files/${site ? 'site_uploads' : 'library_uploads'}/${upload.id}/${upload.file}` : URL.createObjectURL(upload.file))
+		upload && (typeof upload.file === 'string' ? `${self.instance?.baseURL}/api/files/${site ? 'site_uploads' : 'library_uploads'}/${upload.id}/${upload.file}` : URL.createObjectURL(upload.file))
 	)
 	let input_url = $derived(entry.value.url)
 	let url = $derived(input_url || upload_url)

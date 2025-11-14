@@ -1,7 +1,6 @@
-import PocketBase from 'pocketbase'
 import { createCollectionManager } from './CollectionManager'
+import { self as this_instance, marketplace as marketplace_instance } from './instances'
 
-const local = new PocketBase(import.meta.env.DEV ? 'http://127.0.0.1:8090' : location.origin)
-export const self = createCollectionManager(local)
-export const activity = createCollectionManager(local)
-export const marketplace = createCollectionManager(new PocketBase('https://marketplace.palacms.com'))
+export const self = createCollectionManager(this_instance)
+export const activity = createCollectionManager(this_instance)
+export const marketplace = createCollectionManager(marketplace_instance)

@@ -319,7 +319,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 
 					const data = getContent({ entity, fields, entries, parentField: field, parentEntry: entry })
 					if (!data) continue
-						; (content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
+					;(content[entry.locale]![field.key] as unknown[]).push(data[entry.locale])
 				}
 			}
 
@@ -356,7 +356,7 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 					(options.target === 'live'
 						? `/_uploads/${upload.file}`
 						: typeof upload.file === 'string'
-							? `${self.instance.baseURL}/api/files/${'group' in entity ? 'library_uploads' : 'site_uploads'}/${upload.id}/${upload.file}`
+							? `${self.instance?.baseURL}/api/files/${'group' in entity ? 'library_uploads' : 'site_uploads'}/${upload.id}/${upload.file}`
 							: URL.createObjectURL(upload.file))
 				const input_url: string | undefined = entry.value.url
 				const url = input_url || upload_url

@@ -5,15 +5,18 @@
 	import { Input } from '$lib/components/ui/input/index.js'
 	import { Label } from '$lib/components/ui/label/index.js'
 	import { Site } from '$lib/common/models/Site'
-	import { Sites, SiteSymbols, SiteSymbolFields, SiteSymbolEntries, SiteGroups, LibrarySymbols } from '$lib/pocketbase/collections'
+	import { Sites, SiteGroups, LibrarySymbols, SiteSnapshots } from '$lib/pocketbase/collections'
 	import { page as pageState } from '$app/state'
 	import Button from './ui/button/button.svelte'
 	import { create_site_symbol_entries, create_site_symbol_fields, create_site_symbols, useCloneSite } from '$lib/workers/CloneSite.svelte'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js'
-	import { self as pb, marketplace, self } from '$lib/pocketbase/managers'
+	import { marketplace, self } from '$lib/pocketbase/managers'
 	import { watch } from 'runed'
 	import BlockPickerPanel from '$lib/components/BlockPickerPanel.svelte'
+	import { createCollectionManager } from '$lib/pocketbase/CollectionManager'
+	import { Snapshot } from '$lib/common/models/Snapshot'
+	import { import_snapshot } from '$lib/Snapshot.svelte'
 
 	/*
   Create Site Wizard
@@ -133,9 +136,16 @@
 		}
 	}
 
+	const starter_snapshots = $derived(SiteSnapshots.from(marketplace).list({ sort: '-created' }))
+	const snapshot_manager = createCollectionManager()
+	$effect(() => {
+		// Ensure that snapshots get loaded
+		starter_snapshots
+	})
+
 	const cloneSite = $derived(
 		useCloneSite({
-			source_manager: selected_starter_source === 'local' ? self : marketplace,
+			source_manager: selected_starter_source === 'local' ? self : snapshot_manager,
 			source_site_id: selected_starter_id,
 			site_name: site_name,
 			site_host: pageState.url.host,
@@ -154,6 +164,22 @@
 			if (!site_group) {
 				SiteGroups.create({ name: 'Default', index: 0 })
 			}
+
+			if (selected_starter_source === 'marketplace') {
+				// Load snapshot from marketplace
+				const snapshot_record = starter_snapshots?.find((snapshot) => snapshot.site === selected_starter_id)
+				if (!snapshot_record) {
+					throw new Error('Snapshot not found')
+				}
+				if (typeof snapshot_record.file !== 'string') {
+					throw new Error('Invalid snapshot')
+				}
+				const snapshot = await Snapshot.decodeAsync(
+					new File([await fetch(`${marketplace.instance?.baseURL}/api/files/site_snapshots/${snapshot_record.id}/${snapshot_record.file}`).then((res) => res.blob())], snapshot_record.file)
+				)
+				import_snapshot({ destination_manager: snapshot_manager, source_snapshot: snapshot })
+			}
+
 			await cloneSite.run()
 			done_creating_site = true
 		} catch (e) {

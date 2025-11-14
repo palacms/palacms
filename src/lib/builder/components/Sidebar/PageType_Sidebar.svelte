@@ -29,7 +29,7 @@
 		LibrarySymbolEntries,
 		LibrarySymbolFields
 	} from '$lib/pocketbase/collections'
-	import { self as pb, marketplace, self } from '$lib/pocketbase/managers'
+	import { self } from '$lib/pocketbase/managers'
 	import { site_html } from '$lib/builder/stores/app/page.js'
 	import { dragging_symbol } from '$lib/builder/stores/app/misc'
 	import DropZone from '$lib/components/DropZone.svelte'
