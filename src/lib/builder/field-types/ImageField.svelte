@@ -76,8 +76,8 @@
 				file_to_upload = image
 			} else {
 				// Get compression options from field config or use defaults
-				const maxSizeMB = field.config.maxSizeMB ?? 1
-				const maxWidthOrHeight = field.config.maxWidthOrHeight ?? 1920
+				const maxSizeMB = field.config?.maxSizeMB ?? 1
+				const maxWidthOrHeight = field.config?.maxWidthOrHeight ?? 1920
 
 				// Compression options
 				const options = {
@@ -95,22 +95,24 @@
 			// Extract dimensions from the compressed/final image
 			const dimensions = await get_image_dimensions(file_to_upload)
 
+			let upload_record
 			if (upload && site) {
-				SiteUploads.update(upload.id, { file: file_to_upload })
+				upload_record = SiteUploads.update(upload.id, { file: file_to_upload })
 			} else if (upload) {
-				LibraryUploads.update(upload.id, { file: file_to_upload })
+				upload_record = LibraryUploads.update(upload.id, { file: file_to_upload })
 			} else if (site) {
-				upload = SiteUploads.create({ file: file_to_upload, site: site.id })
+				upload_record = SiteUploads.create({ file: file_to_upload, site: site.id })
 			} else {
-				upload = LibraryUploads.create({ file: file_to_upload })
+				upload_record = LibraryUploads.create({ file: file_to_upload })
 			}
+			console.log({ upload_record })
 
 			onchange({
 				[field.key]: {
 					0: {
 						value: {
 							...entry.value,
-							upload: upload.id,
+							upload: upload_record.id,
 							url: '',
 							width: dimensions?.width ?? null,
 							height: dimensions?.height ?? null
