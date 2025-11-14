@@ -28,6 +28,7 @@
 	import { getUserActivity } from '$lib/UserActivity.svelte'
 	import { useSiteSnapshot } from '$lib/Snapshot.svelte'
 	import { Snapshot } from '$lib/common/models/Snapshot'
+	import { instance } from '$lib/instance'
 
 	let { children }: { children: Snippet } = $props()
 
@@ -328,6 +329,7 @@
 			{#if !$timeline.last}
 				<ToolbarButton id="redo" title="Redo" icon="material-symbols:redo" style="border: 0; font-size: 1.5rem;" on:click={redo_change} />
 			{/if} -->
+			<span class="version-badge">v{instance.version}</span>
 			{#if $current_user?.serverRole}
 				<ToolbarButton icon="clarity:users-solid" on:click={() => (editing_collaborators = true)} />
 			{/if}
@@ -455,5 +457,10 @@
 		height: 100%;
 		align-items: center;
 		border-radius: var(--primo-border-radius);
+	}
+
+	.version-badge {
+		font-size: 0.625rem;
+		color: #555;
 	}
 </style>

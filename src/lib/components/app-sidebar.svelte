@@ -14,6 +14,7 @@
 	import type { Component } from 'svelte'
 	import { LibrarySymbolGroups, SiteGroups } from '$lib/pocketbase/collections'
 	import { current_user } from '$lib/pocketbase/user'
+	import { instance } from '$lib/instance'
 
 	const sidebar = useSidebar()
 
@@ -176,6 +177,9 @@
 			</Sidebar.Group>
 		</Sidebar.Content>
 		<Sidebar.Footer>
+			<div class="px-3 py-2 text-xs text-sidebar-foreground/50 text-center">
+				v{instance.version}
+			</div>
 			<Sidebar.Menu>
 				<Sidebar.MenuItem>
 					<DropdownMenu.Root>
