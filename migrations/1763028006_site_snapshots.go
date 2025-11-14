@@ -14,14 +14,13 @@ func init() {
 			}
 
 			baseRule := "(@request.auth.serverRole != \"\") || (@collection.site_role_assignments.user.id = @request.auth.id && @collection.site_role_assignments.site.id = site.id)"
-			deleteRule := "(@request.auth.serverRole != \"\")"
 
 			collection := core.NewCollection("base", "site_snapshots")
 			collection.ListRule = &baseRule
 			collection.ViewRule = &baseRule
 			collection.CreateRule = &baseRule
 			collection.UpdateRule = nil
-			collection.DeleteRule = &deleteRule
+			collection.DeleteRule = &baseRule
 			collection.Fields.Add(
 				&core.TextField{
 					Name:                "id",
