@@ -83,7 +83,7 @@ export const Snapshot = z.codec(
 			const records = decodeJson(buffer.slice(head, head + records_size))
 			head += records_size
 
-			const filemeta_size = header[1]
+			const filemeta_size = header[2]
 			const filemeta = decodeJson(buffer.slice(head, head + filemeta_size)) as FileEntry[]
 			head += filemeta_size
 
