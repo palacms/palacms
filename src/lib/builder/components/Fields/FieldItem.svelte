@@ -217,8 +217,8 @@
 				value: ''
 			}
 		}
-		show_condition_editor = true
 		onchange({ id: field.id, data: { config: next } })
+		show_condition_editor = true
 	}
 
 	const child_fields = $derived(fields?.filter((f) => f.parent === field.id) || [])

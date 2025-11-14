@@ -365,12 +365,10 @@
 
 		button {
 			background: var(--color-gray-9);
-			color: var(--primo-color-white);
+			color: #eee;
+			padding: 4px 0;
+			font-size: 0.675rem;
 			width: 100%;
-			text-align: center;
-			padding: 8px 0;
-			outline: 0;
-			font-size: var(--font-size-1);
 			/* font-weight: 700; */
 			z-index: 10;
 			position: relative;

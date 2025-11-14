@@ -4,7 +4,7 @@
 	import Item from './Item.svelte'
 	import PageForm from './PageForm.svelte'
 	import Icon from '@iconify/svelte'
-	import { Pages, PageTypes, PageSections, PageSectionEntries } from '$lib/pocketbase/collections'
+	import { Pages, PageTypes, PageSections, PageSectionEntries, PageEntries } from '$lib/pocketbase/collections'
 	import { resolve_page } from '$lib/pages'
 	import { site_context } from '$lib/builder/stores/context'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
@@ -78,15 +78,29 @@
 	let new_page_page_type = $derived(new_page && PageTypes.one(new_page.page_type))
 	let new_page_page_type_sections = $derived(new_page_page_type?.sections())
 	let new_page_page_type_section_entries = $derived(new_page_page_type_sections?.every((section) => section.entries()) && new_page_page_type_sections?.flatMap((section) => section.entries() ?? []))
+	let new_page_page_type_entries = $derived(new_page_page_type?.entries())
 
-	// Copy page sections to new page
+	// Copy page type entries and sections to new page
 	$effect(() => {
-		if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries) {
+		if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries || !new_page_page_type_entries) {
 			return
 		}
 
 		building_page = true
 
+		// Copy page type entries to page entries (field values)
+		const page_type_root_entries = new_page_page_type_entries.filter((e) => !e.parent)
+		for (const pte of page_type_root_entries) {
+			PageEntries.create({
+				page: new_page.id,
+				field: pte.field,
+				locale: pte.locale,
+				value: pte.value,
+				index: pte.index
+			})
+		}
+
+		// Copy page sections
 		for (const pts of new_page_page_type_sections) {
 			// Skip header and footer sections - these are handled at the site level
 			if (pts.zone === 'header' || pts.zone === 'footer') {
@@ -118,7 +132,7 @@
 	})
 
 	/**
-	 * Create a page and copy all page type sections to it
+	 * Create a page and copy all page type entries and sections to it
 	 * Note: Only copies root-level entries for now, nested entries are handled on-demand
 	 */
 	async function create_page_with_sections(page_data: Omit<Page, 'id' | 'index'>) {

@@ -217,7 +217,7 @@
 
 <main lang={$locale}>
 	<PaneGroup direction={$orientation} class="flex gap-1">
-		<Pane defaultSize={50} class="flex flex-col pt-1 pl-1">
+		<Pane defaultSize={50} class="flex flex-col">
 			{#if tab === 'code'}
 				<FullCodeEditor bind:html bind:css bind:js data={component_data} {completions} storage_key={symbol?.id} on:save={save_component} on:mod-e={toggle_tab} on:mod-r={() => $refresh_preview()} />
 			{:else if tab === 'content' && fields && entries}
@@ -287,7 +287,7 @@
 		</Pane>
 		<PaneResizer class="PaneResizer" />
 		<Pane defaultSize={50}>
-			<ComponentPreview id={symbol?.id} {code} data={component_data} bind:orientation={$orientation} view="small" {loading} head={$site_html} />
+			<ComponentPreview id={symbol?.id} {code} data={component_data} {fields} bind:orientation={$orientation} view="small" {loading} head={$site_html} />
 		</Pane>
 	</PaneGroup>
 </main>

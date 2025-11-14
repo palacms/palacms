@@ -18,6 +18,7 @@
 	import { self as pb } from '$lib/pocketbase/managers'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { setUserActivity } from '$lib/UserActivity.svelte'
+	import { onModKey } from '$lib/builder/utils/keyboard'
 	import Icon from '@iconify/svelte'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
@@ -202,6 +203,15 @@
 		editing_section = true
 		editing_section_target = hovered_section
 	}
+
+	// Listen for Command-E hotkey to open section editor when hovered
+	onModKey('e', () => {
+		if (hovered_section && hovered_section.id && showing_block_toolbar) {
+			editing_section_target = hovered_section
+			editing_section_tab = 'code'
+			editing_section = true
+		}
+	})
 
 	let moving = $state(false) // workaround to prevent block toolbar from showing when moving blocks
 
@@ -775,10 +785,10 @@
 									}
 								}}
 							/>
-						{:else}
-							<div in:fade={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
+							<!-- {:else}
+							<div in:fade|local={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
 								⚠️ Symbol not found: {section.symbol}
-							</div>
+							</div> -->
 						{/if}
 					</div>
 				{/each}
@@ -841,10 +851,10 @@
 									}
 								}}
 							/>
-						{:else}
-							<div in:fade={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
+							<!-- {:else}
+							<div in:fade|local={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
 								⚠️ Symbol not found: {section.symbol}
-							</div>
+							</div> -->
 						{/if}
 					</div>
 				{/each}
@@ -904,10 +914,10 @@
 									}
 								}}
 							/>
-						{:else}
-							<div in:fade={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
+							<!-- {:else}
+							<div in:fade|local={{ delay: 1000 }} style="background: #f44336; color: white; padding: 1rem; margin: 0.5rem;">
 								⚠️ Symbol not found: {section.symbol}
-							</div>
+							</div> -->
 						{/if}
 					</div>
 				{/each}
