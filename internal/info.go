@@ -22,6 +22,9 @@ func getBuildTime() (time.Time, error) {
 
 // Get version
 func getBuildVersion() string {
+	if buildVersion == "" {
+		return "dev"
+	}
 	return buildVersion
 }
 
