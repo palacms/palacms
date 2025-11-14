@@ -105,7 +105,6 @@
 			} else {
 				upload_record = LibraryUploads.create({ file: file_to_upload })
 			}
-			console.log({ upload_record })
 
 			onchange({
 				[field.key]: {
