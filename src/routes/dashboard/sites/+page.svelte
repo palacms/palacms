@@ -91,10 +91,10 @@
 		try {
 			const siteId = current_site.id
 
-			// Delete pages first to avoid cascade deletion conflicts
-			const pages = await pb.instance?.collection('pages').getList(1, 50, { filter: `site = "${siteId}"` })
-			for (const page of pages?.items ?? []) {
-				Pages.delete(page.id)
+			// Delete home page first to avoid cascade deletion conflicts
+			const home = await pb.instance?.collection('pages').getFirstListItem(`site = "${siteId}" && parent = ""`)
+			if (home) {
+				Pages.delete(home.id)
 			}
 
 			// Delete the site - PocketBase will cascade delete remaining records
