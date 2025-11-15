@@ -177,7 +177,7 @@
 			</Sidebar.Group>
 		</Sidebar.Content>
 		<Sidebar.Footer>
-			<div class="px-3 py-2 text-xs text-sidebar-foreground/50 text-center">
+			<div class="py-2 text-xs text-sidebar-foreground/50 text-center">
 				{instance.version}
 			</div>
 			<Sidebar.Menu>
