@@ -63,7 +63,11 @@ export const createCollectionManager = (instance?: Client) => {
 							batch.collection(change.collection).create(change.data)
 							result_handlers.push((result) => {
 								if (isOk(result.status)) {
+									// Update record from result
 									records.set(id, { data: result.body })
+								} else {
+									// Undo change
+									changes.delete(id)
 								}
 							})
 							batched_changes.push(id)
@@ -73,7 +77,11 @@ export const createCollectionManager = (instance?: Client) => {
 							batch.collection(change.collection).update(id, change.data)
 							result_handlers.push((result) => {
 								if (isOk(result.status)) {
+									// Update record from result
 									records.set(id, { data: result.body })
+								} else {
+									// Undo change
+									changes.delete(id)
 								}
 							})
 							batched_changes.push(id)
@@ -83,7 +91,11 @@ export const createCollectionManager = (instance?: Client) => {
 							batch.collection(change.collection).delete(id)
 							result_handlers.push((result) => {
 								if (isOk(result.status)) {
+									// Update record from result
 									records.set(id, null)
+								} else {
+									// Undo change
+									changes.delete(id)
 								}
 							})
 							batched_changes.push(id)
