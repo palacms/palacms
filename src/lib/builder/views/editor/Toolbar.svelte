@@ -329,7 +329,7 @@
 			{#if !$timeline.last}
 				<ToolbarButton id="redo" title="Redo" icon="material-symbols:redo" style="border: 0; font-size: 1.5rem;" on:click={redo_change} />
 			{/if} -->
-			<span class="version-badge">v{instance.version}</span>
+			<span class="version-badge">{instance.version}</span>
 			{#if $current_user?.serverRole}
 				<ToolbarButton icon="clarity:users-solid" on:click={() => (editing_collaborators = true)} />
 			{/if}
