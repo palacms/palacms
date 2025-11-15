@@ -13,14 +13,14 @@ import { useSvelteWorker } from './Worker.svelte'
 export const usePublishSite = (site_id?: string) => {
 	const worker = useSvelteWorker(
 		() => !!site_id,
-		() => !!site && !!pages && !!page_types && !!data && !!site_content && !!page_content && !!section_content,
+		() => !!site && !!pages && !!page_types && !!data && !!site_content && !!page_content && !!section_content && !!symbols_with_field_keys,
 		async () => {
 			if (!data) {
 				throw new Error('Not loaded')
 			}
 
 			const promises: Promise<void>[] = []
-			for (const symbol of data.symbols) {
+			for (const { symbol, field_keys } of symbols_with_field_keys!) {
 				if (!symbol.js) {
 					// No need to compile symbol JavaScript if there's none
 					continue
@@ -28,13 +28,23 @@ export const usePublishSite = (site_id?: string) => {
 
 				const locale = 'en' as const
 				const { css } = await processors.css(symbol.css || '')
+
+				// Get symbol's default content
+				const symbol_data = symbol_content?.[symbol.id]?.[locale] ?? {}
+
+				// Use pre-computed field keys to create data object
+				// This ensures the compiled JS knows which props to destructure
+				const generic_data = Object.fromEntries(
+					field_keys.map(key => [key, symbol_data[key] ?? ''])
+				)
+
 				const promise = processors
 					.html({
 						component: {
 							html: symbol.html,
 							js: symbol.js,
 							css,
-							data: symbol_content?.[symbol.id]?.[locale] ?? {}
+							data: generic_data
 						},
 						buildStatic: false,
 						css: 'external',
@@ -294,43 +304,53 @@ export const usePublishSite = (site_id?: string) => {
 			: undefined
 	)
 
+	// Prepare symbol data with field keys for compilation (avoids reactive calls in worker)
+	const symbols_with_field_keys = $derived(
+		shouldLoad && data
+			? data.symbols.map((symbol) => ({
+				symbol,
+				field_keys: symbol.fields()?.map((f) => f.key).filter(Boolean) ?? []
+			}))
+			: undefined
+	)
+
 	const sections = $derived(
 		shouldLoad && pages && data
 			? ([
-					...data.page_type_sections.flatMap((section) =>
-						pages
-							.filter((page) => page.page_type === section.page_type)
-							.map((page) => {
-								const content = useContent(section, { target: 'live', page })
-								if (!content) return
+				...data.page_type_sections.flatMap((section) =>
+					pages
+						.filter((page) => page.page_type === section.page_type)
+						.map((page) => {
+							const content = useContent(section, { target: 'live', page })
+							if (!content) return
 
-								return [page, section, content]
-							})
-					),
-					...data.page_sections.map((section) => {
-						const page = Pages.one(section.page)
-						if (!page) return
+							return [page, section, content]
+						})
+				),
+				...data.page_sections.map((section) => {
+					const page = Pages.one(section.page)
+					if (!page) return
 
-						const content = useContent(section, { target: 'live', page })
-						if (!content) return
+					const content = useContent(section, { target: 'live', page })
+					if (!content) return
 
-						return [page, section, content]
-					})
-				] as ([ObjectOf<typeof PageSections> | ObjectOf<typeof PageTypeSections>, ObjectOf<typeof Pages>, NonNullable<ReturnType<typeof useContent>>] | undefined)[])
+					return [page, section, content]
+				})
+			] as ([ObjectOf<typeof PageSections> | ObjectOf<typeof PageTypeSections>, ObjectOf<typeof Pages>, NonNullable<ReturnType<typeof useContent>>] | undefined)[])
 			: undefined
 	)
 	const section_content = $derived(
 		shouldLoad && sections?.every((s) => !!s)
 			? sections
-					.filter((s) => !!s)
-					.reduce(
-						(data, [page, section, content]) => {
-							if (!data[page.id]) data[page.id] = {}
-							data[page.id][section.id] = content
-							return data
-						},
-						{} as Record<string, Record<string, NonNullable<ReturnType<typeof useContent>>>>
-					)
+				.filter((s) => !!s)
+				.reduce(
+					(data, [page, section, content]) => {
+						if (!data[page.id]) data[page.id] = {}
+						data[page.id][section.id] = content
+						return data
+					},
+					{} as Record<string, Record<string, NonNullable<ReturnType<typeof useContent>>>>
+				)
 			: undefined
 	)
 
@@ -339,5 +359,5 @@ export const usePublishSite = (site_id?: string) => {
 
 const deduplicate =
 	<T>(key: keyof T) =>
-	(item: T, index: number, array: T[]) =>
-		array.findIndex((value) => value[key] === item[key]) === index
+		(item: T, index: number, array: T[]) =>
+			array.findIndex((value) => value[key] === item[key]) === index
