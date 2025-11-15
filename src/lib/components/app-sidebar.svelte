@@ -178,7 +178,7 @@
 		</Sidebar.Content>
 		<Sidebar.Footer>
 			<div class="px-3 py-2 text-xs text-sidebar-foreground/50 text-center">
-				v{instance.version}
+				{instance.version}
 			</div>
 			<Sidebar.Menu>
 				<Sidebar.MenuItem>
