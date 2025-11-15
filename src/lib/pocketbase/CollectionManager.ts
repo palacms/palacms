@@ -1,12 +1,12 @@
 import type { ObjectWithId } from './Object'
-import type { RecordService } from 'pocketbase'
+import type { BatchRequestResult, RecordModel } from 'pocketbase'
 import { OrderedSvelteMap } from './OrderedSvelteMap'
 import type Client from 'pocketbase'
 
 export type Change<T extends ObjectWithId> =
-	| { collection?: RecordService<T>; collection_name: string; operation: 'create'; committed: boolean; data: Omit<T, 'id'> }
-	| { collection?: RecordService<T>; collection_name: string; operation: 'update'; committed: boolean; data: Partial<T> }
-	| { collection?: RecordService<T>; collection_name: string; operation: 'delete'; committed: boolean }
+	| { collection: string; operation: 'create'; committed: boolean; data: Omit<T, 'id'> }
+	| { collection: string; operation: 'update'; committed: boolean; data: Partial<T> }
+	| { collection: string; operation: 'delete'; committed: boolean }
 
 export type TrackedRecord = {
 	data: ObjectWithId
@@ -32,12 +32,25 @@ export const createCollectionManager = (instance?: Client) => {
 		records,
 		lists,
 		commit: async () => {
-			promise = promise.finally(async () => {
-				for (const [id, change] of changes) {
-					if (!change.collection) {
-						throw new Error('No collection')
-					}
+			if (!instance) {
+				throw new Error('No instance')
+			}
 
+			promise = promise.finally(async () => {
+				const batch = instance.createBatch()
+
+				/**
+				 * Record IDs added to this batch.
+				 */
+				const batched_changes: string[] = []
+
+				/**
+				 * One result handler per batched change in order of execution.
+				 * Result handlers are called after the batch has been sent and result is received.
+				 */
+				const result_handlers: ((result: BatchRequestResult) => void)[] = []
+
+				for (const [id, change] of changes) {
 					// Avoid re-committing a change if commit is done twice in a row
 					if (change.committed) {
 						continue
@@ -47,23 +60,56 @@ export const createCollectionManager = (instance?: Client) => {
 
 					switch (change.operation) {
 						case 'create':
-							await change.collection.create(change.data).then((record) => {
-								records.set(id, { data: record })
+							batch.collection(change.collection).create(change.data)
+							result_handlers.push((result) => {
+								if (isOk(result.status)) {
+									records.set(id, { data: result.body })
+								}
 							})
+							batched_changes.push(id)
 							break
 
 						case 'update':
-							await change.collection.update(id, change.data).then((record) => {
-								records.set(id, { data: record })
+							batch.collection(change.collection).update(id, change.data)
+							result_handlers.push((result) => {
+								if (isOk(result.status)) {
+									records.set(id, { data: result.body })
+								}
 							})
+							batched_changes.push(id)
 							break
 
 						case 'delete':
-							await change.collection.delete(id).then(() => {
-								records.set(id, null)
+							batch.collection(change.collection).delete(id)
+							result_handlers.push((result) => {
+								if (isOk(result.status)) {
+									records.set(id, null)
+								}
 							})
+							batched_changes.push(id)
 							break
 					}
+				}
+
+				if (batched_changes.length === 0) {
+					// No changes
+					return
+				}
+
+				try {
+					const results = await batch.send()
+
+					// Handle results
+					for (const [index, result] of results.entries()) {
+						result_handlers[index](result)
+					}
+				} catch (error) {
+					// Undo failed changes
+					for (const id of batched_changes) {
+						changes.delete(id)
+					}
+
+					throw error
 				}
 			})
 			return promise
@@ -77,3 +123,5 @@ export const createCollectionManager = (instance?: Client) => {
 		}
 	}
 }
+
+const isOk = (statusCode: number) => statusCode >= 200 && statusCode <= 299
