@@ -71,12 +71,12 @@
 		<Tabs.Root value="blocks" class="p-2">
 			<Tabs.List class="w-full mb-2">
 				<Tabs.Trigger value="blocks" class="flex-1 flex gap-1">
-					<Cuboid class="w-3" />
-					<span class="text-xs">Blocks</span>
+					<Cuboid class="w-3 shrink-0" />
+					<span class="text-xs tab-text">Blocks</span>
 				</Tabs.Trigger>
 				<Tabs.Trigger value="content" class="flex-1 flex gap-1">
-					<SquarePen class="w-3" />
-					<span class="text-xs">Fields</span>
+					<SquarePen class="w-3 shrink-0" />
+					<span class="text-xs tab-text">Fields</span>
 				</Tabs.Trigger>
 			</Tabs.List>
 			<Tabs.Content value="blocks">
@@ -185,6 +185,13 @@
 		position: relative;
 		overflow: auto;
 		/* padding-top: 0.5rem; */
+		container-type: inline-size;
+	}
+
+	@container (max-width: 200px) {
+		:global(.tab-text) {
+			display: none;
+		}
 	}
 
 	.page-type-fields {

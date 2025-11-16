@@ -1,5 +1,5 @@
 <script>
-	import Icon from '@iconify/svelte'
+	import { Code2, SquarePen } from 'lucide-svelte'
 	import { fade } from 'svelte/transition'
 	import { createEventDispatcher } from 'svelte'
 	import { mod_key_held } from '../stores/app/misc'
@@ -36,7 +36,7 @@
 				<span class="key-hint">&#8984; E</span>
 			{/if}
 			<span class="label">
-				<Icon icon="gravity-ui:code" />
+				<Code2 size={16} />
 			</span>
 		</div>
 		<div class="half" class:active={active_tab_id === 'content'} class:showing_key_hint={$mod_key_held && !disable_hotkeys && active_tab_id !== 'content'}>
@@ -44,10 +44,10 @@
 				<span class="key-hint">&#8984; E</span>
 			{/if}
 			<span class="label">
-				<Icon icon="uil:edit" />
+				<SquarePen size={16} />
 			</span>
 		</div>
-		<span class="toggle-back" style:transform={active_tab_id === 'code' ? '' : 'translateX(calc(100% + 6px))'}></span>
+		<span class="toggle-back" style:transform={active_tab_id === 'code' ? '' : 'translateX(calc(100% + 4px))'}></span>
 	</button>
 </div>
 
@@ -61,8 +61,8 @@
 		border-radius: 50%;
 		aspect-ratio: 1;
 		inset: initial;
-		left: 3px;
-		width: 30px;
+		left: 2px;
+		width: 32px;
 		top: 2px;
 		background: var(--color-gray-8);
 		/* border: 1px solid var(--pala-primary-color); */
@@ -86,7 +86,7 @@
 
 	.half {
 		flex: 1;
-		padding: 10px 11px;
+		padding: 10px;
 		display: flex;
 		align-items: center;
 		justify-content: center;

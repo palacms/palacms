@@ -5,6 +5,7 @@
 	import { fade } from 'svelte/transition'
 	import { mod_key_held } from '../../../stores/app/misc'
 	import { click_to_copy } from '../../../utilities'
+	import { Code2, SquarePen, Trash2, ChevronUp, ChevronDown } from 'lucide-svelte'
 	import Icon from '@iconify/svelte'
 	import { current_user } from '$lib/pocketbase/user'
 	import * as Tooltip from '$lib/components/ui/tooltip'
@@ -76,11 +77,11 @@
 		{#if !immovable}
 			<div class="top-right">
 				<button onclick={() => dispatch('delete')} class="button-delete">
-					<Icon icon="ion:trash" />
+					<Trash2 size={14} />
 				</button>
 				{#if !isFirst}
 					<button onclick={() => dispatch('moveUp')}>
-						<Icon icon="heroicons-outline:chevron-up" />
+						<ChevronUp size={14} />
 					</button>
 				{/if}
 			</div>
@@ -90,7 +91,7 @@
 		<div class="bottom">
 			{#if !is_last}
 				<button class="bottom-right" onclick={() => dispatch('moveDown')}>
-					<Icon icon="heroicons-outline:chevron-down" />
+					<ChevronDown size={14} />
 				</button>
 			{/if}
 		</div>
@@ -110,16 +111,16 @@
 				<span class="key-hint">&#8984; E</span>
 			{/if}
 			<span class="icon">
-				<Icon icon="ph:code-bold" />
+				<Code2 size={14} />
 			</span>
 		</button>
 	{/if}
 	<button onclick={() => dispatch('edit-content')} aria-label="Edit Block Content">
 		<span class="icon">
-			<Icon icon="material-symbols:edit-square-outline-rounded" />
+			<SquarePen size={14} />
 		</span>
 		{#if $current_user?.siteRole !== 'developer'}
-			<span class="text-xs font-normal">Edit Content</span>
+			<span class="text-xs font-normal">Form view</span>
 		{/if}
 	</button>
 	{#if DEBUGGING}

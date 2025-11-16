@@ -5,7 +5,7 @@
 	import { fade } from 'svelte/transition'
 	import { mod_key_held } from '../../../stores/app/misc'
 	import { click_to_copy } from '../../../utilities'
-	import { Code, Edit3, Trash2, ChevronUp, ChevronDown } from 'lucide-svelte'
+	import { Code2, SquarePen, Trash2, ChevronUp, ChevronDown } from 'lucide-svelte'
 	import { current_user } from '$lib/pocketbase/user'
 
 	const dispatch = createEventDispatcher()
@@ -39,16 +39,16 @@
 						<span class="key-hint">⌘ E</span>
 					{/if}
 					<span class="icon">
-						<Code size={14} />
+						<Code2 size={14} />
 					</span>
 				</button>
 			{/if}
 			<button onclick={() => dispatch('edit-content')} aria-label="Edit Block Content">
 				<span class="icon">
-					<Edit3 size={14} />
+					<SquarePen size={14} />
 				</span>
 				{#if $current_user?.siteRole !== 'developer'}
-					<span>Edit Content</span>
+					<span>Form view</span>
 				{/if}
 			</button>
 			{#if DEBUGGING}
