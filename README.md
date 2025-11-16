@@ -1,68 +1,120 @@
-# Pala V3 Beta
+<div align="center">
 
-**Pala is a modern monolithic CMS that gives developers the control they need and content editors the simplicity they've always wanted.** 
+# Pala CMS
 
-![screenshot](https://cdn.primo.page/f52960e1-0bb0-4c64-9f70-5a9994ce95fc/staging/_images/1739675414227Screenshot%202025-02-15%20at%2010.10.10%E2%80%AFPM.png)
+### the next-gen monolithic CMS for dev control & editor joy
 
-## ✨ Why Pala?
+build reusable components, edit content visually, and host a hundred static sites on a single server.
 
-### ✍️ **Content Management Simplicity**
+[Website](https://palacms.com) • [Documentation](https://palacms.com/docs) • [Cloud Hosting](https://palacms.com/cloud)
 
-- Visual, on-page content editing
-- Custom page types and dynamic fields
-- Real-time collaboration
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/deploy/palacms?referralCode=RCPU7k)
 
-### ⚡️ **Developer Control**
+</div>
 
-- Reusable component library
-- Direct access to component HTML, CSS, and JavaScript (powered by Svelte)
-- Works with any CSS framework (Tailwind, Bootstrap, etc.)
+---
 
-### 🏠 **Self-Hosted Freedom**
+![Pala Screenshot](https://pala-pullzone.b-cdn.net/pala-trimmed-browser.jpeg)
 
-- Run on your own infrastructure with PocketBase
-- Your data stays under your control
-- Site served as static files
+---
 
-## 🎯 Perfect For
+## Overview
 
-- **Agencies** building custom sites for clients
-- **Developers** who want visual editing without sacrificing control
-- **Teams** collaborating on content and design
-- **Anyone** tired of WordPress limitations or locked-in SaaS platforms
+Pala is a component-based CMS that gives developers full code control while providing clients with a foolproof editing experience.
 
-## 🔥 V3 Features & Improvements
+**The Problem:**
 
-### New in V3
+Traditional website development creates tension between developers and content editors:
 
-- **Self-hosting with PocketBase** - Run Pala on your own infrastructure with PocketBase as the backend
-- **Custom Page Types** - Create flexible content types for different kinds of pages
-- **Dynamic Content Fields** - Site fields, page fields, and relational content that updates across pages
-- **Block/Starter Library** - Reusable components and starter templates
+- Developers need code control and modern tooling
+- Clients need a simple, visual editing experience
+- WordPress lets clients break designs
+- Headless CMSs have terrible client UX
+- Webflow is expensive and limiting
 
-### Enhanced User Experience
+**The Solution:**
 
-- **Conditional Fields** - Show/hide fields based on other field values
-- **CSS Framework Support** - Works reliably with Bootstrap, Tailwind, Bulma, and other frameworks
-- **Improved Drag & Drop** - Better block placement, works on mobile
-- **Enhanced On-page Editing** - More intuitive visual editing experience
-- **Better Content Organization** - Drag to reorder pages and content items
-- **Refined Block Editor** - Cleaner separation between code and content
+Pala couples code and content in self-contained blocks. Developers write reusable components with built-in content schemas. Editors work visually within those guardrails. Changes sync in realtime, and both work in the same environment without stepping on each other's toes.
 
-### Coming in Beta
+## Features
 
-- **Framework Integration** - Embed Pala content in your existing Next.js, SvelteKit, or other apps
-- **AI Block Generation** - Generate blocks with AI assistance
-- **Local Development Tools** - Full local development environment and CLI tools
-- **Marketplace Integration** - Browse and install community blocks and starters
-- **Plugin API** - Extend functionality with custom plugins
+- **Code-First Development** - Write reusable blocks with Svelte and zero setup. Powerful in-browser IDE, instant responsive previews. Edit code, add fields, done.
+- **Client-Proof Editing** - Give clients full content control while keeping design and structure locked down. You define the guardrails, they work freely within them.
+- **Block Library** - Build blocks once, reuse across all your sites. Browse the marketplace for prebuilt starter sites and blocks.
+- **Built-in Hosting** - Static site generation with hosting included. Deploy blazing-fast, secure, SEO-optimized sites with ease.
 
-### Getting Started
-Host Pala on any host that supports Docker: Railway, Fly.io, Hetzner. Deployment takes minutes. 
+## Who It's For
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/palacms?referralCode=RCPU7k)
+- Freelancers building sites for local businesses
+- Small agencies managing multiple client sites
+- In-house developers building internal & marketing sites
+- Weekend devs building sites for friends and family
+- Anyone tired of "the website broke 😩" texts
 
-## 🆘 Support & Community
+## Getting Started
 
-- **Issues**: [GitHub Issues](https://github.com/palacms/palacms/issues)
-- **Website**: [palacms.com](https://palacms.com)
+### Pala Cloud (Recommended)
+
+Managed hosting with automatic SSL, global CDN, and zero setup required.
+
+→ [palacms.com/cloud](https://palacms.com/cloud)
+
+### Self-Hosted
+
+Run Pala on your own infrastructure for complete control.
+
+**Quick Deploy:**
+- [Railway](https://railway.com/deploy/palacms?referralCode=RCPU7k) - One-click deployment (from $5/month)
+- [Fly.io](https://fly.io) - Free tier with 3GB persistent volume
+
+**VPS Hosting:**
+- [Hetzner Cloud](https://cloud.hetzner.com) - From €4/month
+- [DigitalOcean](https://www.digitalocean.com) - From $6/month
+
+**Local Development:**
+
+```bash
+git clone https://github.com/palacms/palacms.git
+cd palacms
+npm install
+npm run build
+npm run dev
+```
+
+Access points:
+- Main app: http://localhost:5173
+- PocketBase Admin: http://localhost:8090/_
+- Built app: http://localhost:8090
+
+**Note:** Local development is for testing only. For production, deploy to a persistent server since all code and content lives in the database.
+
+## Documentation
+
+Full documentation available at [palacms.com/docs](https://palacms.com/docs)
+
+- [Core Concepts](https://palacms.com/docs/getting-started/core-concepts) - Understanding Pala's architecture
+- [Quickstart](https://palacms.com/docs/getting-started/quickstart) - Create your first site in 5 minutes
+- [Installation](https://palacms.com/docs/getting-started/installation) - Detailed setup instructions
+- [Writing Blocks](https://palacms.com/docs/building-sites/writing-blocks) - Learn to build custom blocks
+- [Architecture](https://palacms.com/docs/reference/architecture) - How Pala works under the hood
+
+## Technology Stack
+
+**Frontend:**
+- SvelteKit 2 & Svelte 5
+- TailwindCSS
+- CodeMirror 6
+- TipTap 2
+
+**Backend:**
+- Golang
+- PocketBase
+- SQLite 3
+
+## Architecture Highlights
+
+- **Single Application** - SvelteKit frontend + PocketBase backend in one binary
+- **Database-First** - Code and content coupled at the component level, both in SQLite
+- **Client-Side Compilation** - Svelte compilation happens in browser using Web Workers
+- **Static Output** - Generates optimized static HTML/CSS/JS for fast delivery
+- **Realtime Collaboration** - Multiple users can edit simultaneously

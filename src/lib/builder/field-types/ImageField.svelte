@@ -3,7 +3,6 @@
 	import Icon from '@iconify/svelte'
 	import TextInput from '../ui/TextInput.svelte'
 	import Spinner from '../ui/Spinner.svelte'
-	import imageCompression from 'browser-image-compression'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
@@ -75,6 +74,9 @@
 				// SVGs are vector graphics and should not be compressed
 				file_to_upload = image
 			} else {
+				// Dynamically import image compression library
+				const imageCompression = (await import('https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/+esm')).default
+
 				// Get compression options from field config or use defaults
 				const maxSizeMB = field.config?.maxSizeMB ?? 1
 				const maxWidthOrHeight = field.config?.maxWidthOrHeight ?? 1920

@@ -1,7 +1,6 @@
 import * as _ from 'lodash-es'
 import { customAlphabet } from 'nanoid/non-secure'
 import MarkdownIt from 'markdown-it'
-import hljs from 'highlight.js' // https://highlightjs.org
 import { generateHTML, generateJSON } from '@tiptap/core'
 import { rich_text_extensions } from '$lib/builder/rich-text/extensions'
 
@@ -180,16 +179,9 @@ function get_markdown_renderer() {
 		markdown_renderer = new MarkdownIt({
 			html: true,
 			linkify: true,
-			typographer: true,
-			highlight: function (str, lang) {
-				if (lang && hljs.getLanguage(lang)) {
-					try {
-						return '<pre><code class="hljs">' + hljs.highlight(str, { language: lang, ignoreIllegals: true }).value + '</code></pre>'
-					} catch (__) { }
-				}
-
-				return '<pre><code class="hljs">' + markdown_renderer.utils.escapeHtml(str) + '</code></pre>'
-			}
+			typographer: true
+			// Syntax highlighting removed - users can wire up their own highlighter
+			// by targeting <code class="language-xxx"> elements
 		})
 	}
 	return markdown_renderer

@@ -12,16 +12,25 @@
 	import { EditorState, Compartment } from '@codemirror/state'
 	import { autocompletion } from '@codemirror/autocomplete'
 	import { vsCodeDark } from './theme'
-	import Icon from '@iconify/svelte'
 	import { svelteCompletions, cssCompletions } from './extensions/autocomplete'
 	import { getLanguage } from './extensions'
 	import highlight_active_line from './extensions/inspector'
 	import { emmetExtension, expandAbbreviation } from './extensions/emmet'
-	import prettier from 'prettier'
-	import * as prettierPostcss from 'prettier/plugins/postcss'
-	import * as prettierBabel from 'prettier/plugins/babel'
-	import * as prettierEstree from 'prettier/plugins/estree'
-	import * as prettierSvelte from 'prettier-plugin-svelte/browser'
+
+	// Lazy-load prettier only when formatting is triggered
+	let prettier_promise = null
+	async function get_prettier() {
+		if (!prettier_promise) {
+			prettier_promise = Promise.all([
+				import('prettier'),
+				import('prettier/plugins/postcss'),
+				import('prettier/plugins/babel'),
+				import('prettier/plugins/estree'),
+				import('prettier-plugin-svelte/browser')
+			])
+		}
+		return prettier_promise
+	}
 
 	const slowDebounce = createDebouncer(1000)
 
@@ -246,6 +255,9 @@
 			} else if (mode === 'html') {
 				mode = 'svelte'
 			}
+
+			// Lazy-load prettier
+			const [{ default: prettier }, prettierPostcss, prettierBabel, prettierEstree, prettierSvelte] = await get_prettier()
 
 			formatted = prettier.formatWithCursor(code, {
 				parser: mode,

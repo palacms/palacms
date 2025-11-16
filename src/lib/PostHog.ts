@@ -1,17 +1,31 @@
-import { self } from './pocketbase/managers'
-import posthog from 'posthog-js/dist/module.no-external'
-import 'posthog-js/dist/exception-autocapture'
-import 'posthog-js/dist/tracing-headers'
-import 'posthog-js/dist/web-vitals'
 import { instance } from './instance'
 
 const POSTHOG_KEY = 'phc_uh5ILOgLhZ4Pg5KLdrzTmiuZNLwsQeihA1Af1rTqNK1'
 const POSTHOG_HOST = 'https://us.i.posthog.com'
 
+let posthog: any = null
+
 export const initialized = (async () => {
 	if (!instance.telemetry_enabled) {
 		return
 	}
+
+	// Dynamically import posthog only when telemetry is enabled
+	const [
+		{ default: posthogModule },
+		_,
+		__,
+		___
+	] = await Promise.all([
+		import('https://cdn.jsdelivr.net/npm/posthog-js@1.280.1/dist/module.no-external/+esm'),
+		import('https://cdn.jsdelivr.net/npm/posthog-js@1.280.1/dist/exception-autocapture/+esm'),
+		import('https://cdn.jsdelivr.net/npm/posthog-js@1.280.1/dist/tracing-headers/+esm'),
+		import('https://cdn.jsdelivr.net/npm/posthog-js@1.280.1/dist/web-vitals/+esm')
+	])
+
+	console.log({ posthogModule })
+
+	posthog = posthogModule
 
 	posthog.init(POSTHOG_KEY, {
 		api_host: POSTHOG_HOST,
@@ -37,4 +51,12 @@ export const initialized = (async () => {
 	})
 })()
 
-export default posthog
+export default new Proxy({} as any, {
+	get(_, prop) {
+		if (!posthog) {
+			console.warn('PostHog not initialized - telemetry disabled or still loading')
+			return () => { }
+		}
+		return posthog[prop]
+	}
+})
