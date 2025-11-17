@@ -8,6 +8,10 @@ import (
 )
 
 func init() {
+	strPtr := func(s string) *string {
+		return &s
+	}
+
 	m.Register(
 		func(app core.App) error {
 			type apiRuleUpdateSpec struct {
@@ -56,15 +60,15 @@ func init() {
 				baseRule := fmt.Sprintf(baseRuleTemplate, "", spec.SiteIDField)
 				modifyRule := fmt.Sprintf(baseRuleTemplate, modifyPrefix, spec.SiteIDField)
 
-				collection.ViewRule = &baseRule
-				collection.ListRule = &baseRule
-				collection.CreateRule = &modifyRule
-				collection.UpdateRule = &modifyRule
-				collection.DeleteRule = &baseRule
+				collection.ViewRule = strPtr(baseRule)
+				collection.ListRule = strPtr(baseRule)
+				collection.CreateRule = strPtr(modifyRule)
+				collection.UpdateRule = strPtr(modifyRule)
+				collection.DeleteRule = strPtr(baseRule)
 
 				if spec.OwnedByUser {
-					collection.UpdateRule = &ownerRule
-					collection.DeleteRule = &ownerRule
+					collection.UpdateRule = strPtr(ownerRule)
+					collection.DeleteRule = strPtr(ownerRule)
 				}
 
 				if spec.Immutable {
