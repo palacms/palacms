@@ -14,9 +14,6 @@
 	import { marketplace, self } from '$lib/pocketbase/managers'
 	import { watch } from 'runed'
 	import BlockPickerPanel from '$lib/components/BlockPickerPanel.svelte'
-	import { createCollectionManager } from '$lib/pocketbase/CollectionManager'
-	import { Snapshot } from '$lib/common/models/Snapshot'
-	import { import_snapshot } from '$lib/Snapshot.svelte'
 
 	/*
   Create Site Wizard
@@ -137,7 +134,6 @@
 	}
 
 	const starter_snapshots = $derived(SiteSnapshots.from(marketplace).list({ sort: '-created' }))
-	const snapshot_manager = createCollectionManager()
 	$effect(() => {
 		// Ensure that snapshots get loaded
 		starter_snapshots
@@ -145,7 +141,7 @@
 
 	const cloneSite = $derived(
 		useCloneSite({
-			source_manager: selected_starter_source === 'local' ? self : snapshot_manager,
+			source_manager: self,
 			source_site_id: selected_starter_id,
 			site_name: site_name,
 			site_host: pageState.url.host,
@@ -166,22 +162,54 @@
 			}
 
 			if (selected_starter_source === 'marketplace') {
-				// Load snapshot from marketplace
+				// Use server-side cloning for marketplace starters
+				// Find the snapshot for this starter
+				console.log('Looking for snapshot for starter:', selected_starter_id)
+				console.log('Available snapshots:', starter_snapshots?.map(s => ({ id: s.id, site: s.site })))
 				const snapshot_record = starter_snapshots?.find((snapshot) => snapshot.site === selected_starter_id)
 				if (!snapshot_record) {
+					console.error('Snapshot not found. Selected starter:', selected_starter_id, 'Available snapshots:', starter_snapshots)
 					throw new Error('Snapshot not found')
 				}
 				if (typeof snapshot_record.file !== 'string') {
 					throw new Error('Invalid snapshot')
 				}
-				const snapshot = await Snapshot.decodeAsync(
-					new File([await fetch(`${marketplace.instance?.baseURL}/api/files/site_snapshots/${snapshot_record.id}/${snapshot_record.file}`).then((res) => res.blob())], snapshot_record.file)
-				)
-				import_snapshot({ destination_manager: snapshot_manager, source_snapshot: snapshot })
-			}
 
-			await cloneSite.run()
-			done_creating_site = true
+				// Construct snapshot URL
+				const snapshot_url = `${marketplace.instance?.baseURL}/api/files/site_snapshots/${snapshot_record.id}/${snapshot_record.file}`
+
+				const response = await fetch(`${self.instance?.baseURL}/api/palacms/clone-marketplace-starter`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': self.instance?.authStore.token ? `Bearer ${self.instance.authStore.token}` : ''
+					},
+					body: JSON.stringify({
+						snapshot_url: snapshot_url,
+						site_name: site_name,
+						site_host: pageState.url.host,
+						site_group_id: site_group?.id
+					})
+				})
+
+				if (!response.ok) {
+					throw new Error(`Failed to clone marketplace starter: ${response.statusText}`)
+				}
+
+				const result = await response.json()
+				console.log('✅ Site created:', result.site_id)
+				console.log('⏱️  Total time:', result.duration_ms + 'ms')
+				console.log('  - Download:', result.download_ms + 'ms')
+				console.log('  - Decode:', result.decode_ms + 'ms')
+				console.log('  - Clone:', result.clone_ms + 'ms')
+				console.log('\n📝 Clone logs:')
+				result.logs?.forEach((log: string) => console.log('  ' + log))
+				done_creating_site = true
+			} else {
+				// Use client-side cloning for local starters
+				await cloneSite.run()
+				done_creating_site = true
+			}
 		} catch (e) {
 			console.error(e)
 			loading = false
