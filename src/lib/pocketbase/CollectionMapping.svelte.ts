@@ -64,7 +64,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 			} else {
 				// Reset position of the change to place it the last
 				changes.delete(id)
-				changes.set(id, { collection: name, operation, committed: true, data: values })
+				changes.set(id, { collection, collection_name: name, operation, committed: true, data: values })
 			}
 		})
 	}
@@ -160,7 +160,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 
 			const list = [...(lists.get(listId)?.ids ?? [])]
 			for (const [id, change] of changes) {
-				if (change.collection !== name) {
+				if (change.collection_name !== name) {
 					// The change is not for this collection
 					continue
 				}
@@ -206,7 +206,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 		create: (values) => {
 			const id = values.id ?? generateId()
 			const data = { ...values, id }
-			changes.set(id, { collection: name, operation: 'create', committed: false, data })
+			changes.set(id, { collection, collection_name: name, operation: 'create', committed: false, data })
 			return mapObject(data)
 		},
 		update: (id, values) => {
@@ -216,7 +216,8 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 					id,
 					// Create a new operation object to ensure reactivity
 					{
-						collection: name,
+						collection,
+						collection_name: name,
 						operation: 'create',
 						committed: false,
 						data: { ...change.data, ...values }
@@ -230,7 +231,8 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 					id,
 					// Create a new operation object to ensure reactivity
 					{
-						collection: name,
+						collection,
+						collection_name: name,
 						operation: 'update',
 						committed: false,
 						data: { ...change.data, ...values }
@@ -240,7 +242,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 				// Reset position of the change to place it the last
 				changes.delete(id)
 
-				change = { collection: name, operation: 'update', committed: false, data: values }
+				change = { collection, collection_name: name, operation: 'update', committed: false, data: values }
 				changes.set(id, change)
 			}
 
@@ -256,7 +258,7 @@ export const createCollectionMapping = <T extends ObjectWithId, Options extends 
 				// Reset position of the change to place it the last
 				changes.delete(id)
 
-				changes.set(id, { collection: name, operation: 'delete', committed: false })
+				changes.set(id, { collection, collection_name: name, operation: 'delete', committed: false })
 			}
 		},
 		authWithPassword: async (usernameOrEmail, password) => {
