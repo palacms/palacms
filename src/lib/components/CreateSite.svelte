@@ -155,11 +155,23 @@
 
 	let completed = $derived(Boolean(site_name && selected_starter_id))
 	let loading = $state(false)
+	let progress_message = $state('')
+
+	const progress_messages = ['Creating site structure...', 'Setting up page types...', 'Building pages...', 'Configuring blocks...', 'Adding navigation...', 'Finalizing site...']
 
 	// Clone the selected starter
 	async function create_site() {
 		if (!selected_starter_id) return
 		loading = true
+
+		// Rotate through progress messages
+		let message_index = 0
+		progress_message = progress_messages[0]
+		const progress_interval = setInterval(() => {
+			message_index = (message_index + 1) % progress_messages.length
+			progress_message = progress_messages[message_index]
+		}, 7000)
+
 		try {
 			if (!site_group) {
 				SiteGroups.create({ name: 'Default', index: 0 })
@@ -184,7 +196,10 @@
 			done_creating_site = true
 		} catch (e) {
 			console.error(e)
+			clearInterval(progress_interval)
 			loading = false
+		} finally {
+			clearInterval(progress_interval)
 		}
 	}
 
@@ -443,13 +458,9 @@
 			<Button
 				onclick={next_or_create}
 				disabled={loading || (step === 'name' && !can_go_starter) || (step === 'starter' && !can_go_blocks) || (step === 'blocks' && !completed)}
-				class="inline-flex justify-center items-center relative"
+				class="inline-flex justify-center items-center relative gap-2"
 			>
-				{#if loading}
-					<Loader class="h-4 w-4 animate-spin" />
-				{:else}
-					{step === 'blocks' ? 'Done' : 'Next'}
-				{/if}
+				{step === 'blocks' ? 'Done' : 'Next'}
 			</Button>
 		</div>
 	</div>
@@ -476,3 +487,13 @@
 		</div>
 	</button>
 {/snippet}
+
+<!-- Fullscreen loading overlay -->
+{#if loading}
+	<div class="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
+		<div class="flex flex-col items-center gap-4">
+			<Loader class="h-12 w-12 animate-spin text-primary" />
+			<p class="text-lg font-medium">{progress_message}</p>
+		</div>
+	</div>
+{/if}
