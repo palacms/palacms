@@ -156,6 +156,7 @@
 	let completed = $derived(Boolean(site_name && selected_starter_id))
 	let loading = $state(false)
 	let progress_message = $state('')
+	let error_message = $state('')
 
 	const progress_messages = ['Creating site structure...', 'Setting up page types...', 'Building pages...', 'Configuring blocks...', 'Adding navigation...', 'Finalizing site...']
 
@@ -163,6 +164,7 @@
 	async function create_site() {
 		if (!selected_starter_id) return
 		loading = true
+		error_message = ''
 
 		// Rotate through progress messages
 		let message_index = 0
@@ -181,10 +183,11 @@
 				// Load snapshot from marketplace
 				const snapshot_record = starter_snapshots?.find((snapshot) => snapshot.site === selected_starter_id)
 				if (!snapshot_record) {
+					console.error('Snapshot not found. Selected starter:', selected_starter_id, 'Available snapshots:', starter_snapshots)
 					throw new Error('Snapshot not found')
 				}
 				if (typeof snapshot_record.file !== 'string') {
-					throw new Error('Invalid snapshot')
+					throw new Error('Invalid snapshot file. Please try a different starter.')
 				}
 				const snapshot = await Snapshot.decodeAsync(
 					new File([await fetch(`${marketplace.instance?.baseURL}/api/files/site_snapshots/${snapshot_record.id}/${snapshot_record.file}`).then((res) => res.blob())], snapshot_record.file)
@@ -195,9 +198,10 @@
 			await cloneSite.run()
 			done_creating_site = true
 		} catch (e) {
-			console.error(e)
+			console.error('Site creation error:', e)
 			clearInterval(progress_interval)
 			loading = false
+			error_message = e instanceof Error ? e.message : 'An error occurred while creating the site'
 		} finally {
 			clearInterval(progress_interval)
 		}
@@ -494,6 +498,26 @@
 		<div class="flex flex-col items-center gap-4">
 			<Loader class="h-12 w-12 animate-spin text-primary" />
 			<p class="text-lg font-medium">{progress_message}</p>
+		</div>
+	</div>
+{/if}
+
+<!-- Error message display -->
+{#if error_message}
+	<div class="fixed bottom-4 right-4 z-50 max-w-md">
+		<div class="bg-destructive text-destructive-foreground rounded-lg p-4 shadow-lg">
+			<div class="flex items-start gap-3">
+				<div class="flex-1">
+					<p class="font-medium">Failed to create site</p>
+					<p class="text-sm mt-1">{error_message}</p>
+				</div>
+				<button onclick={() => (error_message = '')} class="text-destructive-foreground/80 hover:text-destructive-foreground">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+					</svg>
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}
