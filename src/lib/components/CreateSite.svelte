@@ -152,6 +152,7 @@
 	let completed = $derived(Boolean(site_name && selected_starter_id))
 	let loading = $state(false)
 	let progress_message = $state('')
+	let error_message = $state('')
 
 	const progress_messages = [
 		'Creating site structure...',
@@ -166,6 +167,7 @@
 	async function create_site() {
 		if (!selected_starter_id) return
 		loading = true
+		error_message = ''
 
 		// Rotate through progress messages
 		let message_index = 0
@@ -182,20 +184,19 @@
 
 			if (selected_starter_source === 'marketplace') {
 				// Use server-side cloning for marketplace starters
-				// Find the snapshot for this starter
-				console.log('Looking for snapshot for starter:', selected_starter_id)
-				console.log('Available snapshots:', starter_snapshots?.map(s => ({ id: s.id, site: s.site })))
-				const snapshot_record = starter_snapshots?.find((snapshot) => snapshot.site === selected_starter_id)
-				if (!snapshot_record) {
-					console.error('Snapshot not found. Selected starter:', selected_starter_id, 'Available snapshots:', starter_snapshots)
-					throw new Error('Snapshot not found')
-				}
-				if (typeof snapshot_record.file !== 'string') {
-					throw new Error('Invalid snapshot')
+				// Check if snapshots are still loading
+				if (!starter_snapshots) {
+					throw new Error('Starter snapshots are still loading. Please wait and try again.')
 				}
 
-				// Construct snapshot URL
-				const snapshot_url = `${marketplace.instance?.baseURL}/api/files/site_snapshots/${snapshot_record.id}/${snapshot_record.file}`
+				// Find the snapshot for this starter
+				const snapshot_record = starter_snapshots.find((snapshot) => snapshot.site === selected_starter_id)
+				if (!snapshot_record) {
+					throw new Error('Snapshot not found for this starter. The starter may not be available for cloning yet.')
+				}
+				if (typeof snapshot_record.file !== 'string') {
+					throw new Error('Invalid snapshot file. Please try a different starter.')
+				}
 
 				const response = await fetch(`${self.instance?.baseURL}/api/palacms/clone-marketplace-starter`, {
 					method: 'POST',
@@ -204,7 +205,8 @@
 						'Authorization': self.instance?.authStore.token ? `Bearer ${self.instance.authStore.token}` : ''
 					},
 					body: JSON.stringify({
-						snapshot_url: snapshot_url,
+						snapshot_id: snapshot_record.id,
+						filename: snapshot_record.file,
 						site_name: site_name,
 						site_host: pageState.url.host,
 						site_group_id: site_group?.id
@@ -212,7 +214,8 @@
 				})
 
 				if (!response.ok) {
-					throw new Error(`Failed to clone marketplace starter: ${response.statusText}`)
+					const errorText = await response.text()
+					throw new Error(`Failed to clone marketplace starter: ${errorText || response.statusText}`)
 				}
 
 				const result = await response.json()
@@ -230,9 +233,10 @@
 				done_creating_site = true
 			}
 		} catch (e) {
-			console.error(e)
+			console.error('Site creation error:', e)
 			clearInterval(progress_interval)
 			loading = false
+			error_message = e instanceof Error ? e.message : 'An error occurred while creating the site'
 		} finally {
 			clearInterval(progress_interval)
 		}
@@ -533,6 +537,29 @@
 		<div class="flex flex-col items-center gap-4">
 			<Loader class="h-12 w-12 animate-spin text-primary" />
 			<p class="text-lg font-medium">{progress_message}</p>
+		</div>
+	</div>
+{/if}
+
+<!-- Error message display -->
+{#if error_message}
+	<div class="fixed bottom-4 right-4 z-50 max-w-md">
+		<div class="bg-destructive text-destructive-foreground rounded-lg p-4 shadow-lg">
+			<div class="flex items-start gap-3">
+				<div class="flex-1">
+					<p class="font-medium">Failed to create site</p>
+					<p class="text-sm mt-1">{error_message}</p>
+				</div>
+				<button
+					onclick={() => error_message = ''}
+					class="text-destructive-foreground/80 hover:text-destructive-foreground"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+					</svg>
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}
