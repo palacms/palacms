@@ -16,6 +16,36 @@ import (
 
 var snapshotSignature = []byte{0x50, 0x41, 0x4C, 0x41, 0x43, 0x4D, 0x53, 0x3A, 0x33, 0x2E, 0x30}
 
+// Helper to safely get string from map
+func getStringField(data map[string]interface{}, key string) (string, bool) {
+	val, exists := data[key]
+	if !exists {
+		return "", false
+	}
+	strVal, ok := val.(string)
+	return strVal, ok
+}
+
+// Helper to validate parent relationship (detect cycles)
+func detectCycle(id string, parentId string, allRecords []map[string]interface{}, visited map[string]bool) bool {
+	if visited[parentId] {
+		return true
+	}
+	visited[parentId] = true
+	for _, record := range allRecords {
+		recordId, ok := getStringField(record, "id")
+		if !ok || recordId != parentId {
+			continue
+		}
+		nextParentId, ok := getStringField(record, "parent")
+		if !ok || nextParentId == "" {
+			return false
+		}
+		return detectCycle(id, nextParentId, allRecords, visited)
+	}
+	return false
+}
+
 type SnapshotMetadata struct {
 	CreatedAt             string `json:"created_at"`
 	SourceInstanceId      string `json:"source_instance_id"`
@@ -141,7 +171,7 @@ func decodeSnapshot(data []byte) (*Snapshot, error) {
 	}, nil
 }
 
-func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, siteHost, siteGroupId string) (*core.Record, []string, error) {
+func cloneFromSnapshot(app core.App, snapshot *Snapshot, siteName, siteHost, siteGroupId string) (*core.Record, []string, error) {
 	logs := []string{}
 	// ID mappings for references
 	idMap := make(map[string]map[string]string)
@@ -168,9 +198,12 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, 
 	// Create site
 	if len(snapshot.Records.Sites) > 0 {
 		siteData := snapshot.Records.Sites[0]
-		oldId := siteData["id"].(string)
+		oldId, ok := getStringField(siteData, "id")
+		if !ok || oldId == "" {
+			return nil, logs, fmt.Errorf("site record missing or invalid 'id' field")
+		}
 
-		collection, err := pb.FindCollectionByNameOrId("sites")
+		collection, err := app.FindCollectionByNameOrId("sites")
 		if err != nil {
 			return nil, logs, err
 		}
@@ -185,7 +218,7 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, 
 		record.Set("host", siteHost)
 		record.Set("group", siteGroupId)
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return nil, logs, err
 		}
 
@@ -198,7 +231,10 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, 
 	// Just map the IDs so references don't break
 	uploadCount := 0
 	for _, uploadData := range snapshot.Records.SiteUploads {
-		oldId := uploadData["id"].(string)
+		oldId, ok := getStringField(uploadData, "id")
+		if !ok || oldId == "" {
+			continue
+		}
 		// Map to empty string - upload references will be broken but won't crash
 		idMap["site_uploads"][oldId] = ""
 		uploadCount++
@@ -206,61 +242,61 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, 
 	logs = append(logs, fmt.Sprintf("Skipped %d site uploads", uploadCount))
 
 	// Create site fields (recursive)
-	if err := createSiteFields(pb, snapshot.Records.SiteFields, idMap, ""); err != nil {
+	if err := createSiteFields(app, snapshot.Records.SiteFields, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 
 	logs = append(logs, fmt.Sprintf("Created %d site fields", len(idMap["site_fields"])))
 
 	// Create site entries (recursive)
-	if err := createSiteEntries(pb, snapshot.Records.SiteEntries, idMap, ""); err != nil {
+	if err := createSiteEntries(app, snapshot.Records.SiteEntries, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Created %d site entries", len(idMap["site_entries"])))
 
 	// Create site symbols
 	for _, symbolData := range snapshot.Records.SiteSymbols {
-		if err := createRecord(pb, "site_symbols", symbolData, idMap, map[string]string{"site": "sites"}); err != nil {
+		if err := createRecord(app, "site_symbols", symbolData, idMap, map[string]string{"site": "sites"}); err != nil {
 			return nil, logs, err
 		}
 	}
 	logs = append(logs, fmt.Sprintf("Created %d site symbols", len(idMap["site_symbols"])))
 
 	// Create site symbol fields (recursive)
-	if err := createSiteSymbolFields(pb, snapshot.Records.SiteSymbolFields, idMap, ""); err != nil {
+	if err := createSiteSymbolFields(app, snapshot.Records.SiteSymbolFields, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Created %d site symbol fields", len(idMap["site_symbol_fields"])))
 
 	// Create site symbol entries (recursive)
-	if err := createSiteSymbolEntries(pb, snapshot.Records.SiteSymbolEntries, idMap, ""); err != nil {
+	if err := createSiteSymbolEntries(app, snapshot.Records.SiteSymbolEntries, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Created %d site symbol entries", len(idMap["site_symbol_entries"])))
 
 	// Create page types
 	for _, pageTypeData := range snapshot.Records.PageTypes {
-		if err := createRecord(pb, "page_types", pageTypeData, idMap, map[string]string{"site": "sites"}); err != nil {
+		if err := createRecord(app, "page_types", pageTypeData, idMap, map[string]string{"site": "sites"}); err != nil {
 			return nil, logs, err
 		}
 	}
 	logs = append(logs, fmt.Sprintf("Created %d page types", len(idMap["page_types"])))
 
 	// Create page type fields (recursive)
-	if err := createPageTypeFields(pb, snapshot.Records.PageTypeFields, idMap, ""); err != nil {
+	if err := createPageTypeFields(app, snapshot.Records.PageTypeFields, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Created %d page type fields", len(idMap["page_type_fields"])))
 
 	// Create page type entries (recursive)
-	if err := createPageTypeEntries(pb, snapshot.Records.PageTypeEntries, idMap, ""); err != nil {
+	if err := createPageTypeEntries(app, snapshot.Records.PageTypeEntries, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Created %d page type entries", len(idMap["page_type_entries"])))
 
 	// Create page type symbols
 	for _, symbolData := range snapshot.Records.PageTypeSymbols {
-		if err := createRecord(pb, "page_type_symbols", symbolData, idMap, map[string]string{
+		if err := createRecord(app, "page_type_symbols", symbolData, idMap, map[string]string{
 			"page_type": "page_types",
 			"symbol":    "site_symbols",
 		}); err != nil {
@@ -271,7 +307,7 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, 
 
 	// Create page type sections
 	for _, sectionData := range snapshot.Records.PageTypeSections {
-		if err := createRecord(pb, "page_type_sections", sectionData, idMap, map[string]string{
+		if err := createRecord(app, "page_type_sections", sectionData, idMap, map[string]string{
 			"page_type": "page_types",
 			"symbol":    "site_symbols",
 		}); err != nil {
@@ -281,26 +317,26 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, 
 	logs = append(logs, fmt.Sprintf("Created %d page type sections", len(idMap["page_type_sections"])))
 
 	// Create page type section entries (recursive)
-	if err := createPageTypeSectionEntries(pb, snapshot.Records.PageTypeSectionEntries, idMap, ""); err != nil {
+	if err := createPageTypeSectionEntries(app, snapshot.Records.PageTypeSectionEntries, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Created %d page type section entries", len(idMap["page_type_section_entries"])))
 
 	// Create pages (recursive)
-	if err := createPages(pb, snapshot.Records.Pages, idMap, ""); err != nil {
+	if err := createPages(app, snapshot.Records.Pages, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Created %d pages", len(idMap["pages"])))
 
 	// Create page entries (recursive)
-	if err := createPageEntries(pb, snapshot.Records.PageEntries, idMap, ""); err != nil {
+	if err := createPageEntries(app, snapshot.Records.PageEntries, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Created %d page entries", len(idMap["page_entries"])))
 
 	// Create page sections
 	for _, sectionData := range snapshot.Records.PageSections {
-		if err := createRecord(pb, "page_sections", sectionData, idMap, map[string]string{
+		if err := createRecord(app, "page_sections", sectionData, idMap, map[string]string{
 			"page":   "pages",
 			"symbol": "site_symbols",
 		}); err != nil {
@@ -310,26 +346,26 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, 
 	logs = append(logs, fmt.Sprintf("Created %d page sections", len(idMap["page_sections"])))
 
 	// Create page section entries (recursive)
-	if err := createPageSectionEntries(pb, snapshot.Records.PageSectionEntries, idMap, ""); err != nil {
+	if err := createPageSectionEntries(app, snapshot.Records.PageSectionEntries, idMap, ""); err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Created %d page section entries", len(idMap["page_section_entries"])))
 
 	// Update field config references
 	logs = append(logs, "Updating field config references...")
-	count, err := updateFieldConfigReferences(pb, "site_fields", idMap, &logs)
+	count, err := updateFieldConfigReferences(app, "site_fields", idMap, &logs)
 	if err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Updated %d site_fields configs", count))
 
-	count, err = updateFieldConfigReferences(pb, "site_symbol_fields", idMap, &logs)
+	count, err = updateFieldConfigReferences(app, "site_symbol_fields", idMap, &logs)
 	if err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Updated %d site_symbol_fields configs", count))
 
-	count, err = updateFieldConfigReferences(pb, "page_type_fields", idMap, &logs)
+	count, err = updateFieldConfigReferences(app, "page_type_fields", idMap, &logs)
 	if err != nil {
 		return nil, logs, err
 	}
@@ -337,37 +373,37 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, 
 
 	// Update entry value references
 	logs = append(logs, "Updating entry value references...")
-	count, err = updateEntryValueReferences(pb, "site_entries", idMap)
+	count, err = updateEntryValueReferences(app, "site_entries", idMap)
 	if err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Updated %d site_entries values", count))
 
-	count, err = updateEntryValueReferences(pb, "site_symbol_entries", idMap)
+	count, err = updateEntryValueReferences(app, "site_symbol_entries", idMap)
 	if err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Updated %d site_symbol_entries values", count))
 
-	count, err = updateEntryValueReferences(pb, "page_type_entries", idMap)
+	count, err = updateEntryValueReferences(app, "page_type_entries", idMap)
 	if err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Updated %d page_type_entries values", count))
 
-	count, err = updateEntryValueReferences(pb, "page_type_section_entries", idMap)
+	count, err = updateEntryValueReferences(app, "page_type_section_entries", idMap)
 	if err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Updated %d page_type_section_entries values", count))
 
-	count, err = updateEntryValueReferences(pb, "page_entries", idMap)
+	count, err = updateEntryValueReferences(app, "page_entries", idMap)
 	if err != nil {
 		return nil, logs, err
 	}
 	logs = append(logs, fmt.Sprintf("Updated %d page_entries values", count))
 
-	count, err = updateEntryValueReferences(pb, "page_section_entries", idMap)
+	count, err = updateEntryValueReferences(app, "page_section_entries", idMap)
 	if err != nil {
 		return nil, logs, err
 	}
@@ -376,10 +412,13 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshot *Snapshot, siteName, 
 	return createdSite, logs, nil
 }
 
-func createRecord(pb *pocketbase.PocketBase, collectionName string, data map[string]interface{}, idMap map[string]map[string]string, refFields map[string]string) error {
-	oldId := data["id"].(string)
+func createRecord(app core.App, collectionName string, data map[string]interface{}, idMap map[string]map[string]string, refFields map[string]string) error {
+	oldId, ok := getStringField(data, "id")
+	if !ok || oldId == "" {
+		return fmt.Errorf("record in %s missing or invalid 'id' field", collectionName)
+	}
 
-	collection, err := pb.FindCollectionByNameOrId(collectionName)
+	collection, err := app.FindCollectionByNameOrId(collectionName)
 	if err != nil {
 		return err
 	}
@@ -403,7 +442,7 @@ func createRecord(pb *pocketbase.PocketBase, collectionName string, data map[str
 		record.Set(k, v)
 	}
 
-	if err := pb.Save(record); err != nil {
+	if err := app.Save(record); err != nil {
 		return err
 	}
 
@@ -411,18 +450,22 @@ func createRecord(pb *pocketbase.PocketBase, collectionName string, data map[str
 	return nil
 }
 
-func createSiteFields(pb *pocketbase.PocketBase, fields []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createSiteFields(app core.App, fields []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, fieldData := range fields {
-		parentField := fieldData["parent"]
-		if parentId == "" && parentField != nil && parentField != "" {
+		parentField, hasParent := getStringField(fieldData, "parent")
+		if parentId == "" && hasParent && parentField != "" {
 			continue
 		}
-		if parentId != "" && (parentField == nil || parentField.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentField != parentId) {
 			continue
 		}
 
-		oldId := fieldData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("site_fields")
+		oldId, ok := getStringField(fieldData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("site_field record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("site_fields")
 		if err != nil {
 			return err
 		}
@@ -433,40 +476,48 @@ func createSiteFields(pb *pocketbase.PocketBase, fields []map[string]interface{}
 				continue
 			}
 			if k == "site" {
-				record.Set(k, idMap["sites"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["site_fields"][v.(string)])
+				if siteId, ok := v.(string); ok && siteId != "" {
+					record.Set(k, idMap["sites"][siteId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["site_fields"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["site_fields"][oldId] = record.Id
 
 		// Recursively create child fields
-		if err := createSiteFields(pb, fields, idMap, oldId); err != nil {
+		if err := createSiteFields(app, fields, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createSiteEntries(pb *pocketbase.PocketBase, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createSiteEntries(app core.App, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, entryData := range entries {
-		parentEntry := entryData["parent"]
-		if parentId == "" && parentEntry != nil && parentEntry != "" {
+		parentEntry, hasParent := getStringField(entryData, "parent")
+		if parentId == "" && hasParent && parentEntry != "" {
 			continue
 		}
-		if parentId != "" && (parentEntry == nil || parentEntry.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentEntry != parentId) {
 			continue
 		}
 
-		oldId := entryData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("site_entries")
+		oldId, ok := getStringField(entryData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("site_entry record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("site_entries")
 		if err != nil {
 			return err
 		}
@@ -477,40 +528,48 @@ func createSiteEntries(pb *pocketbase.PocketBase, entries []map[string]interface
 				continue
 			}
 			if k == "field" {
-				record.Set(k, idMap["site_fields"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["site_entries"][v.(string)])
+				if fieldId, ok := v.(string); ok && fieldId != "" {
+					record.Set(k, idMap["site_fields"][fieldId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["site_entries"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["site_entries"][oldId] = record.Id
 
 		// Recursively create child entries
-		if err := createSiteEntries(pb, entries, idMap, oldId); err != nil {
+		if err := createSiteEntries(app, entries, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createSiteSymbolFields(pb *pocketbase.PocketBase, fields []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createSiteSymbolFields(app core.App, fields []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, fieldData := range fields {
-		parentField := fieldData["parent"]
-		if parentId == "" && parentField != nil && parentField != "" {
+		parentField, hasParent := getStringField(fieldData, "parent")
+		if parentId == "" && hasParent && parentField != "" {
 			continue
 		}
-		if parentId != "" && (parentField == nil || parentField.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentField != parentId) {
 			continue
 		}
 
-		oldId := fieldData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("site_symbol_fields")
+		oldId, ok := getStringField(fieldData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("site_symbol_field record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("site_symbol_fields")
 		if err != nil {
 			return err
 		}
@@ -521,40 +580,48 @@ func createSiteSymbolFields(pb *pocketbase.PocketBase, fields []map[string]inter
 				continue
 			}
 			if k == "symbol" {
-				record.Set(k, idMap["site_symbols"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["site_symbol_fields"][v.(string)])
+				if symbolId, ok := v.(string); ok && symbolId != "" {
+					record.Set(k, idMap["site_symbols"][symbolId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["site_symbol_fields"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["site_symbol_fields"][oldId] = record.Id
 
 		// Recursively create child fields
-		if err := createSiteSymbolFields(pb, fields, idMap, oldId); err != nil {
+		if err := createSiteSymbolFields(app, fields, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createSiteSymbolEntries(pb *pocketbase.PocketBase, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createSiteSymbolEntries(app core.App, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, entryData := range entries {
-		parentEntry := entryData["parent"]
-		if parentId == "" && parentEntry != nil && parentEntry != "" {
+		parentEntry, hasParent := getStringField(entryData, "parent")
+		if parentId == "" && hasParent && parentEntry != "" {
 			continue
 		}
-		if parentId != "" && (parentEntry == nil || parentEntry.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentEntry != parentId) {
 			continue
 		}
 
-		oldId := entryData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("site_symbol_entries")
+		oldId, ok := getStringField(entryData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("site_symbol_entry record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("site_symbol_entries")
 		if err != nil {
 			return err
 		}
@@ -565,40 +632,48 @@ func createSiteSymbolEntries(pb *pocketbase.PocketBase, entries []map[string]int
 				continue
 			}
 			if k == "field" {
-				record.Set(k, idMap["site_symbol_fields"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["site_symbol_entries"][v.(string)])
+				if fieldId, ok := v.(string); ok && fieldId != "" {
+					record.Set(k, idMap["site_symbol_fields"][fieldId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["site_symbol_entries"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["site_symbol_entries"][oldId] = record.Id
 
 		// Recursively create child entries
-		if err := createSiteSymbolEntries(pb, entries, idMap, oldId); err != nil {
+		if err := createSiteSymbolEntries(app, entries, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createPageTypeFields(pb *pocketbase.PocketBase, fields []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createPageTypeFields(app core.App, fields []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, fieldData := range fields {
-		parentField := fieldData["parent"]
-		if parentId == "" && parentField != nil && parentField != "" {
+		parentField, hasParent := getStringField(fieldData, "parent")
+		if parentId == "" && hasParent && parentField != "" {
 			continue
 		}
-		if parentId != "" && (parentField == nil || parentField.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentField != parentId) {
 			continue
 		}
 
-		oldId := fieldData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("page_type_fields")
+		oldId, ok := getStringField(fieldData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("page_type_field record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("page_type_fields")
 		if err != nil {
 			return err
 		}
@@ -609,40 +684,48 @@ func createPageTypeFields(pb *pocketbase.PocketBase, fields []map[string]interfa
 				continue
 			}
 			if k == "page_type" {
-				record.Set(k, idMap["page_types"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["page_type_fields"][v.(string)])
+				if pageTypeId, ok := v.(string); ok && pageTypeId != "" {
+					record.Set(k, idMap["page_types"][pageTypeId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["page_type_fields"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["page_type_fields"][oldId] = record.Id
 
 		// Recursively create child fields
-		if err := createPageTypeFields(pb, fields, idMap, oldId); err != nil {
+		if err := createPageTypeFields(app, fields, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createPageTypeEntries(pb *pocketbase.PocketBase, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createPageTypeEntries(app core.App, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, entryData := range entries {
-		parentEntry := entryData["parent"]
-		if parentId == "" && parentEntry != nil && parentEntry != "" {
+		parentEntry, hasParent := getStringField(entryData, "parent")
+		if parentId == "" && hasParent && parentEntry != "" {
 			continue
 		}
-		if parentId != "" && (parentEntry == nil || parentEntry.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentEntry != parentId) {
 			continue
 		}
 
-		oldId := entryData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("page_type_entries")
+		oldId, ok := getStringField(entryData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("page_type_entry record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("page_type_entries")
 		if err != nil {
 			return err
 		}
@@ -653,40 +736,48 @@ func createPageTypeEntries(pb *pocketbase.PocketBase, entries []map[string]inter
 				continue
 			}
 			if k == "field" {
-				record.Set(k, idMap["page_type_fields"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["page_type_entries"][v.(string)])
+				if fieldId, ok := v.(string); ok && fieldId != "" {
+					record.Set(k, idMap["page_type_fields"][fieldId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["page_type_entries"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["page_type_entries"][oldId] = record.Id
 
 		// Recursively create child entries
-		if err := createPageTypeEntries(pb, entries, idMap, oldId); err != nil {
+		if err := createPageTypeEntries(app, entries, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createPageTypeSectionEntries(pb *pocketbase.PocketBase, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createPageTypeSectionEntries(app core.App, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, entryData := range entries {
-		parentEntry := entryData["parent"]
-		if parentId == "" && parentEntry != nil && parentEntry != "" {
+		parentEntry, hasParent := getStringField(entryData, "parent")
+		if parentId == "" && hasParent && parentEntry != "" {
 			continue
 		}
-		if parentId != "" && (parentEntry == nil || parentEntry.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentEntry != parentId) {
 			continue
 		}
 
-		oldId := entryData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("page_type_section_entries")
+		oldId, ok := getStringField(entryData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("page_type_section_entry record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("page_type_section_entries")
 		if err != nil {
 			return err
 		}
@@ -697,42 +788,52 @@ func createPageTypeSectionEntries(pb *pocketbase.PocketBase, entries []map[strin
 				continue
 			}
 			if k == "section" {
-				record.Set(k, idMap["page_type_sections"][v.(string)])
+				if sectionId, ok := v.(string); ok && sectionId != "" {
+					record.Set(k, idMap["page_type_sections"][sectionId])
+				}
 			} else if k == "field" {
-				record.Set(k, idMap["site_symbol_fields"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["page_type_section_entries"][v.(string)])
+				if fieldId, ok := v.(string); ok && fieldId != "" {
+					record.Set(k, idMap["site_symbol_fields"][fieldId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["page_type_section_entries"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["page_type_section_entries"][oldId] = record.Id
 
 		// Recursively create child entries
-		if err := createPageTypeSectionEntries(pb, entries, idMap, oldId); err != nil {
+		if err := createPageTypeSectionEntries(app, entries, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createPages(pb *pocketbase.PocketBase, pages []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createPages(app core.App, pages []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, pageData := range pages {
-		parentPage := pageData["parent"]
-		if parentId == "" && parentPage != nil && parentPage != "" {
+		parentPage, hasParent := getStringField(pageData, "parent")
+		if parentId == "" && hasParent && parentPage != "" {
 			continue
 		}
-		if parentId != "" && (parentPage == nil || parentPage.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentPage != parentId) {
 			continue
 		}
 
-		oldId := pageData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("pages")
+		oldId, ok := getStringField(pageData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("page record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("pages")
 		if err != nil {
 			return err
 		}
@@ -743,42 +844,52 @@ func createPages(pb *pocketbase.PocketBase, pages []map[string]interface{}, idMa
 				continue
 			}
 			if k == "site" {
-				record.Set(k, idMap["sites"][v.(string)])
+				if siteId, ok := v.(string); ok && siteId != "" {
+					record.Set(k, idMap["sites"][siteId])
+				}
 			} else if k == "page_type" {
-				record.Set(k, idMap["page_types"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["pages"][v.(string)])
+				if pageTypeId, ok := v.(string); ok && pageTypeId != "" {
+					record.Set(k, idMap["page_types"][pageTypeId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["pages"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["pages"][oldId] = record.Id
 
 		// Recursively create child pages
-		if err := createPages(pb, pages, idMap, oldId); err != nil {
+		if err := createPages(app, pages, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createPageEntries(pb *pocketbase.PocketBase, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createPageEntries(app core.App, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, entryData := range entries {
-		parentEntry := entryData["parent"]
-		if parentId == "" && parentEntry != nil && parentEntry != "" {
+		parentEntry, hasParent := getStringField(entryData, "parent")
+		if parentId == "" && hasParent && parentEntry != "" {
 			continue
 		}
-		if parentId != "" && (parentEntry == nil || parentEntry.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentEntry != parentId) {
 			continue
 		}
 
-		oldId := entryData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("page_entries")
+		oldId, ok := getStringField(entryData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("page_entry record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("page_entries")
 		if err != nil {
 			return err
 		}
@@ -789,42 +900,52 @@ func createPageEntries(pb *pocketbase.PocketBase, entries []map[string]interface
 				continue
 			}
 			if k == "page" {
-				record.Set(k, idMap["pages"][v.(string)])
+				if pageId, ok := v.(string); ok && pageId != "" {
+					record.Set(k, idMap["pages"][pageId])
+				}
 			} else if k == "field" {
-				record.Set(k, idMap["page_type_fields"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["page_entries"][v.(string)])
+				if fieldId, ok := v.(string); ok && fieldId != "" {
+					record.Set(k, idMap["page_type_fields"][fieldId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["page_entries"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["page_entries"][oldId] = record.Id
 
 		// Recursively create child entries
-		if err := createPageEntries(pb, entries, idMap, oldId); err != nil {
+		if err := createPageEntries(app, entries, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createPageSectionEntries(pb *pocketbase.PocketBase, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
+func createPageSectionEntries(app core.App, entries []map[string]interface{}, idMap map[string]map[string]string, parentId string) error {
 	for _, entryData := range entries {
-		parentEntry := entryData["parent"]
-		if parentId == "" && parentEntry != nil && parentEntry != "" {
+		parentEntry, hasParent := getStringField(entryData, "parent")
+		if parentId == "" && hasParent && parentEntry != "" {
 			continue
 		}
-		if parentId != "" && (parentEntry == nil || parentEntry.(string) != parentId) {
+		if parentId != "" && (!hasParent || parentEntry != parentId) {
 			continue
 		}
 
-		oldId := entryData["id"].(string)
-		collection, err := pb.FindCollectionByNameOrId("page_section_entries")
+		oldId, ok := getStringField(entryData, "id")
+		if !ok || oldId == "" {
+			return fmt.Errorf("page_section_entry record missing or invalid 'id' field")
+		}
+
+		collection, err := app.FindCollectionByNameOrId("page_section_entries")
 		if err != nil {
 			return err
 		}
@@ -835,32 +956,38 @@ func createPageSectionEntries(pb *pocketbase.PocketBase, entries []map[string]in
 				continue
 			}
 			if k == "section" {
-				record.Set(k, idMap["page_sections"][v.(string)])
+				if sectionId, ok := v.(string); ok && sectionId != "" {
+					record.Set(k, idMap["page_sections"][sectionId])
+				}
 			} else if k == "field" {
-				record.Set(k, idMap["site_symbol_fields"][v.(string)])
-			} else if k == "parent" && v != nil && v.(string) != "" {
-				record.Set(k, idMap["page_section_entries"][v.(string)])
+				if fieldId, ok := v.(string); ok && fieldId != "" {
+					record.Set(k, idMap["site_symbol_fields"][fieldId])
+				}
+			} else if k == "parent" {
+				if parentStr, ok := v.(string); ok && parentStr != "" {
+					record.Set(k, idMap["page_section_entries"][parentStr])
+				}
 			} else {
 				record.Set(k, v)
 			}
 		}
 
-		if err := pb.Save(record); err != nil {
+		if err := app.Save(record); err != nil {
 			return err
 		}
 
 		idMap["page_section_entries"][oldId] = record.Id
 
 		// Recursively create child entries
-		if err := createPageSectionEntries(pb, entries, idMap, oldId); err != nil {
+		if err := createPageSectionEntries(app, entries, idMap, oldId); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func updateFieldConfigReferences(pb *pocketbase.PocketBase, collectionName string, idMap map[string]map[string]string, logs *[]string) (int, error) {
-	collection, err := pb.FindCollectionByNameOrId(collectionName)
+func updateFieldConfigReferences(app core.App, collectionName string, idMap map[string]map[string]string, logs *[]string) (int, error) {
+	collection, err := app.FindCollectionByNameOrId(collectionName)
 	if err != nil {
 		return 0, err
 	}
@@ -878,7 +1005,7 @@ func updateFieldConfigReferences(pb *pocketbase.PocketBase, collectionName strin
 			continue
 		}
 
-		record, err := pb.FindRecordById(collection.Id, newId)
+		record, err := app.FindRecordById(collection.Id, newId)
 		if err != nil {
 			*logs = append(*logs, fmt.Sprintf("  Failed to find record newId=%s: %v", newId, err))
 			continue
@@ -992,7 +1119,7 @@ func updateFieldConfigReferences(pb *pocketbase.PocketBase, collectionName strin
 				return 0, err
 			}
 			record.Set("config", configJSON)
-			if err := pb.Save(record); err != nil {
+			if err := app.Save(record); err != nil {
 				return 0, err
 			}
 			updatedCount++
@@ -1003,8 +1130,8 @@ func updateFieldConfigReferences(pb *pocketbase.PocketBase, collectionName strin
 	return updatedCount, nil
 }
 
-func updateEntryValueReferences(pb *pocketbase.PocketBase, collectionName string, idMap map[string]map[string]string) (int, error) {
-	collection, err := pb.FindCollectionByNameOrId(collectionName)
+func updateEntryValueReferences(app core.App, collectionName string, idMap map[string]map[string]string) (int, error) {
+	collection, err := app.FindCollectionByNameOrId(collectionName)
 	if err != nil {
 		return 0, err
 	}
@@ -1035,7 +1162,7 @@ func updateEntryValueReferences(pb *pocketbase.PocketBase, collectionName string
 			continue
 		}
 
-		record, err := pb.FindRecordById(collection.Id, newId)
+		record, err := app.FindRecordById(collection.Id, newId)
 		if err != nil {
 			continue
 		}
@@ -1046,12 +1173,12 @@ func updateEntryValueReferences(pb *pocketbase.PocketBase, collectionName string
 		}
 
 		// Find the field record to get its type
-		fieldCollection, err := pb.FindCollectionByNameOrId(fieldCollectionName)
+		fieldCollection, err := app.FindCollectionByNameOrId(fieldCollectionName)
 		if err != nil {
 			continue
 		}
 
-		fieldRecord, err := pb.FindRecordById(fieldCollection.Id, fieldId)
+		fieldRecord, err := app.FindRecordById(fieldCollection.Id, fieldId)
 		if err != nil {
 			continue
 		}
@@ -1125,7 +1252,7 @@ func updateEntryValueReferences(pb *pocketbase.PocketBase, collectionName string
 				return 0, err
 			}
 			record.Set("value", valueJSON)
-			if err := pb.Save(record); err != nil {
+			if err := app.Save(record); err != nil {
 				return 0, err
 			}
 			updatedCount++
@@ -1141,7 +1268,8 @@ func RegisterCloneMarketplaceStarter(pb *pocketbase.PocketBase) error {
 			startTime := time.Now()
 
 			body := struct {
-				SnapshotURL string `json:"snapshot_url"`
+				SnapshotID  string `json:"snapshot_id"`
+				Filename    string `json:"filename"`
 				SiteName    string `json:"site_name"`
 				SiteHost    string `json:"site_host"`
 				SiteGroupId string `json:"site_group_id"`
@@ -1150,8 +1278,11 @@ func RegisterCloneMarketplaceStarter(pb *pocketbase.PocketBase) error {
 				return err
 			}
 
-			if body.SnapshotURL == "" {
-				return requestEvent.BadRequestError("snapshot_url missing", nil)
+			if body.SnapshotID == "" {
+				return requestEvent.BadRequestError("snapshot_id missing", nil)
+			}
+			if body.Filename == "" {
+				return requestEvent.BadRequestError("filename missing", nil)
 			}
 			if body.SiteName == "" {
 				return requestEvent.BadRequestError("site_name missing", nil)
@@ -1172,9 +1303,16 @@ func RegisterCloneMarketplaceStarter(pb *pocketbase.PocketBase) error {
 				return requestEvent.UnauthorizedError("", nil)
 			}
 
+			// Construct snapshot URL server-side to prevent SSRF
+			snapshotURL := fmt.Sprintf("https://marketplace.palacms.com/api/files/site_snapshots/%s/%s",
+				body.SnapshotID, body.Filename)
+
 			downloadStart := time.Now()
-			// Download snapshot file from marketplace
-			resp, err := http.Get(body.SnapshotURL)
+			// Download snapshot file from marketplace with timeout and size limit
+			client := &http.Client{
+				Timeout: 30 * time.Second,
+			}
+			resp, err := client.Get(snapshotURL)
 			if err != nil {
 				return requestEvent.InternalServerError("Failed to fetch snapshot", err)
 			}
@@ -1184,7 +1322,10 @@ func RegisterCloneMarketplaceStarter(pb *pocketbase.PocketBase) error {
 				return requestEvent.InternalServerError("Failed to fetch snapshot", fmt.Errorf("status %d", resp.StatusCode))
 			}
 
-			snapshotData, err := io.ReadAll(resp.Body)
+			// Limit response body to 10MB to prevent memory exhaustion
+			maxSize := int64(10 * 1024 * 1024)
+			limitedReader := io.LimitReader(resp.Body, maxSize)
+			snapshotData, err := io.ReadAll(limitedReader)
 			if err != nil {
 				return requestEvent.InternalServerError("Failed to read snapshot", err)
 			}
@@ -1199,9 +1340,26 @@ func RegisterCloneMarketplaceStarter(pb *pocketbase.PocketBase) error {
 			decodeDuration := time.Since(decodeStart)
 
 			cloneStart := time.Now()
-			// Clone from snapshot
-			createdSite, logs, err := cloneFromSnapshot(pb, snapshot, body.SiteName, body.SiteHost, body.SiteGroupId)
+			// Clone from snapshot wrapped in transaction for atomicity and performance
+			var createdSite *core.Record
+			var logs []string
+			err = pb.RunInTransaction(func(txApp core.App) error {
+				var txErr error
+				createdSite, logs, txErr = cloneFromSnapshot(txApp, snapshot, body.SiteName, body.SiteHost, body.SiteGroupId)
+				if txErr != nil {
+					return txErr
+				}
+				if createdSite == nil {
+					return fmt.Errorf("snapshot contains no site data")
+				}
+				return nil
+			})
 			if err != nil {
+				pb.Logger().Error("Failed to clone site from marketplace",
+					"error", err,
+					"site_name", body.SiteName,
+					"snapshot_id", body.SnapshotID,
+				)
 				return requestEvent.InternalServerError("Failed to clone site", err)
 			}
 			cloneDuration := time.Since(cloneStart)
