@@ -14,9 +14,6 @@
 	import { marketplace, self } from '$lib/pocketbase/managers'
 	import { watch } from 'runed'
 	import BlockPickerPanel from '$lib/components/BlockPickerPanel.svelte'
-	import { createCollectionManager } from '$lib/pocketbase/CollectionManager'
-	import { Snapshot } from '$lib/common/models/Snapshot'
-	import { import_snapshot } from '$lib/Snapshot.svelte'
 
 	/*
   Create Site Wizard
@@ -137,7 +134,6 @@
 	}
 
 	const starter_snapshots = $derived(SiteSnapshots.from(marketplace).list({ sort: '-created' }))
-	const snapshot_manager = createCollectionManager()
 	$effect(() => {
 		// Ensure that snapshots get loaded
 		starter_snapshots
@@ -145,7 +141,7 @@
 
 	const cloneSite = $derived(
 		useCloneSite({
-			source_manager: selected_starter_source === 'local' ? self : snapshot_manager,
+			source_manager: self,
 			source_site_id: selected_starter_id,
 			site_name: site_name,
 			site_host: pageState.url.host,
@@ -155,36 +151,94 @@
 
 	let completed = $derived(Boolean(site_name && selected_starter_id))
 	let loading = $state(false)
+	let progress_message = $state('')
+	let error_message = $state('')
+
+	const progress_messages = [
+		'Creating site structure...',
+		'Setting up page types...',
+		'Building pages...',
+		'Configuring blocks...',
+		'Adding navigation...',
+		'Finalizing site...'
+	]
 
 	// Clone the selected starter
 	async function create_site() {
 		if (!selected_starter_id) return
 		loading = true
+		error_message = ''
+
+		// Rotate through progress messages
+		let message_index = 0
+		progress_message = progress_messages[0]
+		const progress_interval = setInterval(() => {
+			message_index = (message_index + 1) % progress_messages.length
+			progress_message = progress_messages[message_index]
+		}, 7000)
+
 		try {
 			if (!site_group) {
 				SiteGroups.create({ name: 'Default', index: 0 })
 			}
 
 			if (selected_starter_source === 'marketplace') {
-				// Load snapshot from marketplace
-				const snapshot_record = starter_snapshots?.find((snapshot) => snapshot.site === selected_starter_id)
+				// Use server-side cloning for marketplace starters
+				// Check if snapshots are still loading
+				if (!starter_snapshots) {
+					throw new Error('Starter snapshots are still loading. Please wait and try again.')
+				}
+
+				// Find the snapshot for this starter
+				const snapshot_record = starter_snapshots.find((snapshot) => snapshot.site === selected_starter_id)
 				if (!snapshot_record) {
-					throw new Error('Snapshot not found')
+					throw new Error('Snapshot not found for this starter. The starter may not be available for cloning yet.')
 				}
 				if (typeof snapshot_record.file !== 'string') {
-					throw new Error('Invalid snapshot')
+					throw new Error('Invalid snapshot file. Please try a different starter.')
 				}
-				const snapshot = await Snapshot.decodeAsync(
-					new File([await fetch(`${marketplace.instance?.baseURL}/api/files/site_snapshots/${snapshot_record.id}/${snapshot_record.file}`).then((res) => res.blob())], snapshot_record.file)
-				)
-				import_snapshot({ destination_manager: snapshot_manager, source_snapshot: snapshot })
-			}
 
-			await cloneSite.run()
-			done_creating_site = true
+				const response = await fetch(`${self.instance?.baseURL}/api/palacms/clone-marketplace-starter`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': self.instance?.authStore.token ? `Bearer ${self.instance.authStore.token}` : ''
+					},
+					body: JSON.stringify({
+						snapshot_id: snapshot_record.id,
+						filename: snapshot_record.file,
+						site_name: site_name,
+						site_host: pageState.url.host,
+						site_group_id: site_group?.id
+					})
+				})
+
+				if (!response.ok) {
+					const errorText = await response.text()
+					throw new Error(`Failed to clone marketplace starter: ${errorText || response.statusText}`)
+				}
+
+				const result = await response.json()
+				console.log('✅ Site created:', result.site_id)
+				console.log('⏱️  Total time:', result.duration_ms + 'ms')
+				console.log('  - Download:', result.download_ms + 'ms')
+				console.log('  - Decode:', result.decode_ms + 'ms')
+				console.log('  - Clone:', result.clone_ms + 'ms')
+				console.log('\n📝 Clone logs:')
+				result.logs?.forEach((log: string) => console.log('  ' + log))
+				done_creating_site = true
+			} else {
+				// Use client-side cloning for local starters
+				await cloneSite.run()
+				done_creating_site = true
+			}
 		} catch (e) {
-			console.error(e)
+			console.error('Site creation error:', e)
+			clearInterval(progress_interval)
 			loading = false
+			error_message = e instanceof Error ? e.message : 'An error occurred while creating the site'
+		} finally {
+			clearInterval(progress_interval)
 		}
 	}
 
@@ -201,7 +255,11 @@
 			finalized = true
 			copy_selected_blocks_to_site()
 				.then(() => self.commit())
-				.then(() => oncreated?.())
+				.then(() => {
+					oncreated?.()
+					// Reload to ensure clean state and faster compilation
+					window.location.reload()
+				})
 				.catch((e) => console.error(e))
 				.finally(() => {
 					loading = false
@@ -443,13 +501,9 @@
 			<Button
 				onclick={next_or_create}
 				disabled={loading || (step === 'name' && !can_go_starter) || (step === 'starter' && !can_go_blocks) || (step === 'blocks' && !completed)}
-				class="inline-flex justify-center items-center relative"
+				class="inline-flex justify-center items-center relative gap-2"
 			>
-				{#if loading}
-					<Loader class="h-4 w-4 animate-spin" />
-				{:else}
-					{step === 'blocks' ? 'Done' : 'Next'}
-				{/if}
+				{step === 'blocks' ? 'Done' : 'Next'}
 			</Button>
 		</div>
 	</div>
@@ -476,3 +530,36 @@
 		</div>
 	</button>
 {/snippet}
+
+<!-- Fullscreen loading overlay -->
+{#if loading}
+	<div class="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
+		<div class="flex flex-col items-center gap-4">
+			<Loader class="h-12 w-12 animate-spin text-primary" />
+			<p class="text-lg font-medium">{progress_message}</p>
+		</div>
+	</div>
+{/if}
+
+<!-- Error message display -->
+{#if error_message}
+	<div class="fixed bottom-4 right-4 z-50 max-w-md">
+		<div class="bg-destructive text-destructive-foreground rounded-lg p-4 shadow-lg">
+			<div class="flex items-start gap-3">
+				<div class="flex-1">
+					<p class="font-medium">Failed to create site</p>
+					<p class="text-sm mt-1">{error_message}</p>
+				</div>
+				<button
+					onclick={() => error_message = ''}
+					class="text-destructive-foreground/80 hover:text-destructive-foreground"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+					</svg>
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
