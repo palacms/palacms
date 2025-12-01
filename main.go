@@ -45,6 +45,10 @@ func setup(pb *pocketbase.PocketBase) error {
 		return err
 	}
 
+	if err := internal.RegisterCloneMarketplaceStarter(pb); err != nil {
+		return err
+	}
+
 	if err := internal.RegisterAdminApp(pb); err != nil {
 		return err
 	}

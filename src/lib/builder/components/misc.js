@@ -52,6 +52,8 @@ export const dynamic_iframe_srcdoc = (head, broadcast_id) => {
             reset = null;
           }
 
+          if (!mod) return
+
           try {
             const component = mod.mount(mod.default, {
               target: document.body,
@@ -200,6 +202,7 @@ export const component_iframe_srcdoc = ({ head = '', foot = '' }) => {
           function update(props) {
             const target = document.querySelector('#component')
             if (!target) return
+            if (!mod) return
             if (reset) reset()
             try {
               const component = mod.mount(mod.default, {

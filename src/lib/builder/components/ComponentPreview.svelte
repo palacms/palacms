@@ -502,7 +502,7 @@
 		</div>
 	{/if}
 
-	{#if $current_user?.siteRole === 'developer' && data}
+	{#if $current_user?.siteRole === 'developer' && data && Object.keys(data).length > 0}
 		<div class="block-data">
 			<button class="block-data-header" onclick={() => (show_block_data = !show_block_data)}>
 				<div class="chevron" class:rotated={show_block_data}>
