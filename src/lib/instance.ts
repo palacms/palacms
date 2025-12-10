@@ -1,5 +1,11 @@
-import { self } from './pocketbase/managers'
+import { self } from './pocketbase/instances'
 
-export type InstanceInfo = { id: string; version: string; telemetry_enabled: boolean; smtp_enabled: boolean }
+export type InstanceInfo = {
+	id: string
+	version: string
+	telemetry_enabled: boolean
+	smtp_enabled: boolean
+	batch_count: number
+}
 
-export const instance: InstanceInfo = await fetch(new URL('/api/palacms/info', self.instance?.baseURL)).then((res) => res.json())
+export const instance: InstanceInfo = await fetch(new URL('/api/palacms/info', self.baseURL)).then((res) => res.json())
