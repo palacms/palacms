@@ -35,7 +35,6 @@
 {#if creating_site && $current_user}
 	<CreateSite
 		oncreated={() => {
-			self.lists.clear()
 			creating_site = false
 		}}
 	/>

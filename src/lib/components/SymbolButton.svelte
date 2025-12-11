@@ -6,6 +6,7 @@
 	import { locale } from '$lib/builder/stores/app'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { useContent } from '$lib/Content.svelte'
+	import * as _ from 'lodash-es'
 
 	/** @type {Props} */
 	let {
@@ -30,13 +31,19 @@
 	const _data = $derived(useContent(symbol, { target: 'cms' }))
 	const data = $derived(_data && (_data[$locale] ?? {}))
 
+	let last_input: object
 	let generated_code = $state()
 	$effect(() => {
 		if (!code || !data) {
 			return
 		}
 
-		block_html({ code, data })
+		// Skip recompilation if data is effectively unchanged
+		const input = { code, data }
+		if (_.isEqual(last_input, input)) return
+		last_input = _.cloneDeep(input)
+
+		block_html(input)
 			.then((res) => {
 				generated_code = res
 			})
