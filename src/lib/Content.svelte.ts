@@ -351,12 +351,13 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 				const upload_id: string | null | undefined = entry.value.upload
 				const upload = upload_id ? uploads.find((upload) => upload.id === upload_id) : null
 
+				const is_library_symbol = 'group' in entity && 'html' in entity
 				const upload_url =
 					upload &&
 					(options.target === 'live'
 						? `/_uploads/${upload.file}`
 						: typeof upload.file === 'string'
-							? `${self.instance?.baseURL}/api/files/${'group' in entity ? 'library_uploads' : 'site_uploads'}/${upload.id}/${upload.file}`
+							? `${self.instance?.baseURL}/api/files/${is_library_symbol ? 'library_uploads' : 'site_uploads'}/${upload.id}/${upload.file}`
 							: URL.createObjectURL(upload.file))
 				const input_url: string | undefined = entry.value.url
 				const url = input_url || upload_url
