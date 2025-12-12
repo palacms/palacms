@@ -5,7 +5,7 @@
 	import { rich_text_extensions } from '$lib/builder/rich-text/extensions'
 	import RichTextButton from '$lib/builder/views/editor/Layout/RichTextButton.svelte'
 	import { loadIcons } from '@iconify/svelte'
-	import type { Entity } from '$lib/Content.svelte'
+	import type { Entity } from '$lib/Entity'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'

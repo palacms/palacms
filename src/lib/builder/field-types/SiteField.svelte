@@ -2,7 +2,7 @@
 	import { fieldTypes } from '../stores/app'
 	import { SiteFields, SiteEntries } from '$lib/pocketbase/collections'
 	import type { Entry } from '$lib/common/models/Entry'
-	import type { Entity } from '$lib/Content.svelte'
+	import type { Entity } from '$lib/Entity'
 	import { setFieldEntries, type FieldValueHandler, type FieldValueMap } from '../components/Fields/FieldsContent.svelte'
 	import type { Field } from '$lib/common/models/Field'
 	import { site_context } from '$lib/builder/stores/context'

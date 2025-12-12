@@ -2,7 +2,7 @@
 	import { fieldTypes } from '../stores/app'
 	import { PageTypeEntries, PageTypeFields, PageTypes } from '$lib/pocketbase/collections'
 	import type { Entry } from '$lib/common/models/Entry'
-	import type { Entity } from '$lib/Content.svelte'
+	import type { Entity } from '$lib/Entity'
 	import { PageEntries } from '$lib/pocketbase/collections'
 	import { setFieldEntries, type FieldValueHandler, type FieldValueMap } from '../components/Fields/FieldsContent.svelte'
 	import type { Field } from '$lib/common/models/Field'

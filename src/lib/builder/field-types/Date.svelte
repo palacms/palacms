@@ -1,6 +1,6 @@
 <script lang="ts">
 	import UI from '../ui'
-	import type { Entity } from '$lib/Content.svelte'
+	import type { Entity } from '$lib/Entity'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
@@ -28,12 +28,7 @@
 </script>
 
 <div>
-	<UI.TextInput
-		{...field}
-		value={formatted_value}
-		oninput={(text) => onchange({ [field.key]: { 0: { value: text } } })}
-		type="date"
-	/>
+	<UI.TextInput {...field} value={formatted_value} oninput={(text) => onchange({ [field.key]: { 0: { value: text } } })} type="date" />
 </div>
 
 <style lang="postcss">

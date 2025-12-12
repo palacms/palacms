@@ -19,6 +19,7 @@
 	import { watch } from 'runed'
 	import { setUserActivity } from '$lib/UserActivity.svelte'
 	import { self } from '$lib/pocketbase/managers'
+	import { useCopyEntries } from '$lib/workers/CopyEntries.svelte'
 
 	let { page }: { page: ObjectOf<typeof Pages> } = $props()
 
@@ -66,7 +67,7 @@
 	}
 
 	let symbol_to_add = $state<ObjectOf<typeof SiteSymbols>>()
-	let entries_to_add = $derived(symbol_to_add?.entries())
+	const copy_symbol_entries = $derived(useCopyEntries([symbol_to_add]))
 	async function add_section_to_page({ symbol, position }) {
 		symbol_to_add = symbol
 		await tick()
@@ -87,32 +88,7 @@
 			index: position
 		})
 
-		// Copy all symbol entries to the new section instance, handling parent/child relationships
-		if (entries_to_add && entries_to_add.length > 0) {
-			const entry_map = new Map()
-
-			// Sort entries so parent-less entries come first
-			const sorted_entries = [...entries_to_add].sort((a, b) => {
-				if (!a.parent && b.parent) return -1
-				if (a.parent && !b.parent) return 1
-				return (a.index || 0) - (b.index || 0)
-			})
-
-			// Create entries in order, handling parent relationships
-			for (const entry of sorted_entries) {
-				const parent_section_entry = entry.parent ? entry_map.get(entry.parent) : undefined
-
-				const section_entry = PageSectionEntries.create({
-					section: new_section.id,
-					field: entry.field,
-					locale: entry.locale,
-					value: entry.value,
-					index: entry.index,
-					parent: parent_section_entry?.id || undefined
-				})
-				entry_map.set(entry.id, section_entry)
-			}
-		}
+		await copy_symbol_entries.run(symbol_to_add!, new_section)
 
 		for (const section of existing_sections) {
 			PageSections.update(section.id, { index: section.index + 1 })

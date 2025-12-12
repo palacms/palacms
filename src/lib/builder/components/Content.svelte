@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Field } from '$lib/common/models/Field'
-	import type { Entity } from '$lib/Content.svelte'
+	import type { Entity } from '$lib/Entity'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from './Fields/FieldsContent.svelte'
 	import EntryContent from './Fields/EntryContent.svelte'
@@ -37,9 +37,7 @@
 </script>
 
 <div class="Content">
-	{#each fields
-		.filter((f) => !f.parent || f.parent === '')
-		.sort((a, b) => (a.index || 0) - (b.index || 0)) as field (field.id)}
+	{#each fields.filter((f) => !f.parent || f.parent === '').sort((a, b) => (a.index || 0) - (b.index || 0)) as field (field.id)}
 		<EntryContent {entity} {field} {fields} {entries} level={0} onchange={oninput} ondelete={handle_delete_entry} />
 	{:else}
 		<p class="empty-description">
