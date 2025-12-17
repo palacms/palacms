@@ -43,27 +43,31 @@
 	const active_page_type = $derived(active_page_type_id && PageTypes.one(active_page_type_id))
 
 	const publish = $derived(usePublishSite(site?.id))
-	const publish_in_progress = $derived(['loading', 'working'].includes(publish.status))
 
 	const existing_snapshots = $derived(SiteSnapshots.list({ filter: { site: site.id }, sort: '-created' }))
 	const create_snapshot = $derived(useSiteSnapshot({ source_site_id: site?.id }))
-	const snapshot_in_progress = $derived(['loading', 'working'].includes(publish.status))
 
+	let publish_in_progress = $state(false)
 	async function handle_publish() {
-		await publish.run()
+		publish_in_progress = true
+		try {
+			await publish.run()
 
-		// Create new snapshot and remove all other ones
-		// TODO: The amount of snapshots could be larger once make UI for managing and restoring them
-		const snapshots_to_remove = [...(existing_snapshots ?? [])]
-		const snapshot = await create_snapshot.run()
-		SiteSnapshots.create({
-			site: site.id,
-			file: Snapshot.encode(snapshot)
-		})
-		for (const existing_snapshot of snapshots_to_remove) {
-			SiteSnapshots.delete(existing_snapshot.id)
+			// Create new snapshot and remove all other ones
+			// TODO: The amount of snapshots could be larger once make UI for managing and restoring them
+			const snapshots_to_remove = [...(existing_snapshots ?? [])]
+			const snapshot = await create_snapshot.run()
+			SiteSnapshots.create({
+				site: site.id,
+				file: Snapshot.encode(snapshot)
+			})
+			for (const existing_snapshot of snapshots_to_remove) {
+				SiteSnapshots.delete(existing_snapshot.id)
+			}
+			await self.commit()
+		} finally {
+			publish_in_progress = false
 		}
-		await self.commit()
 	}
 
 	let going_up = $state(false)
@@ -198,7 +202,7 @@
 		<Deploy
 			bind:stage={publish_stage}
 			publish_fn={handle_publish}
-			loading={publish_in_progress || snapshot_in_progress}
+			loading={publish_in_progress}
 			site_host={site?.host}
 			onClose={() => {
 				publishing = false
