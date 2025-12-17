@@ -1,4 +1,4 @@
-# Pala CMS [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![npm version](https://img.shields.io/npm/v/statue-ssg.svg)](https://www.npmjs.com/package/statue-ssg) [![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev) [![PocketBase](https://img.shields.io/badge/PocketBase-0.31-B8DBE4?logo=pocketbase&logoColor=black)](https://pocketbase.io)
+# Pala CMS [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev) [![PocketBase](https://img.shields.io/badge/PocketBase-0.31-B8DBE4?logo=pocketbase&logoColor=black)](https://pocketbase.io)
 
 Pala is a component-based CMS that streamlines development and content management by putting code and content in the same place. Developers get full code control with a browser-based IDE, editors get focused visual content editing, and visitors get sub-second loading speeds.
 
