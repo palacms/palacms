@@ -511,6 +511,8 @@
 	const source_symbol = $derived(source_symbol_id ? SiteSymbols.one(source_symbol_id) : undefined)
 	const destination_section = $derived(destination_section_id ? PageTypeSections.one(destination_section_id) : undefined)
 	const copy_symbol_entries = $derived(useCopyEntries([source_symbol]))
+
+	// Establish reactive dependency for copy_symbol_entries worker
 	$effect(() => {
 		copy_symbol_entries
 	})
