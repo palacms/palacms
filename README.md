@@ -26,19 +26,19 @@ Pala gives developers **code control** while giving editors **content freedom** 
 After deploying, create your first site by accessing the server from your domain.
 
 **Next steps:**
-1. **[Read the Quickstart](https://palacms.com/getting-started/quickstart)** - Get oriented with key concepts
-2. **[Build Your First Site](https://palacms.com/building-sites/your-first-site)** - Step-by-step guide
-3. **[Create Blocks](https://palacms.com/building-sites/writing-blocks)** - Build reusable components with Svelte
+1. **[Read the Quickstart](https://docs.palacms.com/getting-started/quickstart)** - Get oriented with key concepts
+2. **[Build Your First Site](https://docs.palacms.com/building-sites/your-first-site)** - Step-by-step guide
+3. **[Create Blocks](https://docs.palacms.com/building-sites/writing-components)** - Build reusable components with Svelte
 
 ## Documentation
-- **[Installation](https://palacms.com/getting-started/installation)** - Self-host or run locally
-- **[Quickstart](https://palacms.com/getting-started/quickstart)** - Key concepts and getting started
-- **[Writing Blocks](https://palacms.com/building-sites/writing-blocks)** - Build custom Svelte components
-- **[Field Types](https://palacms.com/reference/field-types)** - Available content field types
-- **[Managing Sites](https://palacms.com/dashboard/managing-sites)** - Organize sites with groups
-- **[Page Types](https://palacms.com/building-sites/defining-page-types)** - Define page structure and available blocks
-- **[Collaboration](https://palacms.com/collaboration/inviting-collaborators)** - Working with editors and teams
-- **[Keyboard Shortcuts](https://palacms.com/reference/keyboard-shortcuts)** - Power user reference
+- **[Installation](https://docs.palacms.com/getting-started/installation)** - Self-host or run locally
+- **[Quickstart](https://docs.palacms.com/getting-started/quickstart)** - Key concepts and getting started
+- **[Writing Blocks](https://docs.palacms.com/building-sites/writing-components)** - Build custom Svelte components
+- **[Field Types](https://docs.palacms.com/reference/field-types)** - Available content field types
+- **[Managing Sites](https://docs.palacms.com/dashboard/managing-sites)** - Organize sites with groups
+- **[Page Types](https://docs.palacms.com/building-sites/defining-page-types)** - Define page structure and available blocks
+- **[Collaboration](https://docs.palacms.com/collaboration/inviting-collaborators)** - Working with editors and teams
+- **[Keyboard Shortcuts](https://docs.palacms.com/reference/keyboard-shortcuts)** - Power user reference
 
 ## Deploy
 
@@ -52,7 +52,7 @@ You can also host Pala on any platform that supports Docker:
 docker run -d -p 8080:8080 -v palacms-data:/app/pb_data ghcr.io/palacms/palacms:latest
 ```
 
-**[See full deployment guide →](https://palacms.com/getting-started/installation)**
+**[See full deployment guide →](https://docs.palacms.com/getting-started/installation)**
 
 ## Community
 
@@ -61,4 +61,4 @@ docker run -d -p 8080:8080 -v palacms-data:/app/pb_data ghcr.io/palacms/palacms:
 
 ## License
 
-MIT
+[MIT](./LICENSE)
