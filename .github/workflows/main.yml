@@ -81,7 +81,7 @@ jobs:
       - name: Deploy to server
         env:
           DOCKER_HOST: ${{ secrets.TESTING_DOCKER_HOST }}
-          DOCKER_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ jobs.build-image.outputs.version }}
+          DOCKER_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-image.outputs.version }}
         run: |
           cd ./deployment/testing/
           eval "$(ssh-agent -s)"
