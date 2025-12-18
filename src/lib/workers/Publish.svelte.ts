@@ -297,7 +297,7 @@ export const usePublishSite = (site_id?: string) => {
 			console.log(`Successfully generated page "${page.name || page.id}"`)
 
 			return {
-				success: !!body_content,
+				success: !!(header_result.body || body_result.body || footer_result.body),
 				html: final,
 				error: '',
 				page_info
