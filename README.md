@@ -1,68 +1,65 @@
-# Pala V3 Beta
+# Pala CMS (formerly Primo) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev) ![](https://img.shields.io/badge/PocketBase-555555?logo=pocketbase&logoColor=white)
 
-**Pala is a modern monolithic CMS that gives developers the control they need and content editors the simplicity they've always wanted.** 
+Pala is a component-based CMS that streamlines development and content management by putting code and content in the same place. Developers get full code control with a browser-based IDE, editors get focused visual content editing, and visitors get sub-second loading speeds.
 
-![screenshot](https://cdn.primo.page/f52960e1-0bb0-4c64-9f70-5a9994ce95fc/staging/_images/1739675414227Screenshot%202025-02-15%20at%2010.10.10%E2%80%AFPM.png)
-
-## ✨ Why Pala?
-
-### ✍️ **Content Management Simplicity**
-
-- Visual, on-page content editing
-- Custom page types and dynamic fields
-- Real-time collaboration
-
-### ⚡️ **Developer Control**
-
-- Reusable component library
-- Direct access to component HTML, CSS, and JavaScript (powered by Svelte)
-- Works with any CSS framework (Tailwind, Bootstrap, etc.)
-
-### 🏠 **Self-Hosted Freedom**
-
-- Run on your own infrastructure with PocketBase
-- Your data stays under your control
-- Site served as static files
-
-## 🎯 Perfect For
-
-- **Agencies** building custom sites for clients
-- **Developers** who want visual editing without sacrificing control
-- **Teams** collaborating on content and design
-- **Anyone** tired of WordPress limitations or locked-in SaaS platforms
-
-## 🔥 V3 Features & Improvements
-
-### New in V3
-
-- **Self-hosting with PocketBase** - Run Pala on your own infrastructure with PocketBase as the backend
-- **Custom Page Types** - Create flexible content types for different kinds of pages
-- **Dynamic Content Fields** - Site fields, page fields, and relational content that updates across pages
-- **Block/Starter Library** - Reusable components and starter templates
-
-### Enhanced User Experience
-
-- **Conditional Fields** - Show/hide fields based on other field values
-- **CSS Framework Support** - Works reliably with Bootstrap, Tailwind, Bulma, and other frameworks
-- **Improved Drag & Drop** - Better block placement, works on mobile
-- **Enhanced On-page Editing** - More intuitive visual editing experience
-- **Better Content Organization** - Drag to reorder pages and content items
-- **Refined Block Editor** - Cleaner separation between code and content
-
-### Coming in Beta
-
-- **Framework Integration** - Embed Pala content in your existing Next.js, SvelteKit, or other apps
-- **AI Block Generation** - Generate blocks with AI assistance
-- **Local Development Tools** - Full local development environment and CLI tools
-- **Marketplace Integration** - Browse and install community blocks and starters
-- **Plugin API** - Extend functionality with custom plugins
-
-### Getting Started
-Host Pala on any host that supports Docker: Railway, Fly.io, Hetzner. Deployment takes minutes. 
+**One-click deploy:**
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/palacms?referralCode=RCPU7k)
 
-## 🆘 Support & Community
+![screenshot](https://cdn.primo.page/f52960e1-0bb0-4c64-9f70-5a9994ce95fc/staging/_images/1739675414227Screenshot%202025-02-15%20at%2010.10.10%E2%80%AFPM.png)
 
-- **Issues**: [GitHub Issues](https://github.com/palacms/palacms/issues)
-- **Website**: [palacms.com](https://palacms.com)
+## Why Pala
+
+Pala gives developers **code control** while giving editors **content freedom** - without either breaking the other's work.
+
+- **Monolithic**: Build and host your sites from the same deployment, no external services needed. Powered by [PocketBase](https://pocketbase.io).
+- **Code-First Development**: Build reusable blocks with [Svelte](https://svelte.dev) in a powerful in-browser IDE with instant previews.
+- **Visual Content Editing**: You define the guardrails, editors work freely within them. No more "I broke the website" texts.
+- **Block Library**: Build blocks once, reuse across all your sites. Browse the marketplace for pre-built templates and blocks.
+- **Page Types**: Define custom page types for all types of content: posts, people, events, locations, projects, anything.
+- **Multisite by Default**: Publish hundreds of sites from a single server, just connect a domain name for each new site.
+- **Static Output**: Sites deploy as clean, secure, SEO-optimized static HTML for sub-second loading speeds.
+- **Self-Hosted**: Host on Railway, Fly.io, Hetzner, or any Docker-compatible platform.
+
+## Getting Started
+
+After deploying, create your first site by accessing the server from your domain.
+
+**Next steps:**
+1. **[Read the Quickstart](https://docs.palacms.com/getting-started/quickstart)** - Get oriented with key concepts
+2. **[Build Your First Site](https://docs.palacms.com/building-sites/your-first-site)** - Step-by-step guide
+3. **[Create Blocks](https://docs.palacms.com/building-sites/writing-components)** - Build reusable components with Svelte
+
+## Documentation
+- **[Installation](https://docs.palacms.com/getting-started/installation)** - Self-host or run locally
+- **[Quickstart](https://docs.palacms.com/getting-started/quickstart)** - Key concepts and getting started
+- **[Writing Blocks](https://docs.palacms.com/building-sites/writing-components)** - Build custom Svelte components
+- **[Field Types](https://docs.palacms.com/reference/field-types)** - Available content field types
+- **[Managing Sites](https://docs.palacms.com/dashboard/managing-sites)** - Organize sites with groups
+- **[Page Types](https://docs.palacms.com/building-sites/defining-page-types)** - Define page structure and available blocks
+- **[Collaboration](https://docs.palacms.com/collaboration/inviting-collaborators)** - Working with editors and teams
+- **[Keyboard Shortcuts](https://docs.palacms.com/reference/keyboard-shortcuts)** - Power user reference
+
+## Deploy
+
+The easiest way to deploy Pala is on Railway.
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/palacms?referralCode=RCPU7k)
+
+You can also host Pala on any platform that supports Docker:
+
+```bash
+docker run -d -p 8080:8080 -v palacms-data:/app/pb_data ghcr.io/palacms/palacms:latest
+```
+
+**[See full deployment guide →](https://docs.palacms.com/getting-started/installation)**
+
+
+## Community
+
+- **[GitHub Issues](https://github.com/palacms/palacms/issues)** - Report bugs or request features
+- **[GitHub Discussions](https://github.com/palacms/palacms/discussions)** - Ask questions
+
+## License
+
+[MIT](./LICENSE)
