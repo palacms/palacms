@@ -14,12 +14,13 @@
 	import { locale, dragging_symbol } from '../../stores/app/misc.js'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
-	import { PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites } from '$lib/pocketbase/collections'
+	import { PageTypes, PageTypeSections, PageTypeSectionEntries, SiteSymbolEntries, Sites, SiteSymbols } from '$lib/pocketbase/collections'
 	import { self as pb } from '$lib/pocketbase/managers'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import { setUserActivity } from '$lib/UserActivity.svelte'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import Icon from '@iconify/svelte'
+	import { useCopyEntries } from '$lib/workers/CopyEntries.svelte.js'
 
 	let { page_type }: { page_type: ObjectOf<typeof PageTypes> } = $props()
 
@@ -504,46 +505,38 @@
 	let editing_section = $state(false)
 	let editing_section_target = $state<ObjectOf<typeof PageTypeSections>>()
 
+	let copying_entries = $state(false)
+	let source_symbol_id = $state<string>()
+	let destination_section_id = $state<string>()
+	const source_symbol = $derived(source_symbol_id ? SiteSymbols.one(source_symbol_id) : undefined)
+	const destination_section = $derived(destination_section_id ? PageTypeSections.one(destination_section_id) : undefined)
+	const copy_symbol_entries = $derived(useCopyEntries([source_symbol]))
+
+	// Establish reactive dependency for copy_symbol_entries worker
+	$effect(() => {
+		copy_symbol_entries
+	})
 	async function copy_symbol_entries_to_section(symbol_id: string, section_id: string) {
-		try {
-			// Get all symbol entries (not just root-level ones)
-			const symbol_entries = await pb.instance?.collection('site_symbol_entries').getFullList({
-				filter: `field.symbol = "${symbol_id}"`,
-				expand: 'field',
-				sort: 'index'
-			})
-
-			if (symbol_entries.length === 0) {
-				return
-			}
-
-			const entry_map = new Map()
-
-			// Sort entries so parent-less entries come first
-			const sorted_entries = [...symbol_entries].sort((a, b) => {
-				if (!a.parent && b.parent) return -1
-				if (a.parent && !b.parent) return 1
-				return (a.index || 0) - (b.index || 0)
-			})
-
-			// Create entries in order, handling parent relationships
-			for (const entry of sorted_entries) {
-				const parent_section_entry = entry.parent ? entry_map.get(entry.parent) : undefined
-
-				const section_entry = PageTypeSectionEntries.create({
-					section: section_id,
-					field: entry.field,
-					locale: entry.locale,
-					value: entry.value,
-					index: entry.index,
-					parent: parent_section_entry?.id || undefined
-				})
-				entry_map.set(entry.id, section_entry)
-			}
-		} catch (error) {
-			console.error('Failed to copy symbol entries:', error)
-		}
+		source_symbol_id = symbol_id
+		destination_section_id = section_id
 	}
+	$effect(() => {
+		if (!source_symbol) return
+		if (!destination_section) return
+		if (copying_entries) return
+
+		copying_entries = true
+		copy_symbol_entries
+			.run(source_symbol, destination_section)
+			.catch((error) => {
+				console.error('Failed to copy symbol entries:', error)
+			})
+			.finally(() => {
+				source_symbol_id = undefined
+				destination_section_id = undefined
+				copying_entries = false
+			})
+	})
 </script>
 
 <Dialog.Root

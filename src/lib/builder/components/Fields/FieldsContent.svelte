@@ -48,7 +48,7 @@
 	import { fieldTypes } from '../../stores/app/index.js'
 	import { mod_key_held, field_tabs_by_entity } from '../../stores/app/misc.js'
 	import type { Field } from '$lib/common/models/Field'
-	import type { Entity } from '$lib/Content.svelte'
+	import type { Entity } from '$lib/Entity'
 	import type { Entry } from '$lib/common/models/Entry'
 	import EntryContent from './EntryContent.svelte'
 	import { current_user } from '$lib/pocketbase/user'
@@ -81,23 +81,20 @@
 	let previous_field_ids = $state<string[]>(current_field_ids())
 
 	// Initialize tabs for new fields when they appear, using an explicit watch
-	watch(
-		current_field_ids,
-		(parent_field_ids) => {
-			let changed = false
-			for (const id of parent_field_ids) {
-				if (!(id in selected_tabs)) {
-					// If this is a newly created field (not in previous list), show field tab
-					// Otherwise, show entry tab by default for existing fields
-					const is_new_field = !previous_field_ids.includes(id)
-					selected_tabs[id] = (is_new_field && $current_user?.siteRole === 'developer') ? 'field' : 'entry'
-					changed = true
-				}
+	watch(current_field_ids, (parent_field_ids) => {
+		let changed = false
+		for (const id of parent_field_ids) {
+			if (!(id in selected_tabs)) {
+				// If this is a newly created field (not in previous list), show field tab
+				// Otherwise, show entry tab by default for existing fields
+				const is_new_field = !previous_field_ids.includes(id)
+				selected_tabs[id] = is_new_field && $current_user?.siteRole === 'developer' ? 'field' : 'entry'
+				changed = true
 			}
-			previous_field_ids = [...parent_field_ids]
-			if (changed) persist_tabs()
 		}
-	)
+		previous_field_ids = [...parent_field_ids]
+		if (changed) persist_tabs()
+	})
 
 	function select_tab(field_id, tab) {
 		selected_tabs[field_id] = tab

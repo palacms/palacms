@@ -4,7 +4,7 @@
 	import { fieldTypes } from '../stores/app'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { Field } from '$lib/common/models/Field'
-	import type { Entity } from '$lib/Content.svelte'
+	import type { Entity } from '$lib/Entity'
 	import type { Component } from 'svelte'
 	import type { FieldValueHandler, FieldValueMap } from '../components/Fields/FieldsContent.svelte'
 	import EntryContent from '../components/Fields/EntryContent.svelte'

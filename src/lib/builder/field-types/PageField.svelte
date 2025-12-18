@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageField } from '$lib/common/models/fields/PageField'
 	import UI from '../ui/index.js'
-	import type { Entity } from '$lib/Content.svelte'
+	import type { Entity } from '$lib/Entity'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 	import { site_context } from '$lib/builder/stores/context'

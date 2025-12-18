@@ -128,8 +128,8 @@ export const create_site_uploads = async ({
 		const file =
 			typeof source_upload.file === 'string'
 				? await fetch(`${source_upload.collection.manager.instance?.baseURL}/api/files/site_uploads/${source_upload.id}/${source_upload.file}`)
-						.then((res) => res.blob())
-						.then((blob) => new File([blob], source_upload.file.toString()))
+					.then((res) => res.blob())
+					.then((blob) => new File([blob], source_upload.file.toString()))
 				: source_upload.file
 
 		const upload = SiteUploads.create({
@@ -459,7 +459,10 @@ export const create_page_type_symbols = ({
 
 		const site_symbol = site_symbol_map.get(source_page_type_symbol.symbol)
 		if (!site_symbol) {
-			throw new Error('No site symbol for page type symbol')
+			// Symbol wasn't cloned (orphaned reference or not loaded), skip this association
+			// Happens when a symbol belongs to a site but isn't used on any sections
+			// TODO: enable cloning site symbols without section instances
+			continue
 		}
 
 		PageTypeSymbols.create({

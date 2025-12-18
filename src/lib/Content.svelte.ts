@@ -1,28 +1,13 @@
 import type { Entry } from '$lib/common/models/Entry.js'
 import type { locales } from './common'
-import { SiteFields, Sites, Pages, PageTypeFields, PageTypes, SiteSymbols, LibrarySymbols, PageTypeSections, PageSections, LibraryUploads } from './pocketbase/collections'
+import { SiteFields, Sites, Pages, PageTypeFields, PageTypes, SiteSymbols, LibraryUploads } from './pocketbase/collections'
 import type { Field } from './common/models/Field'
 import { get_empty_value, convert_markdown_to_html, convert_rich_text_to_html } from '$lib/builder/utils'
 import { self } from './pocketbase/managers'
 import type { ObjectOf } from './pocketbase/CollectionMapping.svelte'
 import { build_live_page_url } from './pages'
 import { page_context, page_type_context, site_context } from './builder/stores/context'
-
-/**
- * Entry models by name of the owning collection.
- */
-export const ENTITY_COLLECTIONS = {
-	library_symbols: LibrarySymbols,
-	sites: Sites,
-	site_symbols: SiteSymbols,
-	page_types: PageTypes,
-	pages: Pages,
-	page_type_sections: PageTypeSections,
-	page_sections: PageSections
-} as const
-
-export type EntityOf<Collection extends keyof typeof ENTITY_COLLECTIONS> = ObjectOf<(typeof ENTITY_COLLECTIONS)[Collection]>
-export type Entity = EntityOf<keyof typeof ENTITY_COLLECTIONS>
+import { is_entity_of, type Entity, type ENTITY_COLLECTIONS, type EntityOf } from './Entity'
 
 export type UseContentOptions = {
 	/**
@@ -41,44 +26,37 @@ export type UseContentOptions = {
 export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(entity: EntityOf<Collection>, options: UseContentOptions) => {
 	const [fields, entries, uploads] = (() => {
 		switch (true) {
-			// library_symbols
-			case 'group' in entity && 'html' in entity: {
+			case is_entity_of(entity, 'library_symbols'): {
 				return [entity.fields(), entity.entries(), LibraryUploads.list()] as const
 			}
 
-			// sites
-			case 'host' in entity: {
+			case is_entity_of(entity, 'sites'): {
 				return [entity.fields(), entity.entries(), entity.uploads()] as const
 			}
 
-			// site_symbols
-			case 'html' in entity: {
+			case is_entity_of(entity, 'site_symbols'): {
 				const site = Sites.one(entity.site)
 				return [entity.fields(), entity.entries(), site?.uploads()] as const
 			}
 
-			// page_types
-			case 'head' in entity: {
+			case is_entity_of(entity, 'page_types'): {
 				const site = Sites.one(entity.site)
 				return [entity.fields(), entity.entries(), site?.uploads()] as const
 			}
 
-			// pages
-			case 'slug' in entity: {
+			case is_entity_of(entity, 'pages'): {
 				const page_type = PageTypes.one(entity.page_type)
 				const site = Sites.one(entity.site)
 				return [page_type?.fields(), entity.entries(), site?.uploads()] as const
 			}
 
-			// page_type_sections
-			case 'page_type' in entity && 'symbol' in entity: {
+			case is_entity_of(entity, 'page_type_sections'): {
 				const symbol = SiteSymbols.one(entity.symbol)
 				const site = symbol && Sites.one(symbol.site)
 				return [symbol?.fields(), entity.entries(), site?.uploads()] as const
 			}
 
-			// page_sections
-			case 'page' in entity && 'symbol' in entity: {
+			case is_entity_of(entity, 'page_sections'): {
 				const symbol = SiteSymbols.one(entity.symbol)
 				const site = symbol && Sites.one(symbol.site)
 				return [symbol?.fields(), entity.entries(), site?.uploads()] as const
@@ -499,32 +477,25 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 export const useEntries = (entity: Entity, field: Field, parentEntry?: Entry) => {
 	const entries = (() => {
 		switch (true) {
-			// library_symbols
-			case 'group' in entity && 'html' in entity:
+			case is_entity_of(entity, 'library_symbols'):
 				return entity.entries()
 
-			// sites
-			case 'host' in entity:
+			case is_entity_of(entity, 'sites'):
 				return entity.entries()
 
-			// site_symbols
-			case 'html' in entity:
+			case is_entity_of(entity, 'site_symbols'):
 				return entity.entries()
 
-			// page_types
-			case 'head' in entity:
+			case is_entity_of(entity, 'page_types'):
 				return entity.entries()
 
-			// pages
-			case 'slug' in entity:
+			case is_entity_of(entity, 'pages'):
 				return entity.entries()
 
-			// page_type_sections
-			case 'page_type' in entity && 'symbol' in entity:
+			case is_entity_of(entity, 'page_type_sections'):
 				return entity.entries()
 
-			// page_sections
-			case 'page' in entity && 'symbol' in entity:
+			case is_entity_of(entity, 'page_sections'):
 				return entity.entries()
 
 			default:

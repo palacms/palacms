@@ -10,10 +10,10 @@
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte'
 	import type { Page } from '$lib/common/models/Page'
 	import { self } from '$lib/pocketbase/managers'
-	import { fade } from 'svelte/transition'
 	import { flip } from 'svelte/animate'
 	import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import { attachClosestEdge, extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
+	import { useCopyEntries } from '$lib/workers/CopyEntries.svelte'
 
 	let hover_position = $state<string | null>(null)
 
@@ -65,42 +65,41 @@
 	const all_pages = $derived(site.pages() ?? [])
 	const root_pages = $derived(homepage?.children() || [])
 
-	// WORKAROUND: For some reason Svelte does not track all_pages if it's not a dependency for an effect.
-	// maybe putting site in context fixes this?
-	// $effect(() => {
-	// 	all_pages
-	// })
-
 	let creating_page = $state(false)
 	let building_page = $state(false)
 	let building_page_name = $state('')
 	let new_page = $state<ObjectOf<typeof Pages>>()
 	let new_page_page_type = $derived(new_page && PageTypes.one(new_page.page_type))
 	let new_page_page_type_sections = $derived(new_page_page_type?.sections())
-	let new_page_page_type_section_entries = $derived(new_page_page_type_sections?.every((section) => section.entries()) && new_page_page_type_sections?.flatMap((section) => section.entries() ?? []))
-	let new_page_page_type_entries = $derived(new_page_page_type?.entries())
 
-	// Copy page type entries and sections to new page
+	const copy_page_type_entries = $derived(useCopyEntries([new_page_page_type]))
+	const copy_page_type_section_entries = $derived(useCopyEntries(new_page_page_type_sections))
+
+	// Copy page type entries
+	let copying_page_type_entries: 'no' | 'working' | 'done' = $state('no')
 	$effect(() => {
-		if (!new_page || !new_page_page_type_sections || !new_page_page_type_section_entries || !new_page_page_type_entries) {
+		if (!new_page || !new_page_page_type || !copy_page_type_entries || copying_page_type_entries !== 'no') {
 			return
 		}
 
-		building_page = true
-
-		// Copy page type entries to page entries (field values)
-		const page_type_root_entries = new_page_page_type_entries.filter((e) => !e.parent)
-		for (const pte of page_type_root_entries) {
-			PageEntries.create({
-				page: new_page.id,
-				field: pte.field,
-				locale: pte.locale,
-				value: pte.value,
-				index: pte.index
+		copying_page_type_entries = 'working'
+		copy_page_type_entries
+			.run(new_page_page_type, new_page)
+			.then(() => {
+				copying_page_type_entries = 'done'
 			})
+			.catch((error) => console.error(error))
+	})
+
+	// Copy page type sections to new page
+	let copying_page_type_section_entries: 'no' | 'working' | 'done' = $state('no')
+	$effect(() => {
+		if (!new_page || !new_page_page_type_sections || !copy_page_type_section_entries || copying_page_type_section_entries !== 'no' || copying_page_type_entries !== 'done') {
+			return
 		}
 
-		// Copy page sections
+		copying_page_type_section_entries = 'working'
+		let promise = Promise.resolve()
 		for (const pts of new_page_page_type_sections) {
 			// Skip header and footer sections - these are handled at the site level
 			if (pts.zone === 'header' || pts.zone === 'footer') {
@@ -112,29 +111,30 @@
 				symbol: pts.symbol,
 				index: pts.index
 			})
-
-			// Find and copy only root-level entries (parent = null/empty)
-			const page_type_section_entries = new_page_page_type_section_entries.filter((e) => !e.parent).filter((e) => e.section === pts.id)
-			for (const ptse of page_type_section_entries) {
-				PageSectionEntries.create({
-					section: page_section.id,
-					field: ptse.field,
-					locale: ptse.locale,
-					value: ptse.value,
-					index: ptse.index
-				})
-			}
+			promise = promise.then(() => copy_page_type_section_entries.run(pts, page_section))
 		}
 
-		new_page = undefined
-		self.commit()
-		building_page = false
+		promise
+			.then(async () => {
+				copying_page_type_section_entries = 'done'
+			})
+			.catch((error) => console.error(error))
 	})
 
-	/**
-	 * Create a page and copy all page type entries and sections to it
-	 * Note: Only copies root-level entries for now, nested entries are handled on-demand
-	 */
+	$effect(() => {
+		if (building_page && copying_page_type_entries === 'done' && copying_page_type_section_entries === 'done') {
+			new_page = undefined
+			self
+				.commit()
+				.catch((error) => console.error(error))
+				.finally(() => {
+					building_page = false
+					copying_page_type_entries = 'no'
+					copying_page_type_section_entries = 'no'
+				})
+		}
+	})
+
 	async function create_page_with_sections(page_data: Omit<Page, 'id' | 'index'>) {
 		// Get existing siblings and find the max index
 		const sibling_pages = all_pages.filter((page) => page.parent === page_data.parent)
@@ -172,7 +172,7 @@
 	{#if creating_page}
 		<div class="p-2 bg-[var(--primo-color-black)]">
 			<PageForm
-				oncreate={async (new_page: Omit<Page, 'id' | 'parent' | 'site' | 'index'>) => {
+				oncreate={async (new_page: any) => {
 					creating_page = false
 					const url_taken = all_pages.some((page) => page?.slug === new_page.slug && page.parent === homepage.id)
 					if (url_taken) {

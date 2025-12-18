@@ -2,7 +2,7 @@
 	import { watch } from 'runed'
 	import { loadIcon, buildIcon } from '@iconify/svelte'
 	import IconPicker from '../components/IconPicker.svelte'
-	import type { Entity } from '$lib/Content.svelte'
+	import type { Entity } from '$lib/Entity'
 	import type { Field } from '$lib/common/models/Field'
 	import type { Entry } from '$lib/common/models/Entry'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'

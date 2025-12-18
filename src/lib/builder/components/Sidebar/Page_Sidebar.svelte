@@ -156,7 +156,7 @@
 	{/if}
 	{#if $current_user?.siteRole === 'developer'}
 		<Button
-			class="mt-2"
+			class="py-3 mt-2"
 			size="sm"
 			variant="outline"
 			onclick={() => {
