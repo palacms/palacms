@@ -184,7 +184,7 @@
 								<Sidebar.MenuButton {...props} size="lg" class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground md:h-8 md:p-0">
 									<Avatar.Root class="h-8 w-8 rounded-lg">
 										{#if $current_user?.avatar}
-											{@const user_avatar = `${self.instance.baseURL}/api/files/collaborators/${$current_user.id}/${$current_user.avatar}`}
+											{@const user_avatar = `${self.instance?.baseURL}/api/files/collaborators/${$current_user.id}/${$current_user.avatar}`}
 											<Avatar.Image src={user_avatar} alt={$current_user.name} />
 										{/if}
 										<Avatar.Fallback class="rounded-lg uppercase">{($current_user?.name || $current_user?.email || '').slice(0, 2).toUpperCase()}</Avatar.Fallback>
@@ -202,7 +202,7 @@
 								<div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
 									<Avatar.Root class="h-10 w-10 rounded-lg">
 										{#if $current_user?.avatar}
-											{@const user_avatar = `${self.instance.baseURL}/api/files/collaborators/${$current_user.id}/${$current_user.avatar}`}
+											{@const user_avatar = `${self.instance?.baseURL}/api/files/collaborators/${$current_user.id}/${$current_user.avatar}`}
 											<Avatar.Image src={user_avatar} alt={$current_user?.name} />
 										{/if}
 										<Avatar.Fallback class="rounded-lg uppercase">{($current_user?.name || $current_user?.email || '').slice(0, 2).toUpperCase()}</Avatar.Fallback>
@@ -216,7 +216,7 @@
 							<DropdownMenu.Separator />
 							<DropdownMenu.Item
 								onclick={async () => {
-									self.instance.authStore.clear()
+									self.instance?.authStore.clear()
 									await goto('/admin/auth')
 								}}
 							>

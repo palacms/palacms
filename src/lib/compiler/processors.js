@@ -19,15 +19,17 @@ const COMPILED_COMPONENTS_CACHE = new Map()
  * @param {"injected" | "external"} [options.css] - Indicates whether to include CSS in the JavaScript bundle.
  * @param {string} [options.format='esm'] - The module format to use, such as 'esm' for ES Modules.
  * @param {boolean} [options.dev_mode=false] - Whether Svelte should be compiled in dev mode (i.e. attaches LOC for inspecting) or not
+ * @param {string[]} [options.runtime=[]] - Svelte runtime functions to include in bundle (eg. mount, unmount, hydrate).
  * @returns {Promise<Object>} Returns a payload containing the rendered HTML, CSS, JS, and other relevant data.
  * @throws {Error} Throws an error if the compilation or rendering fails.
  */
-export async function html({ component, head, buildStatic = true, css = 'external', format = 'esm', dev_mode = false }) {
+export async function html({ component, head, buildStatic = true, css = 'external', format = 'esm', dev_mode = false, runtime = [] }) {
 	let cache_key
 	if (!buildStatic) {
 		cache_key = JSON.stringify({
 			component,
-			format
+			format,
+			runtime
 		})
 		if (COMPILED_COMPONENTS_CACHE.has(cache_key)) {
 			return COMPILED_COMPONENTS_CACHE.get(cache_key)
@@ -46,23 +48,27 @@ export async function html({ component, head, buildStatic = true, css = 'externa
 			buildStatic,
 			css,
 			format,
-			dev_mode
+			dev_mode,
+			runtime
 		})
 	} catch (e) {
-		// swallow logging here; callers handle error state
+		console.error('Rollup worker error:', e)
 		res = {
-			error: e.toString()
+			error: e instanceof Error ? e.message : String(e)
 		}
 	}
 
 	let payload
 
 	if (!res) {
+		console.error('Compilation failed: No response from rollup worker')
 		payload = {
-			html: '<h1 style="text-align: center">could not render</h1>'
+			html: '<h1 style="text-align: center">could not render</h1>',
+			error: 'No response from rollup worker'
 		}
 		res = {}
 	} else if (res.error) {
+		console.error('Compilation error from rollup worker:', res.error)
 		payload = {
 			error: escapeHtml(res.error)
 		}
@@ -97,10 +103,13 @@ export async function html({ component, head, buildStatic = true, css = 'externa
 				js: res.dom
 			}
 		} catch (e) {
+			console.error('Svelte render error:', e)
+			const error_msg = e instanceof Error ? e.message : String(e)
 			payload = {
 				head: '',
 				body: '',
-				js: ''
+				js: '',
+				error: `Render error: ${error_msg}`
 			}
 		}
 	} else {
@@ -124,16 +133,50 @@ export async function css(raw) {
 	if (cssMap.has(raw)) {
 		return { css: cssMap.get(raw) }
 	}
-	const processed = await postcss_worker.postMessage({
-		css: raw
-	})
-	if (processed.message) {
+	let payload
+	try {
+		payload = await postcss_worker.postMessage({
+			css: raw
+		})
+	} catch (error) {
 		return {
-			error: processed.message
+			error: serializeCssWorkerError(error)
 		}
 	}
-	cssMap.set(raw, processed)
-	return {
-		css: processed
+
+	if (!payload) {
+		return { css: '' }
 	}
+
+	if (payload.error) {
+		return {
+			error: serializeCssWorkerError(payload.error)
+		}
+	}
+
+	const processedCss = typeof payload.css === 'string' ? payload.css : typeof payload === 'string' ? payload : ''
+
+	if (!processedCss) {
+		return { css: '' }
+	}
+
+	cssMap.set(raw, processedCss)
+	return {
+		css: processedCss
+	}
+}
+
+function serializeCssWorkerError(error) {
+	if (!error) return 'Unknown CSS error'
+	if (typeof error === 'string') return error
+
+	const name = error.name || 'CssError'
+	const reason = error.reason || error.message || String(error)
+	const line = error.line || error?.input?.line
+	const column = error.column || error?.input?.column
+	const location = line || column ? ` (line ${line ?? '?'}${column ? `, column ${column}` : ''})` : ''
+
+	let message = `${name}: ${reason}${location}`
+
+	return message
 }

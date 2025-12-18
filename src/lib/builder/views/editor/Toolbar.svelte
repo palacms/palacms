@@ -4,14 +4,14 @@
 	import { find as _find } from 'lodash-es'
 	import Icon from '@iconify/svelte'
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu'
-	import { LayoutTemplate, Trash2, ChevronDown } from 'lucide-svelte'
+	import { ChevronDown } from 'lucide-svelte'
 	import ToolbarButton from './ToolbarButton.svelte'
 	import { PalaButton } from '$lib/builder/components/buttons'
 	import { mod_key_held } from '$lib/builder/stores/app/misc'
 	import { onNavigate, goto } from '$app/navigation'
 	import * as Avatar from '$lib/components/ui/avatar/index.js'
-	import { page as pageState } from '$app/state'
-	import { Collaborators, Pages, PageTypes, Sites, SiteSymbols, UserActivities } from '$lib/pocketbase/collections'
+	import { page, page as pageState } from '$app/state'
+	import { PageTypes, SiteSnapshots } from '$lib/pocketbase/collections'
 	import { onModKey } from '$lib/builder/utils/keyboard'
 	import * as Popover from '$lib/components/ui/popover/index.js'
 	import SiteEditor from '$lib/builder/views/modal/SiteEditor/SiteEditor.svelte'
@@ -26,6 +26,9 @@
 	import { resolve_page, build_cms_page_url } from '$lib/pages'
 	import { self } from '$lib/pocketbase/managers'
 	import { getUserActivity } from '$lib/UserActivity.svelte'
+	import { useSiteSnapshot } from '$lib/Snapshot.svelte'
+	import { Snapshot } from '$lib/common/models/Snapshot'
+	import { instance } from '$lib/instance'
 
 	let { children }: { children: Snippet } = $props()
 
@@ -42,6 +45,27 @@
 	const publish = $derived(usePublishSite(site?.id))
 	const publish_in_progress = $derived(['loading', 'working'].includes(publish.status))
 
+	const existing_snapshots = $derived(SiteSnapshots.list({ filter: { site: site.id }, sort: '-created' }))
+	const create_snapshot = $derived(useSiteSnapshot({ source_site_id: site?.id }))
+	const snapshot_in_progress = $derived(['loading', 'working'].includes(publish.status))
+
+	async function handle_publish() {
+		await publish.run()
+
+		// Create new snapshot and remove all other ones
+		// TODO: The amount of snapshots could be larger once make UI for managing and restoring them
+		const snapshots_to_remove = [...(existing_snapshots ?? [])]
+		const snapshot = await create_snapshot.run()
+		SiteSnapshots.create({
+			site: site.id,
+			file: Snapshot.encode(snapshot)
+		})
+		for (const existing_snapshot of snapshots_to_remove) {
+			SiteSnapshots.delete(existing_snapshot.id)
+		}
+		await self.commit()
+	}
+
 	let going_up = $state(false)
 	let going_down = $state(false)
 
@@ -49,8 +73,8 @@
 
 	const pages_at_current_level = $derived.by(() => {
 		if (!active_page || !homepage) return []
-		if (active_page.id === homepage.id || active_page.parent === homepage.id) return [homepage, ...all_pages.filter((p) => p.parent === homepage.id)].sort((a, b) => a.index - b.index) // home page or direct sibling
-		return all_pages.filter((p) => p.parent === active_page?.parent).sort((a, b) => a.index - b.index) // standard children
+		if (active_page.id === homepage.id || active_page.parent === homepage.id) return [homepage, ...all_pages.filter((p) => p.parent === homepage.id)].sort((a, b) => b.index - a.index) // home page or direct sibling (descending order)
+		return all_pages.filter((p) => p.parent === active_page?.parent).sort((a, b) => b.index - a.index) // standard children (descending order)
 	})
 
 	const can_navigate_up = $derived(active_page ? active_page.index > 0 : false)
@@ -138,25 +162,25 @@
 		}
 	}}
 >
-	<Dialog.Content class="z-[999] w-[calc(100vw_-_1rem)] max-w-none h-[calc(100vh_-_1rem)] max-h-none flex flex-col p-4">
+	<Dialog.Content class="z-999 w-[calc(100vw-1rem)] max-w-none h-[calc(100vh-1rem)] max-h-none flex flex-col p-4">
 		<SiteEditor onClose={() => (editing_site = false)} bind:has_unsaved_changes={site_has_unsaved_changes} />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_pages}>
-	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-none flex flex-col p-4">
+	<Dialog.Content class="z-999 max-w-[900px] h-[calc(100vh-1rem)] max-h-none flex flex-col p-4">
 		<SitePages />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_page_types}>
-	<Dialog.Content class="z-[999] max-w-[1200px] h-[calc(100vh_-_1rem)] max-h-none flex flex-col p-4">
+	<Dialog.Content class="z-999 max-w-[900px] h-[calc(100vh-1rem)] max-h-none flex flex-col p-4">
 		<PageTypeModal />
 	</Dialog.Content>
 </Dialog.Root>
 
 <Dialog.Root bind:open={editing_collaborators}>
-	<Dialog.Content class="z-[999] max-w-[600px] flex flex-col p-4">
+	<Dialog.Content class="z-999 max-w-[600px] flex flex-col p-4">
 		<Collaboration {site} />
 	</Dialog.Content>
 </Dialog.Root>
@@ -173,8 +197,8 @@
 	<Dialog.Content class="z-[999] max-w-[500px] flex flex-col p-0">
 		<Deploy
 			bind:stage={publish_stage}
-			publish_fn={publish.run}
-			loading={publish_in_progress}
+			publish_fn={handle_publish}
+			loading={publish_in_progress || snapshot_in_progress}
 			site_host={site?.host}
 			onClose={() => {
 				publishing = false
@@ -305,6 +329,7 @@
 			{#if !$timeline.last}
 				<ToolbarButton id="redo" title="Redo" icon="material-symbols:redo" style="border: 0; font-size: 1.5rem;" on:click={redo_change} />
 			{/if} -->
+			<span class="version-badge">{instance.version}</span>
 			{#if $current_user?.serverRole}
 				<ToolbarButton icon="clarity:users-solid" on:click={() => (editing_collaborators = true)} />
 			{/if}
@@ -432,5 +457,10 @@
 		height: 100%;
 		align-items: center;
 		border-radius: var(--primo-border-radius);
+	}
+
+	.version-badge {
+		font-size: 0.625rem;
+		color: #555;
 	}
 </style>

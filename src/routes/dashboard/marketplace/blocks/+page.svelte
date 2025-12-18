@@ -1,7 +1,6 @@
 <script lang="ts">
 	import * as Popover from '$lib/components/ui/popover'
 	import * as Sidebar from '$lib/components/ui/sidebar'
-	import { processCode } from '$lib/builder/utils.js'
 	import { Separator } from '$lib/components/ui/separator'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Cuboid, CirclePlus, CircleCheck } from 'lucide-svelte'
@@ -58,7 +57,7 @@
 			})
 
 			// Get marketplace fields using pb directly to avoid effect context issues
-			const marketplace_fields = await marketplace.instance.collection('library_symbol_fields').getFullList({
+			const marketplace_fields = await marketplace.instance?.collection('library_symbol_fields').getFullList({
 				filter: `symbol = "${symbolToAdd.id}"`,
 				sort: 'index'
 			})
@@ -93,7 +92,7 @@
 				const field_ids = marketplace_fields.map((f) => f.id)
 				const marketplace_entries =
 					field_ids.length > 0
-						? await marketplace.instance.collection('library_symbol_entries').getFullList({
+						? await marketplace.instance?.collection('library_symbol_entries').getFullList({
 								filter: field_ids.map((id) => `field = "${id}"`).join(' || '),
 								sort: 'index'
 							})

@@ -11,7 +11,7 @@ import RepeaterField from './RepeaterField.svelte'
 import GroupField from './GroupField.svelte'
 import TextField from './TextField.svelte'
 import IconField from './IconField.svelte'
-// import Date from './Date.svelte'
+import Date from './Date.svelte'
 import Slider from './Slider.svelte'
 // import Data from './Data.svelte'
 import PageFieldField from './PageFieldField.svelte'
@@ -77,11 +77,6 @@ export default [
 		component: URL
 	},
 	// {
-	// 	id: 'date',
-	// 	label: 'Date',
-	// 	component: Date
-	// },
-	// {
 	// 	id: 'data',
 	// 	icon: 'majesticons:data',
 	// 	label: 'Site Data',
@@ -116,6 +111,12 @@ export default [
 		icon: 'formkit:number',
 		label: 'Number',
 		component: Number
+	},
+	{
+		id: 'date',
+		icon: 'formkit:date',
+		label: 'Date',
+		component: Date
 	},
 	{
 		id: 'slider',

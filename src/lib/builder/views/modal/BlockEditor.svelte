@@ -9,7 +9,7 @@
 	import LargeSwitch from '$lib/builder/ui/LargeSwitch.svelte'
 	import { PaneGroup, Pane, PaneResizer } from 'paneforge'
 	import FullCodeEditor from './SectionEditor/FullCodeEditor.svelte'
-	import ComponentPreview, { has_error } from '$lib/builder/components/ComponentPreview.svelte'
+	import ComponentPreview, { has_error, refresh_preview } from '$lib/builder/components/ComponentPreview.svelte'
 	import Fields, { setFieldEntries } from '$lib/builder/components/Fields/FieldsContent.svelte'
 	import { locale } from '$lib/builder/stores/app/misc.js'
 	import { watch } from 'runed'
@@ -52,7 +52,7 @@
 		symbol_type?: 'site' | 'library'
 	} = $props()
 
-	if (existing_block) {
+	if (existing_block && symbol_type === 'site') {
 		setUserActivity({ site_symbol: existing_block.id })
 	}
 
@@ -115,7 +115,6 @@
 				css,
 				js
 			})
-			console.log('updating')
 			await self.commit()
 			// Reset baselines after successful save
 			initial_code = { html, css, js }
@@ -185,7 +184,7 @@
 	<PaneGroup direction={$orientation} class="flex">
 		<Pane defaultSize={50} class="p-1">
 			{#if tab === 'code'}
-				<FullCodeEditor bind:html bind:css bind:js data={component_data} storage_key={block?.id} on:save={save_component} on:mod-e={toggle_tab} />
+				<FullCodeEditor bind:html bind:css bind:js data={component_data} storage_key={block?.id} on:save={save_component} on:mod-e={toggle_tab} on:mod-r={() => $refresh_preview()} />
 			{:else if tab === 'content' && fields}
 				<Fields
 					entity={block}
@@ -229,7 +228,7 @@
 		</Pane>
 		<PaneResizer class="PaneResizer" />
 		<Pane defaultSize={50}>
-			<ComponentPreview id={block.id} bind:orientation={$orientation} view="small" {loading} {code} data={component_data} head={$site_html} />
+			<ComponentPreview id={block.id} bind:orientation={$orientation} view="small" {loading} {code} data={component_data} {fields} head={$site_html} />
 		</Pane>
 	</PaneGroup>
 </main>

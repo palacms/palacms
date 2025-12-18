@@ -24,6 +24,7 @@ import { SiteRoleAssignment } from './SiteRoleAssignment'
 import { SiteUpload } from './SiteUpload'
 import { LibraryUpload } from './LibraryUpload'
 import { UserActivity } from './UserActivity'
+import { SiteSnapshot } from './SiteSnapshot'
 
 /**
  * Model for each collection. Used in a PocketBase hook to validate records.
@@ -54,5 +55,6 @@ export const models = {
 	site_symbol_fields: SiteSymbolField,
 	site_symbols: SiteSymbol,
 	site_uploads: SiteUpload,
+	site_snapshots: SiteSnapshot,
 	sites: Site
 } satisfies Record<string, import('zod').ZodType>

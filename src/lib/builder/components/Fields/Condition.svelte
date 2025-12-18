@@ -40,7 +40,7 @@
 				}
 				dispatch_update({ field: field_id, value: default_value })
 			}}
-			value={condition.field}
+			value={condition?.field}
 			options={comparable_fields.map((f) => ({
 				icon: $fieldTypes.find((t) => t.id === f.type).icon,
 				label: f.label,
@@ -49,20 +49,20 @@
 			}))}
 		/>
 		<!-- Comparison -->
-		<UI.Select on:input={({ detail: comparison }) => dispatch_update({ comparison })} value={condition.comparison} options={comparisons} />
+		<UI.Select on:input={({ detail: comparison }) => dispatch_update({ comparison })} value={condition?.comparison} options={comparisons} />
 		<!-- Value -->
 		{#if field_to_compare?.type === 'select'}
-			<UI.Select fullwidth={true} value={condition.value} on:input={({ detail: value }) => dispatch_update({ value })} options={field_to_compare.config?.options || []} />
+			<UI.Select fullwidth={true} value={condition?.value} on:input={({ detail: value }) => dispatch_update({ value })} options={field_to_compare.config?.options || []} />
 		{:else if field_to_compare?.type === 'switch'}
 			<UI.Toggle
-				toggled={condition.value}
+				toggled={condition?.value}
 				hideLabel={true}
 				on:toggle={({ detail }) => {
 					dispatch_update({ value: detail })
 				}}
 			/>
 		{:else}
-			<UI.TextInput placeholder="Value" value={condition.value || ''} oninput={(value) => dispatch_update({ value })} />
+			<UI.TextInput placeholder="Value" value={condition?.value || ''} oninput={(value) => dispatch_update({ value })} />
 		{/if}
 		<!-- Delete -->
 		<button class="delete" onclick={delete_condition}>

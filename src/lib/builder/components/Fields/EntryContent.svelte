@@ -101,7 +101,10 @@
 	{#if $current_user?.siteRole === 'developer'}
 		<div class="hidden-field">
 			<EyeOff size="14" />
-			<span>This Page Field isn’t available on this page type and is hidden from content editors.</span>
+			<span>
+				<strong>{field.label}</strong>
+				isn't available on this page type and is hidden from content editors.
+			</span>
 		</div>
 	{/if}
 {:else if is_visible}
@@ -123,10 +126,13 @@
 		<Field_Component {entity} {field} {fields} {entries} {entry} {level} {onchange} {ondelete} {parent} />
 	</Card>
 {:else if $current_user?.siteRole === 'developer' && !is_visible}
-	<div class="hidden-field">
+	<!-- <div class="hidden-field">
 		<EyeOff size="14" />
-		<span>This field will be hidden from content editors</span>
-	</div>
+		<span>
+			<strong>{field.label}</strong>
+			 will be hidden from content editors
+		</span>
+	</div> -->
 {/if}
 
 <style>

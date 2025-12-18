@@ -24,7 +24,7 @@
 
 	let creating_site = $state(false)
 	$effect(() => {
-		if (!creating_site && sites?.length === 0 && self.instance.authStore.isValid) {
+		if (!creating_site && sites?.length === 0 && self.instance?.authStore.isValid) {
 			creating_site = true
 		}
 	})
@@ -35,7 +35,6 @@
 {#if creating_site && $current_user}
 	<CreateSite
 		oncreated={() => {
-			self.lists.clear()
 			creating_site = false
 		}}
 	/>

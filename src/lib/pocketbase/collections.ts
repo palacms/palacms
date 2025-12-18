@@ -19,6 +19,7 @@ import { SiteEntry } from '$lib/common/models/SiteEntry'
 import { SiteField } from '$lib/common/models/SiteField'
 import { SiteGroup } from '$lib/common/models/SiteGroup'
 import { SiteRoleAssignment } from '$lib/common/models/SiteRoleAssignment'
+import { SiteSnapshot } from '$lib/common/models/SiteSnapshot'
 import { SiteSymbol } from '$lib/common/models/SiteSymbol'
 import { SiteSymbolEntry } from '$lib/common/models/SiteSymbolEntry'
 import { SiteSymbolField } from '$lib/common/models/SiteSymbolField'
@@ -297,6 +298,11 @@ export const PageSectionEntries = createCollectionMapping('page_section_entries'
 
 export const SiteUploads = createCollectionMapping('site_uploads', SiteUpload, self, {
 	subscribe: true,
+	links: {}
+})
+
+export const SiteSnapshots = createCollectionMapping('site_snapshots', SiteSnapshot, self, {
+	subscribe: false,
 	links: {}
 })
 

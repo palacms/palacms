@@ -21,6 +21,7 @@
 	 * @property {string} [variant]
 	 * @property {boolean} [fullwidth]
 	 * @property {boolean} [loading]
+	 * @property {boolean} [disable_auto_highlight]
 	 */
 
 	/** @type {Props} */
@@ -34,7 +35,8 @@
 		placement = 'bottom-start',
 		variant = 'small',
 		fullwidth = false,
-		loading = false
+		loading = false,
+		disable_auto_highlight = false
 	} = $props()
 
 	const [popperRef, popperContent] = createPopperActions({
@@ -88,6 +90,9 @@
 	let manually_selected = $state(false) // or manual set
 	let last_value = $state(value)
 	function highlight_button(val) {
+		if (disable_auto_highlight) {
+			return
+		}
 		if (disable_highlight) {
 			disable_highlight = false
 			return

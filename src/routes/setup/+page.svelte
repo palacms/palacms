@@ -15,8 +15,8 @@
 	let error = $state('')
 	const is_form_valid = $derived(email.trim() !== '' && password.length >= 8 && confirm_password !== '' && password === confirm_password)
 
-	const users = self.instance.collection('users')
-	const superusers = self.instance.collection('_superusers')
+	const users = self.instance?.collection('users')
+	const superusers = self.instance?.collection('_superusers')
 
 	// Check if setup is already complete and redirect if so
 	$effect(() => {

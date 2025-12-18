@@ -7,7 +7,7 @@
 	import * as Dialog from '$lib/components/ui/dialog'
 	import { Input } from '$lib/components/ui/input'
 	import MenuPopup from '../../ui/Dropdown.svelte'
-	import { locale } from '../../stores/app/misc'
+	import { locale, mod_key_held } from '../../stores/app/misc'
 	import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 	import IFrame from '../../components/IFrame.svelte'
 	import { createEventDispatcher, onMount } from 'svelte'
@@ -241,43 +241,65 @@
 		</div>
 		{#if controls_enabled}
 			<div class="symbol-options">
-				{#if show_toggle}
-					<Toggle label="Toggle Symbol for Page Type" disabled={!!component_error} hideLabel={true} {toggled} small={true} on:toggle />
-				{/if}
-				<MenuPopup
-					icon="carbon:overflow-menu-vertical"
-					options={[
-						{
-							label: 'Edit',
-							icon: 'material-symbols:code',
-							on_click: () => {
-								dispatch('edit')
-							}
-						},
-						{
-							label: 'Export',
-							icon: 'material-symbols:download',
-							on_click: () => {
-								export_symbol()
-							}
-						},
-						{
-							label: 'Rename',
-							icon: 'clarity:edit-solid',
-							on_click: () => {
+				{#if $mod_key_held}
+					<div class="overlay-actions">
+						<button onclick={() => dispatch('edit')}>
+							<Icon icon="material-symbols:code" />
+						</button>
+						<button onclick={() => export_symbol()}>
+							<Icon icon="material-symbols:download" />
+						</button>
+						<button
+							onclick={() => {
 								new_name = symbol.name
 								renaming = true
+							}}
+						>
+							<Icon icon="material-symbols:edit" />
+						</button>
+						<button class="delete" onclick={() => dispatch('delete')}>
+							<Icon icon="ic:outline-delete" />
+						</button>
+					</div>
+				{:else}
+					{#if show_toggle}
+						<Toggle label="Toggle Symbol for Page Type" disabled={!!component_error} hideLabel={true} {toggled} small={true} on:toggle />
+					{/if}
+					<MenuPopup
+						icon="carbon:overflow-menu-vertical"
+						options={[
+							{
+								label: 'Edit',
+								icon: 'material-symbols:code',
+								on_click: () => {
+									dispatch('edit')
+								}
+							},
+							{
+								label: 'Export',
+								icon: 'material-symbols:download',
+								on_click: () => {
+									export_symbol()
+								}
+							},
+							{
+								label: 'Rename',
+								icon: 'material-symbols:edit',
+								on_click: () => {
+									new_name = symbol.name
+									renaming = true
+								}
+							},
+							{
+								label: 'Delete',
+								icon: 'ic:outline-delete',
+								on_click: () => {
+									dispatch('delete')
+								}
 							}
-						},
-						{
-							label: 'Delete',
-							icon: 'ic:outline-delete',
-							on_click: () => {
-								dispatch('delete')
-							}
-						}
-					]}
-				/>
+						]}
+					/>
+				{/if}
 			</div>
 		{/if}
 	</header>
@@ -346,6 +368,37 @@
 				:global(svg) {
 					height: 1rem;
 					width: 1rem;
+				}
+
+				.overlay-actions {
+					display: flex;
+					gap: 0.25rem;
+
+					button {
+						font-size: 15px;
+						padding: 7px;
+						border-radius: 0.25rem;
+						transition: 0.1s;
+						border: 1px solid transparent;
+						outline: 0;
+
+						&:hover {
+							background: var(--color-gray-8);
+						}
+
+						&:focus-visible {
+							border-color: var(--pala-primary-color);
+							outline: 0;
+						}
+					}
+
+					button.delete {
+						color: var(--primo-color-danger);
+						&:hover {
+							color: white;
+							background: var(--primo-color-danger);
+						}
+					}
 				}
 			}
 		}

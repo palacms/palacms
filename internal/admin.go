@@ -15,9 +15,19 @@ import (
 var build embed.FS
 
 func RegisterAdminApp(pb *pocketbase.PocketBase) error {
-	appRoot, err := fs.Sub(build, "build")
+	subFs, err := fs.Sub(build, "build")
 	if err != nil {
 		return err
+	}
+
+	buildTime, err := getBuildTime()
+	if err != nil {
+		return err
+	}
+
+	appRoot := &timedFS{
+		FS:           subFs,
+		FixedModTime: buildTime,
 	}
 
 	pb.OnServe().BindFunc(func(serveEvent *core.ServeEvent) error {

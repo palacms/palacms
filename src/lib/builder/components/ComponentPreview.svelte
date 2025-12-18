@@ -13,14 +13,17 @@
 	import { slide, fade } from 'svelte/transition'
 	import { dynamic_iframe_srcdoc } from './misc.js'
 	import { highlightedElement } from '../stores/app/misc'
-	import { Inspect } from 'svelte-inspect-value'
+	import { InspectOptionsProvider, Inspect } from 'svelte-inspect-value'
 	import Icon from '@iconify/svelte'
 	import { content_editable } from '../utilities'
-	import { processCode, processCSS } from '../utils.js'
+	import { processCode, processCSS } from '../utils'
 	import { debounce } from 'lodash-es'
 	import { watch } from 'runed'
 	import { site_html } from '$lib/builder/stores/app/page.js'
-	import _ from 'lodash-es'
+	import { onModKey } from '$lib/builder/utils/keyboard'
+	import * as _ from 'lodash-es'
+	import { browser } from '$app/environment'
+	import { current_user } from '$lib/pocketbase/user'
 
 	/**
 	 * @typedef {Object} Props
@@ -31,6 +34,7 @@
 	 * @property {boolean} [loading]?
 	 * @property {boolean} [hideControls]?
 	 * @property {any} [data]
+	 * @property {Array} [fields]?
 	 * @property {string | null} [head]?
 	 * @property {string} [append]?
 	 */
@@ -43,22 +47,33 @@
 			css: '',
 			js: ''
 		},
-		view = $bindable('small'),
+		view = $bindable<'small' | 'large'>('small'),
 		orientation = $bindable('horizontal'),
 		loading = $bindable(false),
 		hideControls = false,
 		data = undefined,
+		fields = undefined,
 		append = ''
 	} = $props()
 
 	$preview_updated = false
 
-	let compilation_error = $state(null)
+	type PreviewErrorSource = 'compile' | 'runtime' | 'css' | 'unknown'
+	type PreviewError = {
+		detail: string
+		has_details: boolean
+		source: PreviewErrorSource
+		title: string
+	}
+
+	let compilation_error: string | null = $state(null)
+	let error_source: PreviewErrorSource | null = $state(null)
+	let error_token = $state(0)
+	let visible_error: PreviewError | null = $state(null)
 
 	let componentApp = $state(null)
 	let component_mounted = $state(false)
 	let quiet_compile = $state(false)
-	let last_error_html = $state(null)
 	async function compile_component_code() {
 		if (!code || !code.html || !data) return
 		// disable_save = true
@@ -84,26 +99,87 @@
 					js: code.js || '',
 					data
 				},
-				buildStatic: false
+				buildStatic: false,
+				runtime: ['mount', 'unmount']
 			})
 
 			if (error) {
-				// Only update the error if it actually changed to avoid flicker/animations
-				if (error !== last_error_html) {
-					compilation_error = error
-					last_error_html = error
-				}
+				const message = toErrorMessage(error)
+				compilation_error = message
+				error_source = message.startsWith('CSS Error') ? 'css' : 'compile'
+				error_token = error_token + 1
 				$has_error = true
 			} else {
 				componentApp = js
 				compilation_error = null
-				last_error_html = null
+				error_source = null
+				error_token = error_token + 1
 				$has_error = false
 			}
 		}
 	}
 
 	compile_component_code()
+
+	function toErrorMessage(value: unknown) {
+		if (typeof value === 'string') return value
+		if (value && typeof value === 'object') {
+			const maybeMessage = (value as { message?: unknown }).message
+			if (typeof maybeMessage === 'string') {
+				return maybeMessage
+			}
+		}
+		if (value) {
+			return String(value)
+		}
+		return ''
+	}
+
+	function formatErrorTitle(source: PreviewErrorSource | null) {
+		if (source === 'runtime') return 'Runtime error'
+		if (source === 'css') return 'CSS error'
+		if (source === 'compile') return 'Build error'
+		return 'Component error'
+	}
+
+	function decodeHTMLEntities(value: string) {
+		const text = document.createElement('textarea')
+		text.innerHTML = value
+		return text.value
+	}
+
+	function normalizeError(message: string, source: PreviewErrorSource | null): PreviewError {
+		const detail = decodeHTMLEntities(toErrorMessage(message).trim())
+		const has_details = !!detail
+		const baseSource = source ?? 'unknown'
+		return {
+			detail,
+			has_details,
+			source: baseSource,
+			title: formatErrorTitle(baseSource)
+		}
+	}
+
+	const showErrorAfterPause = debounce((payload: { message: unknown; source: PreviewErrorSource | null }) => {
+		const normalizedMessage = toErrorMessage(payload.message)
+		if (!normalizedMessage.trim()) {
+			visible_error = null
+			return
+		}
+		visible_error = normalizeError(normalizedMessage, payload.source)
+	}, 350)
+
+	watch(
+		() => [compilation_error, error_source, error_token] as const,
+		([message, source]) => {
+			if (!message) {
+				showErrorAfterPause.cancel()
+				visible_error = null
+				return
+			}
+			showErrorAfterPause({ message, source })
+		}
+	)
 
 	// Debounce compilation to prevent frequent recompilation during typing
 	const debouncedCompile = debounce(compile_component_code, 100)
@@ -115,8 +191,11 @@
 
 	// Set the refresh_preview store to the debounced compile function
 	$effect(() => {
-		$refresh_preview = debouncedCompile
+		$refresh_preview = setIframeApp
 	})
+
+	// Add Command+R keyboard shortcut to refresh preview
+	onModKey('r', setIframeApp)
 
 	let channel
 	onMount(() => {
@@ -126,15 +205,19 @@
 			if (event === 'INITIALIZED') {
 				iframe_loaded = true
 			} else if (event === 'BEGIN') {
-				// reset log & runtime error
-				consoleLog = null
 				compilation_error = null
+				error_source = null
+				error_token = error_token + 1
 			} else if (event === 'MOUNTED') {
 				component_mounted = true
 			} else if (event === 'SET_CONSOLE_LOGS') {
 				consoleLog = data.payload.logs
 			} else if (event === 'SET_ERROR') {
-				compilation_error = data.payload.error
+				const runtimeError = payload?.error ?? 'Unknown runtime error'
+				compilation_error = toErrorMessage(runtimeError)
+				error_source = 'runtime'
+				error_token = error_token + 1
+				$has_error = true
 			} else if (event === 'SET_ELEMENT_PATH' && payload.loc) {
 				$highlightedElement = payload.loc
 			}
@@ -167,14 +250,28 @@
 		if (/:global/.test(raw_css)) {
 			debouncedCompile()
 		} else {
-			const final_css = await processCSS(raw_css)
-			// remove stale style tag if it exists
-			let styleTags = doc.querySelectorAll('style[id^="svelte-"]')
-			if (styleTags.length > 1) {
-				styleTags[0]!.remove()
-				styleTags[1]!.textContent = final_css
-			} else {
-				styleTags[0]!.textContent = final_css
+			try {
+				const final_css = await processCSS(raw_css)
+				// remove stale style tag if it exists
+				let styleTags = doc.querySelectorAll('style[id^="svelte-"]')
+				if (styleTags.length > 1) {
+					styleTags[0]!.remove()
+					styleTags[1]!.textContent = final_css
+				} else {
+					styleTags[0]!.textContent = final_css
+				}
+				if (error_source === 'css') {
+					compilation_error = null
+					error_source = null
+					error_token = error_token + 1
+					$has_error = false
+				}
+			} catch (error) {
+				const message = toErrorMessage(error)
+				compilation_error = message.startsWith('CSS Error') ? message : `CSS Error: ${message}`
+				error_source = 'css'
+				error_token = error_token + 1
+				$has_error = true
 			}
 		}
 	}
@@ -229,6 +326,7 @@
 	}
 
 	async function setIframeApp() {
+		if (!channel) return
 		channel.postMessage({
 			event: 'SET_APP',
 			payload: { componentApp, data }
@@ -246,7 +344,7 @@
 		const div = iframe?.contentDocument?.querySelector('#page')
 		if (div?.innerHTML === '') {
 			setIframeApp()
-		} else if (iframe_loaded) {
+		} else if (iframe_loaded && channel) {
 			channel.postMessage({
 				event: 'SET_APP_DATA',
 				payload: { data }
@@ -255,6 +353,44 @@
 	}
 
 	let previewWidth = $state()
+
+	// Load saved preference or default to true for developers
+	const saved_block_data_state = browser ? localStorage.getItem('show_block_data') : null
+	let show_block_data = $state(saved_block_data_state !== null ? saved_block_data_state === 'true' : $current_user?.siteRole === 'developer')
+
+	// Save preference when it changes
+	$effect(() => {
+		if (browser) {
+			localStorage.setItem('show_block_data', String(show_block_data))
+		}
+	})
+
+	// Order data keys by field index
+	const ordered_data = $derived(
+		(() => {
+			if (!data || !fields) return data
+
+			// Sort fields by index
+			const sorted_fields = [...fields].sort((a, b) => (a.index || 0) - (b.index || 0))
+
+			// Create new object with keys in field order
+			const ordered = {}
+			for (const field of sorted_fields) {
+				if (field.key && data.hasOwnProperty(field.key)) {
+					ordered[field.key] = data[field.key]
+				}
+			}
+
+			// Add any remaining keys not in fields
+			for (const key in data) {
+				if (!ordered.hasOwnProperty(key)) {
+					ordered[key] = data[key]
+				}
+			}
+
+			return ordered
+		})()
+	)
 
 	const static_widths = {
 		phone: 300,
@@ -315,11 +451,27 @@
 	)
 
 	let last_data = _.cloneDeep(data)
+	let last_data_keys = Object.keys(data || {})
+		.sort()
+		.join(',')
 	watch(
 		() => data,
 		(data) => {
 			if (!data || _.isEqual(last_data, data)) return
-			setIframeData()
+
+			// Check if new fields have been added (new keys in data object)
+			const current_keys = Object.keys(data).sort().join(',')
+			const fields_added = current_keys !== last_data_keys
+
+			if (fields_added) {
+				// New fields detected - need to recompile to include them in props
+				last_data_keys = current_keys
+				debouncedCompile()
+			} else {
+				// Just data values changed - update iframe data
+				setIframeData()
+			}
+
 			last_data = _.cloneDeep(data)
 		}
 	)
@@ -332,10 +484,40 @@
 </script>
 
 <div class="code-preview">
-	{#if compilation_error}
-		<pre transition:slide|local={{ duration: 100 }} class="error-container">
-      {@html compilation_error}
-    </pre>
+	{#if visible_error}
+		<div transition:slide|local={{ duration: 120 }} class="error-panel" role="alert" aria-live="polite">
+			<div class="error-header">
+				<span class="error-icon">
+					<Icon icon="mdi:alert-circle-outline" height="1.25rem" />
+				</span>
+				<div class="error-text">
+					<span class="error-title">{visible_error.title}</span>
+				</div>
+			</div>
+			{#if visible_error?.has_details}
+				<div class="error-body">
+					<code>{visible_error?.detail}</code>
+				</div>
+			{/if}
+		</div>
+	{/if}
+
+	{#if $current_user?.siteRole === 'developer' && data && Object.keys(data).length > 0}
+		<div class="block-data">
+			<button class="block-data-header" onclick={() => (show_block_data = !show_block_data)}>
+				<div class="chevron" class:rotated={show_block_data}>
+					<Icon icon="lucide:chevron-right" height="1rem" />
+				</div>
+				<span>Block Data</span>
+			</button>
+			{#if show_block_data}
+				<div class="block-data-content" transition:slide|local={{ duration: 100 }}>
+					<InspectOptionsProvider options={{ theme: 'dark', borderless: true, noanimate: true, showTools: false }}>
+						<Inspect.Values {...ordered_data} />
+					</InspectOptionsProvider>
+				</div>
+			{/if}
+		</div>
 	{/if}
 
 	{#if consoleLog}
@@ -415,10 +597,92 @@
 		display: flex;
 		flex-direction: column;
 
-		.error-container {
+		.error-panel {
+			background: var(--color-gray-9);
+			border: 1px solid var(--primo-color-danger);
 			color: var(--primo-color-white);
-			background: var(--primo-color-danger);
+			display: flex;
+			flex-direction: column;
+			gap: 0.75rem;
+			padding: 0.75rem 0.875rem;
+		}
+
+		.error-header {
+			display: flex;
+			align-items: flex-start;
+			gap: 0.75rem;
+		}
+
+		.error-icon {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: var(--primo-color-white);
+			flex-shrink: 0;
+		}
+
+		.error-text {
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+			min-width: 0;
+		}
+
+		.error-title {
+			font-weight: 600;
+			letter-spacing: 0.01em;
+			text-transform: capitalize;
+		}
+
+		.error-body {
+			background: rgba(0, 0, 0, 0.25);
+			border-radius: 0.5rem;
+			padding: 0.75rem;
+			max-height: 18rem;
+			overflow: auto;
+			font-size: 0.85rem;
+			line-height: 1.4;
+		}
+
+		.error-body code {
+			display: block;
+			white-space: pre-wrap;
+			word-break: break-word;
+		}
+
+		.block-data {
+			background: var(--color-gray-9);
+			border-bottom: 1px solid var(--color-gray-8);
+		}
+
+		.block-data-header {
+			display: flex;
+			align-items: center;
+			width: 100%;
+			gap: 0.25rem;
 			padding: 5px;
+			background: var(--color-gray-9);
+			color: #eee;
+			font-size: 0.675rem;
+			cursor: pointer;
+			transition: var(--transition-colors);
+
+			&:hover {
+				background: var(--color-gray-8);
+			}
+
+			.chevron {
+				display: flex;
+				align-items: center;
+				transition: transform 0.1s;
+			}
+
+			.chevron.rotated {
+				transform: rotate(90deg);
+			}
+		}
+
+		.block-data-content {
 		}
 
 		.logs {

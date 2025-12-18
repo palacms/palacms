@@ -27,7 +27,7 @@
 			if (!site) return
 
 			// Delete all pages belonging to this page type (no cascade on pages.page_type)
-			const pages = await pb.instance.collection('pages').getFullList({ filter: `page_type = \"${page_type.id}\" && site = \"${site.id}\"` })
+			const pages = (await pb.instance?.collection('pages').getFullList({ filter: `page_type = \"${page_type.id}\" && site = \"${site.id}\"` })) ?? []
 
 			for (const p of pages) {
 				Pages.delete(p.id)

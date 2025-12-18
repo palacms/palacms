@@ -1,16 +1,31 @@
 package internal
 
 import (
-	"os"
+	"time"
 
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/security"
 )
 
+var buildTime string
+var buildVersion string
+
+// Get build time
+func getBuildTime() (time.Time, error) {
+	if buildTime == "" {
+		return time.Now(), nil
+	}
+
+	return time.Parse(time.RFC3339, buildTime)
+}
+
 // Get version
-func getVersion() string {
-	return os.Getenv("PALA_VERSION") // or unknown
+func getBuildVersion() string {
+	if buildVersion == "" {
+		return "dev"
+	}
+	return buildVersion
 }
 
 // Get or create unique instance ID
@@ -46,6 +61,11 @@ func getInstanceId(pb *pocketbase.PocketBase) (string, error) {
 	return instanceId, nil
 }
 
+func RegisterVersion(pb *pocketbase.PocketBase) error {
+	pb.RootCmd.Version = getBuildVersion()
+	return nil
+}
+
 func RegisterInfoEndpoint(pb *pocketbase.PocketBase) error {
 	pb.OnServe().BindFunc(func(serveEvent *core.ServeEvent) error {
 		serveEvent.Router.GET("/api/palacms/info", func(requestEvent *core.RequestEvent) error {
@@ -54,19 +74,28 @@ func RegisterInfoEndpoint(pb *pocketbase.PocketBase) error {
 				return err
 			}
 
-			version := getVersion()
+			version := getBuildVersion()
 			telemetryEnabled := isUsageStateEnabled()
 			smtpEnabled := pb.Settings().SMTP.Enabled
+
+			batchConfig := pb.Settings().Batch
+			batchCount := batchConfig.MaxRequests
+			if !batchConfig.Enabled {
+				batchCount = 0
+			}
+
 			return requestEvent.JSON(200, struct {
 				Id               string `json:"id"`
 				Version          string `json:"version"`
 				TelemetryEnabled bool   `json:"telemetry_enabled"`
 				SMTPEnabled      bool   `json:"smtp_enabled"`
+				BatchCount       int    `json:"batch_count"`
 			}{
 				Id:               id,
 				Version:          version,
 				TelemetryEnabled: telemetryEnabled,
 				SMTPEnabled:      smtpEnabled,
+				BatchCount:       batchCount,
 			})
 		})
 

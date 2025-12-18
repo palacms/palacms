@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Tell us about something broken in PalaCMS
+about: Tell us about something broken in Pala
 title: ''
 labels: ''
 assignees: ''

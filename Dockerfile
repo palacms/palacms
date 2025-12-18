@@ -15,6 +15,7 @@ FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS go-builder
 # These arguments can be overridden on build
 ARG TARGETOS
 ARG TARGETARCH
+ARG PALA_VERSION
 
 # Copy all the files that are not in .dockerignore
 COPY . /app
@@ -25,13 +26,14 @@ COPY --from=node-builder /app/internal/build /app/internal/build
 COPY --from=node-builder /app/internal/common /app/internal/common
 
 # Build executable
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o palacms
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH \
+  go build -o palacms -ldflags "\
+    -X 'github.com/palacms/palacms/internal.buildTime=$(date --utc -Iseconds)'\
+    -X 'github.com/palacms/palacms/internal.buildVersion=$PALA_VERSION'\
+  "
 
 FROM alpine:3 AS runtime
 
-ARG PALA_VERSION
-
-ENV PALA_VERSION=${PALA_VERSION}
 ENV PALA_SUPERUSER_EMAIL=
 ENV PALA_SUPERUSER_PASSWORD=
 ENV PALA_USER_EMAIL=

@@ -54,6 +54,7 @@ docker run -d -p 8080:8080 -v palacms-data:/app/pb_data ghcr.io/palacms/palacms:
 
 **[See full deployment guide →](https://docs.palacms.com/getting-started/installation)**
 
+
 ## Community
 
 - **[GitHub Issues](https://github.com/palacms/palacms/issues)** - Report bugs or request features

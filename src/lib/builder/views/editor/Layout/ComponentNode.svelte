@@ -96,7 +96,8 @@
 				js: block.js,
 				data: safeData
 			},
-			buildStatic: false
+			buildStatic: false,
+			runtime: ['mount', 'unmount']
 		})
 
 		if (res.error) {
@@ -603,7 +604,7 @@
 	})
 
 	function update_menu_positions() {
-		if (!node.contentDocument) return
+		if (!node?.contentDocument) return
 		if (editing_link || editing_image || editing_video) {
 			hide_menus()
 			return
@@ -839,7 +840,7 @@
 						// Get upload URL from the upload record
 						const upload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
 						if (upload) {
-							const baseURL = self.instance.baseURL
+							const baseURL = self.instance?.baseURL
 							const collection = site ? 'site_uploads' : 'library_uploads'
 
 							// Only use the PocketBase URL if the file is saved server-side (string)
@@ -853,8 +854,8 @@
 
 									// Refresh the upload record to get the server-side filename
 									const refreshedUpload = site
-										? await self.instance.collection('site_uploads').getOne(current_image_value.upload)
-										: await self.collection('library_uploads').getOne(current_image_value.upload)
+										? await self.instance?.collection('site_uploads').getOne(current_image_value.upload)
+										: await self.instance?.collection('library_uploads').getOne(current_image_value.upload)
 
 									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
 										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
@@ -897,7 +898,7 @@
 						// Get upload URL from the upload record
 						const upload = site ? SiteUploads.one(current_image_value.upload) : LibraryUploads.one(current_image_value.upload)
 						if (upload) {
-							const baseURL = self.instance.baseURL
+							const baseURL = self.instance?.baseURL
 							const collection = site ? 'site_uploads' : 'library_uploads'
 
 							// Only use the PocketBase URL if the file is saved server-side (string)
@@ -911,8 +912,8 @@
 
 									// Refresh the upload record to get the server-side filename
 									const refreshedUpload = site
-										? await self.instance.collection('site_uploads').getOne(current_image_value.upload)
-										: await self.collection('library_uploads').getOne(current_image_value.upload)
+										? await self.instance?.collection('site_uploads').getOne(current_image_value.upload)
+										: await self.instance?.collection('library_uploads').getOne(current_image_value.upload)
 
 									if (refreshedUpload && typeof refreshedUpload.file === 'string') {
 										imageUrl = `${baseURL}/api/files/${collection}/${refreshedUpload.id}/${refreshedUpload.file}`
@@ -1020,7 +1021,7 @@
 								try {
 									await self.commit()
 									if (typeof upload.file === 'string') {
-										const baseURL = self.instance.baseURL
+										const baseURL = self.instance?.baseURL
 										const collection = site ? 'site_uploads' : 'library_uploads'
 										newValue.url = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
 									}
@@ -1028,7 +1029,7 @@
 									console.error('Failed to commit upload in onchange:', error)
 								}
 							} else {
-								const baseURL = self.instance.baseURL
+								const baseURL = self.instance?.baseURL
 								const collection = site ? 'site_uploads' : 'library_uploads'
 								newValue.url = `${baseURL}/api/files/${collection}/${upload.id}/${upload.file}`
 							}

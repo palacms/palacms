@@ -149,9 +149,9 @@
 				</PaneResizer>
 				<Pane defaultSize={50}>
 					<PaneGroup direction="vertical" autoSaveId="SiteEditor-vertical">
-						<Pane>
+						<Pane minSize={1.4}>
 							<div class="container" style="margin-bottom: 1rem">
-								<span class="primo--field-label">Head</span>
+								<span class="primo--field-label">Head HTML</span>
 								<CodeEditor mode="html" bind:value={head} on:save={saveComponent} />
 							</div>
 						</Pane>
@@ -160,9 +160,9 @@
 								<Icon icon="mdi:drag-horizontal-variant" />
 							</div>
 						</PaneResizer>
-						<Pane>
+						<Pane minSize={1.4}>
 							<div class="container">
-								<span class="primo--field-label">Foot</span>
+								<span class="primo--field-label">Body Footer HTML</span>
 								<CodeEditor mode="html" bind:value={foot} on:save={saveComponent} />
 							</div>
 						</Pane>

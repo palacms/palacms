@@ -7,14 +7,36 @@ import { rich_text_extensions } from '$lib/builder/rich-text/extensions'
 
 import { processors } from './component.js'
 
-const componentsCache = new Map()
-const errorCache = new Map()
-const CACHE_SIZE_LIMIT = 100
-
-export async function processCode({ component, head = { code: '', data: {} }, buildStatic = true, format = 'esm', locale = 'en', hydrated = true }) {
+export async function processCode({
+	component,
+	head = { code: '', data: {} },
+	buildStatic = true,
+	format = 'esm',
+	hydrated = true,
+	runtime = []
+}: {
+	component: {
+		head?: string
+		html?: string
+		css?: string
+		js?: string
+		data?: object
+	}
+	head?: { code: string; data: object }
+	buildStatic?: boolean
+	format?: 'esm'
+	hydrated?: boolean
+	runtime?: string[]
+}) {
 	let css = ''
 	if (component.css) {
-		css = await processCSS(component.css || '')
+		try {
+			css = await processCSS(component.css || '')
+		} catch (error) {
+			return {
+				error: formatCssCompilationError(error)
+			}
+		}
 	}
 
 	const res = await processors.html({
@@ -26,22 +48,51 @@ export async function processCode({ component, head = { code: '', data: {} }, bu
 		buildStatic,
 		css: 'injected',
 		format,
-		locale,
-		hydrated
+		hydrated,
+		runtime
 	})
 	return res
 }
 
 const css_cache = new Map()
 let requesting = new Set()
+
+export class CssCompilationError extends Error {
+	constructor(message, details = {}) {
+		super(message)
+		this.name = 'CssCompilationError'
+		Object.assign(this, details)
+	}
+}
+
+function toCssCompilationError(error) {
+	if (error instanceof CssCompilationError) return error
+
+	const message = typeof error === 'string' ? error : error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : 'Unknown CSS compilation error'
+
+	const details = {}
+	if (error && typeof error === 'object') {
+		if ('line' in error && typeof error.line === 'number') {
+			details.line = error.line
+		}
+		if ('column' in error && typeof error.column === 'number') {
+			details.column = error.column
+		}
+		if ('reason' in error && typeof error.reason === 'string') {
+			details.reason = error.reason
+		}
+	}
+
+	return new CssCompilationError(message, details)
+}
+
 export async function processCSS(raw) {
 	if (css_cache.has(raw)) {
 		return css_cache.get(raw)
 	} else if (requesting.has(raw)) {
-		// idk what this was doing
-		// await new Promise((resolve) => {
-		// 	setTimeout(resolve, 200)
-		// })
+		while (requesting.has(raw)) {
+			await new Promise((resolve) => setTimeout(resolve, 25))
+		}
 		if (css_cache.has(raw)) {
 			return css_cache.get(raw)
 		}
@@ -51,19 +102,26 @@ export async function processCSS(raw) {
 	try {
 		requesting.add(raw)
 		res = (await processors.css(raw)) || {}
-	} catch (e) {
-		console.error(e)
+	} catch (error) {
+		throw toCssCompilationError(error)
+	} finally {
+		requesting.delete(raw)
 	}
+
 	if (!res) {
 		return ''
-	} else if (res.error) {
-		console.log('CSS Error:', res.error)
-		return raw
-	} else if (res.css) {
+	}
+
+	if (res.error) {
+		throw toCssCompilationError(res.error)
+	}
+
+	if (res.css) {
 		css_cache.set(raw, res.css)
-		requesting.delete(raw)
 		return res.css
 	}
+
+	return ''
 }
 
 // Lets us debounce from reactive statements
@@ -86,7 +144,9 @@ export function get_empty_value(field) {
 			url: '',
 			src: '',
 			alt: '',
-			size: null
+			size: null,
+			width: null,
+			height: null
 		}
 	else if (field.type === 'text') return ''
 	else if (field.type === 'markdown') return ''
@@ -98,6 +158,7 @@ export function get_empty_value(field) {
 	else if (field.type === 'link')
 		return {
 			label: '',
+			text: '',
 			url: ''
 		}
 	else if (field.type === 'url') return ''
@@ -106,8 +167,10 @@ export function get_empty_value(field) {
 	else if (field.type === 'number') return 0
 	else if (field.type === 'page-field') return null
 	else if (field.type === 'site-field') return null
+	else if (field.type === 'info') return null
+	else if (field.type === 'icon') return ''
 	else {
-		console.warn('No placeholder set for field type', field.type)
+		console.warn('No empty set for field type', field.type)
 		return ''
 	}
 }
@@ -122,7 +185,7 @@ function get_markdown_renderer() {
 				if (lang && hljs.getLanguage(lang)) {
 					try {
 						return '<pre><code class="hljs">' + hljs.highlight(str, { language: lang, ignoreIllegals: true }).value + '</code></pre>'
-					} catch (__) {}
+					} catch (__) { }
 				}
 
 				return '<pre><code class="hljs">' + markdown_renderer.utils.escapeHtml(str) + '</code></pre>'
@@ -202,4 +265,25 @@ export function debounce({ instant, delay }, wait = 200) {
 		clearTimeout(timeout)
 		timeout = setTimeout(() => delay(...args), wait)
 	}
+}
+
+function formatCssCompilationError(error) {
+	const baseMessage =
+		typeof error === 'string' ? error : error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : 'Unknown CSS compilation error'
+
+	if (!error || typeof error !== 'object') {
+		return `CSS Error: ${baseMessage}`
+	}
+
+	const positions = []
+	if ('line' in error && typeof error.line === 'number') {
+		positions.push(`line ${error.line}`)
+	}
+	if ('column' in error && typeof error.column === 'number') {
+		positions.push(`column ${error.column}`)
+	}
+
+	const suffix = positions.length ? ` (${positions.join(', ')})` : ''
+
+	return `CSS Error: ${baseMessage}${suffix}`
 }

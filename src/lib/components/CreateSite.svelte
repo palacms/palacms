@@ -5,15 +5,18 @@
 	import { Input } from '$lib/components/ui/input/index.js'
 	import { Label } from '$lib/components/ui/label/index.js'
 	import { Site } from '$lib/common/models/Site'
-	import { Sites, SiteSymbols, SiteSymbolFields, SiteSymbolEntries, SiteGroups, LibrarySymbols } from '$lib/pocketbase/collections'
+	import { Sites, SiteGroups, LibrarySymbols, SiteSnapshots } from '$lib/pocketbase/collections'
 	import { page as pageState } from '$app/state'
 	import Button from './ui/button/button.svelte'
 	import { create_site_symbol_entries, create_site_symbol_fields, create_site_symbols, useCloneSite } from '$lib/workers/CloneSite.svelte'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js'
-	import { self as pb, marketplace, self } from '$lib/pocketbase/managers'
+	import { marketplace, self } from '$lib/pocketbase/managers'
 	import { watch } from 'runed'
 	import BlockPickerPanel from '$lib/components/BlockPickerPanel.svelte'
+	import { createCollectionManager } from '$lib/pocketbase/CollectionManager'
+	import { Snapshot } from '$lib/common/models/Snapshot'
+	import { import_snapshot } from '$lib/Snapshot.svelte'
 
 	/*
   Create Site Wizard
@@ -133,9 +136,16 @@
 		}
 	}
 
+	const starter_snapshots = $derived(SiteSnapshots.from(marketplace).list({ sort: '-created' }))
+	const snapshot_manager = createCollectionManager()
+	$effect(() => {
+		// Ensure that snapshots get loaded
+		starter_snapshots
+	})
+
 	const cloneSite = $derived(
 		useCloneSite({
-			source_manager: selected_starter_source === 'local' ? self : marketplace,
+			source_manager: selected_starter_source === 'local' ? self : snapshot_manager,
 			source_site_id: selected_starter_id,
 			site_name: site_name,
 			site_host: pageState.url.host,
@@ -145,20 +155,55 @@
 
 	let completed = $derived(Boolean(site_name && selected_starter_id))
 	let loading = $state(false)
+	let progress_message = $state('')
+	let error_message = $state('')
+
+	const progress_messages = ['Creating site structure...', 'Setting up page types...', 'Building pages...', 'Configuring blocks...', 'Adding navigation...', 'Finalizing site...']
 
 	// Clone the selected starter
 	async function create_site() {
 		if (!selected_starter_id) return
 		loading = true
+		error_message = ''
+
+		// Rotate through progress messages
+		let message_index = 0
+		progress_message = progress_messages[0]
+		const progress_interval = setInterval(() => {
+			message_index = (message_index + 1) % progress_messages.length
+			progress_message = progress_messages[message_index]
+		}, 7000)
+
 		try {
 			if (!site_group) {
 				SiteGroups.create({ name: 'Default', index: 0 })
 			}
+
+			if (selected_starter_source === 'marketplace') {
+				// Load snapshot from marketplace
+				const snapshot_record = starter_snapshots?.find((snapshot) => snapshot.site === selected_starter_id)
+				if (!snapshot_record) {
+					console.error('Snapshot not found. Selected starter:', selected_starter_id, 'Available snapshots:', starter_snapshots)
+					throw new Error('Snapshot not found')
+				}
+				if (typeof snapshot_record.file !== 'string') {
+					throw new Error('Invalid snapshot file. Please try a different starter.')
+				}
+				const snapshot = await Snapshot.decodeAsync(
+					new File([await fetch(`${marketplace.instance?.baseURL}/api/files/site_snapshots/${snapshot_record.id}/${snapshot_record.file}`).then((res) => res.blob())], snapshot_record.file)
+				)
+				import_snapshot({ destination_manager: snapshot_manager, source_snapshot: snapshot })
+			}
+
 			await cloneSite.run()
 			done_creating_site = true
 		} catch (e) {
-			console.error(e)
+			console.error('Site creation error:', e)
+			clearInterval(progress_interval)
 			loading = false
+			error_message = e instanceof Error ? e.message : 'An error occurred while creating the site'
+		} finally {
+			clearInterval(progress_interval)
 		}
 	}
 
@@ -274,9 +319,9 @@
 	{/if}
 
 	{#if step === 'starter'}
-		<Tabs.Root bind:value={starter_tab} class="h-[78vh] min-h-[30rem] w-full grid grid-cols-5 gap-4 flex-1 rounded-lg border bg-[#111] p-3 shadow-sm">
+		<Tabs.Root bind:value={starter_tab} class="h-[78vh] min-h-[30rem] w-full flex gap-4 flex-1 rounded-lg border bg-[#111] p-3 shadow-sm">
 			<!-- Left: groups + grid -->
-			<div class="col-span-5 md:col-span-3 flex flex-col">
+			<div class="flex flex-col flex-6">
 				<Tabs.List
 					class="rounded-9px bg-dark-10 shadow-mini-inset dark:bg-background grid w-full h-11 grid-cols-2 gap-1 p-1 text-sm font-semibold leading-[0.01em] dark:border dark:border-neutral-600/30"
 				>
@@ -289,7 +334,7 @@
 						<span>Marketplace</span>
 					</Tabs.Trigger>
 				</Tabs.List>
-				<Tabs.Content value="sites" class="grid grid-cols-4 flex-1">
+				<Tabs.Content value="sites" class="flex overflow-hidden h-full">
 					{#if active_starters_group_sites === undefined}
 						<!-- Loading skeletons for local starters -->
 						{#each Array.from({ length: 6 }) as _}
@@ -309,7 +354,7 @@
 						/>
 					{:else}
 						<!-- Groups sidebar -->
-						<div class="h-full md:border-r col-span-1">
+						<div class="h-full md:border-r flex-1">
 							<div class="p-2 text-xs text-muted-foreground">Groups</div>
 							<ul class="p-2 pt-0 flex flex-col gap-1">
 								{#each all_site_groups ?? [] as group (group.id)}
@@ -325,11 +370,11 @@
 							</ul>
 						</div>
 						<!-- Server Sites grid -->
-						<div class="col-span-3 p-3">
+						<div class="flex-4 overflow-auto">
 							{#if active_starters_group_sites?.length === 0}
 								<div class="text-sm text-muted-foreground p-6 text-center">No sites in this group.</div>
 							{:else if active_starters_group_sites}
-								<div class="grid gap-4 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+								<div class="p-3 pr-0 grid gap-4 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
 									{#each active_starters_group_sites as site}
 										{@render StarterButton(site)}
 									{/each}
@@ -340,9 +385,9 @@
 				</Tabs.Content>
 
 				<!-- Marketplace-->
-				<Tabs.Content value="marketplace" class="grid grid-cols-4 flex-1">
+				<Tabs.Content value="marketplace" class="flex overflow-hidden h-full">
 					<!-- Groups sidebar -->
-					<div class="h-full md:border-r col-span-1">
+					<div class="h-full md:border-r flex-1">
 						<div class="p-2 text-xs text-muted-foreground">Groups</div>
 						<ul class="p-2 pt-0 flex flex-col gap-1">
 							{#each marketplace_site_groups ?? [] as group (group.id)}
@@ -360,25 +405,27 @@
 						</ul>
 					</div>
 					<!-- Marketplace Sites grid -->
-					<div class="p-3 pr-0 grid gap-4 col-span-3 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-						{#if marketplace_starter_sites === undefined}
-							{#each Array.from({ length: 6 }) as _}
-								<Skeleton class="aspect-video w-full" />
-							{/each}
-						{:else}
-							{#each marketplace_starter_sites as site (site.id)}
-								{@render StarterButton(site, 'marketplace')}
-							{/each}
-							{#if (marketplace_starter_sites?.length ?? 0) === 0}
-								<div class="text-sm text-muted-foreground p-6 text-center">No starters in this group.</div>
+					<div class="flex-4 overflow-auto">
+						<div class="p-3 pr-0 grid gap-4 col-span-3 place-content-start sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+							{#if marketplace_starter_sites === undefined}
+								{#each Array.from({ length: 6 }) as _}
+									<Skeleton class="aspect-video w-full" />
+								{/each}
+							{:else}
+								{#each marketplace_starter_sites as site (site.id)}
+									{@render StarterButton(site, 'marketplace')}
+								{/each}
+								{#if (marketplace_starter_sites?.length ?? 0) === 0}
+									<div class="text-sm text-muted-foreground p-6 text-center">No starters in this group.</div>
+								{/if}
 							{/if}
-						{/if}
+						</div>
 					</div>
 				</Tabs.Content>
 			</div>
 
 			<!-- Right: preview takes 2/5 -->
-			<div class="col-span-5 md:col-span-2">
+			<div class="flex-3">
 				<div class="h-[73vh] rounded-md bg-muted/20 flex flex-col overflow-hidden">
 					{#if selected_starter_site}
 						{@const preview_url = selected_starter_source === 'marketplace' ? `https://${selected_starter_site?.host}` : `/?_site=${selected_starter_site?.id}`}
@@ -415,13 +462,9 @@
 			<Button
 				onclick={next_or_create}
 				disabled={loading || (step === 'name' && !can_go_starter) || (step === 'starter' && !can_go_blocks) || (step === 'blocks' && !completed)}
-				class="inline-flex justify-center items-center relative"
+				class="inline-flex justify-center items-center relative gap-2"
 			>
-				{#if loading}
-					<Loader class="h-4 w-4 animate-spin" />
-				{:else}
-					{step === 'blocks' ? 'Done' : 'Next'}
-				{/if}
+				{step === 'blocks' ? 'Done' : 'Next'}
 			</Button>
 		</div>
 	</div>
@@ -448,3 +491,33 @@
 		</div>
 	</button>
 {/snippet}
+
+<!-- Fullscreen loading overlay -->
+{#if loading}
+	<div class="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
+		<div class="flex flex-col items-center gap-4">
+			<Loader class="h-12 w-12 animate-spin text-primary" />
+			<p class="text-lg font-medium">{progress_message}</p>
+		</div>
+	</div>
+{/if}
+
+<!-- Error message display -->
+{#if error_message}
+	<div class="fixed bottom-4 right-4 z-50 max-w-md">
+		<div class="bg-destructive text-destructive-foreground rounded-lg p-4 shadow-lg">
+			<div class="flex items-start gap-3">
+				<div class="flex-1">
+					<p class="font-medium">Failed to create site</p>
+					<p class="text-sm mt-1">{error_message}</p>
+				</div>
+				<button onclick={() => (error_message = '')} class="text-destructive-foreground/80 hover:text-destructive-foreground">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+					</svg>
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

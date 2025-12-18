@@ -79,6 +79,11 @@ export const setUserActivity = (overrides: Partial<UserActivityValues>) => {
 	const track = async () => {
 		clearTimeout(task)
 
+		// Skip tracking if required fields are missing
+		if (!context.value.user || !context.value.site) {
+			return
+		}
+
 		if (activity) {
 			activity = UserActivities.update(activity.id, context.value)
 			await manager.commit()
@@ -140,7 +145,7 @@ export const getUserActivity = ({ filter }: { filter?: (activity: UserActivityIn
 		.flatMap((activity): UserActivityInfo[] => {
 			const site = Sites.one(activity.site)
 			const user = Collaborators.one(activity.user)
-			const user_avatar = user && user.avatar ? new URL(`${self.instance.baseURL}/api/files/collaborators/${user.id}/${user.avatar}`) : null
+			const user_avatar = user && user.avatar ? new URL(`${self.instance?.baseURL}/api/files/collaborators/${user.id}/${user.avatar}`) : null
 			const page_type = activity.page_type ? PageTypes.one(activity.page_type) : null
 			const page_type_url = page_type && new URL(`${pageState.url.pathname.includes('/sites/') ? `/admin/sites/${site?.id}` : '/admin/site'}/page-type--${page_type.id}`, pageState.url.href)
 			const page = activity.page ? Pages.one(activity.page) : null

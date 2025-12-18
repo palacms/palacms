@@ -17,6 +17,7 @@
 	import { Sites, SiteGroups, Pages } from '$lib/pocketbase/collections'
 	import { self as pb, self } from '$lib/pocketbase/managers'
 	import { goto } from '$app/navigation'
+	import { ClientResponseError } from 'pocketbase'
 
 	const sidebar = useSidebar()
 
@@ -91,10 +92,18 @@
 		try {
 			const siteId = current_site.id
 
-			// Delete pages first to avoid cascade deletion conflicts
-			const pages = await pb.instance.collection('pages').getList(1, 50, { filter: `site = "${siteId}"` })
-			for (const page of pages.items) {
-				Pages.delete(page.id)
+			try {
+				// Delete home page first to avoid cascade deletion conflicts
+				const home = await pb.instance?.collection('pages').getFirstListItem(`site = "${siteId}" && parent = ""`)
+				if (home) {
+					Pages.delete(home.id)
+				}
+			} catch (error) {
+				if (error instanceof ClientResponseError && error.status === 404) {
+					// Ignore "not found" error
+				} else {
+					throw error
+				}
 			}
 
 			// Delete the site - PocketBase will cascade delete remaining records
@@ -103,7 +112,7 @@
 
 			is_delete_site_open = false
 		} catch (error) {
-			if (error.status === 404) {
+			if (error instanceof ClientResponseError && error.status === 404) {
 				// Site already deleted - treat as success
 				is_delete_site_open = false
 			} else {
