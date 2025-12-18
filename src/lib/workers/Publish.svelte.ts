@@ -206,7 +206,10 @@ export const usePublishSite = (site_id?: string) => {
 
 			console.log(`Compiling HTML for page "${page.name || page.id}"`)
 
-			const header_result = header_sections && header_sections.length > 0
+			const has_header = header_sections && header_sections.length > 0
+			const has_body = body_sections && body_sections.length > 0
+
+			const header_result = has_header
 				? await processors.html({
 					component: await build_components(header_sections),
 					head, // Include custom head code in first zone processing
@@ -215,10 +218,10 @@ export const usePublishSite = (site_id?: string) => {
 				})
 				: { body: '', head: '' }
 
-			const body_result = body_sections && body_sections.length > 0
+			const body_result = has_body
 				? await processors.html({
 					component: await build_components(body_sections),
-					head: head_without_code,
+					head: has_header ? head_without_code : head, // Include head.code if no header zone
 					locale,
 					css: 'external'
 				})
@@ -227,7 +230,7 @@ export const usePublishSite = (site_id?: string) => {
 			const footer_result = footer_sections && footer_sections.length > 0
 				? await processors.html({
 					component: await build_components(footer_sections),
-					head: head_without_code,
+					head: (has_header || has_body) ? head_without_code : head, // Include head.code if no header/body zones
 					locale,
 					css: 'external'
 				})
@@ -296,7 +299,6 @@ export const usePublishSite = (site_id?: string) => {
 			return {
 				success: !!body_content,
 				html: final,
-				js: header_result.js || body_result.js || footer_result.js || '',
 				error: '',
 				page_info
 			}
@@ -306,7 +308,6 @@ export const usePublishSite = (site_id?: string) => {
 			return {
 				success: false,
 				html: '',
-				js: '',
 				error: error_details,
 				page_info
 			}
