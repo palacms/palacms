@@ -18,6 +18,8 @@ jobs:
       packages: write
       attestations: write
       id-token: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -79,7 +81,7 @@ jobs:
       - name: Deploy to server
         env:
           DOCKER_HOST: ${{ secrets.TESTING_DOCKER_HOST }}
-          DOCKER_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.head_ref || github.ref_name }}
+          DOCKER_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ jobs.build-image.outputs.version }}
         run: |
           cd ./deployment/testing/
           eval "$(ssh-agent -s)"
