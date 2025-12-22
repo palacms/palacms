@@ -44,7 +44,7 @@
 		"estree-walker": "^3.0.3",
 		"highlight.js": "^11.11.1",
 		"idb-keyval": "^6.2.2",
-		"lodash-es": "^4.17.21",
+		"lodash-es": "^4.17.22",
 		"lowlight": "^3.3.0",
 		"lucide-svelte": "^0.562.0",
 		"markdown-it": "^14.1.0",
