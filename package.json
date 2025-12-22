@@ -20,7 +20,7 @@
 		"@codemirror/lang-markdown": "^6.5.0",
 		"@emmetio/codemirror6-plugin": "^0.4.0",
 		"@iconify/svelte": "^5.1.0",
-		"@rollup/browser": "^4.53.3",
+		"@rollup/browser": "^4.54.0",
 		"@sveltejs/adapter-static": "^3.0.9",
 		"@sveltejs/kit": "^2.49.2",
 		"@tailwindcss/postcss": "^4.1.18",
