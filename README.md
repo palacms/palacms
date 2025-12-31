@@ -63,3 +63,5 @@ docker run -d -p 8080:8080 -v palacms-data:/app/pb_data ghcr.io/palacms/palacms:
 ## License
 
 [MIT](./LICENSE)
+
+> ## Building a web app or landing page? Check out [tinykit](https://github.com/tinykit-studio/tinykit)
