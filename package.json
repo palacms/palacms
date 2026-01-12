@@ -25,7 +25,7 @@
 		"@sveltejs/kit": "^2.49.2",
 		"@tailwindcss/postcss": "^4.1.18",
 		"@tailwindcss/typography": "^0.5.19",
-		"@tiptap/core": "^3.14.0",
+		"@tiptap/core": "^3.15.3",
 		"@tiptap/extension-highlight": "^3.14.0",
 		"@tiptap/extension-image": "^3.14.0",
 		"@tiptap/extension-link": "^3.14.0",
