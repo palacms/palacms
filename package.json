@@ -27,7 +27,7 @@
 		"@tailwindcss/typography": "^0.5.19",
 		"@tiptap/core": "^3.15.3",
 		"@tiptap/extension-highlight": "^3.15.3",
-		"@tiptap/extension-image": "^3.15.3",
+		"@tiptap/extension-image": "^3.17.1",
 		"@tiptap/extension-link": "^3.14.0",
 		"@tiptap/extension-typography": "^3.15.3",
 		"@tiptap/extension-youtube": "^3.15.3",
