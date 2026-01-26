@@ -62,7 +62,7 @@
 		"prosemirror-schema-basic": "^1.2.4",
 		"runed": "^0.37.1",
 		"svelte": "^5.48.2",
-		"svelte-awesome-color-picker": "^4.1.0",
+		"svelte-awesome-color-picker": "^4.1.1",
 		"svelte-check": "^4.3.5",
 		"svelte-inspect-value": "^0.10.0",
 		"svelte-popperjs": "^1.3.2",
