@@ -2,6 +2,7 @@
 	import * as _ from 'lodash-es'
 	import Icon from '@iconify/svelte'
 	import UI from '../ui'
+	import { watch } from 'runed'
 	import type { FieldValueHandler } from '../components/Fields/FieldsContent.svelte'
 	import { site_context } from '$lib/builder/stores/context'
 	import type { Field } from '$lib/common/models/Field'
@@ -81,14 +82,21 @@
 	})
 
 	// Auto-select first page on open
-	$effect(() => {
-		const top_page = selectable_pages[0]
-		const has_url = entry?.value?.url
-		const has_page = entry?.value?.page
-		if (!has_url && !has_page && selected === 'page') {
-			onchange({ [field.key]: { 0: { value: { ...entry.value, page: top_page.id } } } })
+	let auto_selected_page = $state(false)
+	watch(
+		() => selectable_pages,
+		() => {
+			const top_page = selectable_pages[0]
+			if (!top_page || auto_selected_page) return
+
+			const has_url = entry?.value?.url
+			const has_page = entry?.value?.page
+			if (!has_url && !has_page && selected === 'page') {
+				onchange({ [field.key]: { 0: { value: { ...entry.value, page: top_page.id } } } })
+				auto_selected_page = true
+			}
 		}
-	})
+	)
 
 	let selected = $derived<'page' | 'url'>(entry?.value?.url ? 'url' : 'page')
 </script>
@@ -132,11 +140,13 @@
 					oninput={(text) => {
 						onchange({ [field.key]: { 0: { value: { ...entry.value, url: text, page: undefined } } } })
 					}}
-					onblur={(text) => {
+					onblur={() => {
 						// auto-set https protocol only if no protocol exists and it's not a relative URL
+						const text = entry.value.url
+						if (!text) return
 						const has_protocol = text.includes('://')
 						const is_relative = text.startsWith('/') || text.startsWith('#')
-						if (text && !has_protocol && !is_relative) {
+						if (!has_protocol && !is_relative) {
 							const url_with_protocol = `https://${text}`
 							onchange({ [field.key]: { 0: { value: { ...entry.value, url: url_with_protocol, page: undefined } } } })
 						}
