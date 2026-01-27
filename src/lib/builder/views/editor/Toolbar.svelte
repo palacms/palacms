@@ -334,9 +334,33 @@
 				<ToolbarButton id="redo" title="Redo" icon="material-symbols:redo" style="border: 0; font-size: 1.5rem;" on:click={redo_change} />
 			{/if} -->
 			<span class="version-badge">{instance.version}</span>
-			{#if $current_user?.serverRole}
-				<ToolbarButton icon="clarity:users-solid" on:click={() => (editing_collaborators = true)} />
-			{/if}
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger>
+					{#snippet child({ props })}
+						<button {...props} class="more-menu-button">
+							<Icon icon="mdi:dots-vertical" />
+						</button>
+					{/snippet}
+				</DropdownMenu.Trigger>
+				<DropdownMenu.Content side="bottom" class="z-[999]" align="end" sideOffset={4}>
+					{#if $current_user?.serverRole}
+						<DropdownMenu.Item onclick={() => (editing_collaborators = true)} class="text-xs cursor-pointer">
+							<Icon icon="clarity:users-solid" style="width: .75rem" />
+							<span>Collaborators</span>
+						</DropdownMenu.Item>
+					{/if}
+					<DropdownMenu.Item
+						onclick={async () => {
+							self.instance?.authStore.clear()
+							await goto('/admin/auth')
+						}}
+						class="text-xs cursor-pointer"
+					>
+						<Icon icon="mdi:logout" style="width: .75rem" />
+						<span>Log out</span>
+					</DropdownMenu.Item>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 			{@render children?.()}
 			<!-- <LocaleSelector /> -->
 			<ToolbarButton type="primo" icon="entypo:publish" label="Publish" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
@@ -439,8 +463,25 @@
 	.right {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.75rem;
 		place-content: flex-end;
+	}
+
+	.more-menu-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.5rem;
+		border-radius: var(--primo-border-radius);
+		/* color: #888; */
+		transition:
+			color 0.15s,
+			background-color 0.15s;
+
+		&:hover {
+			/* color: white; */
+			background-color: var(--primo-color-codeblack);
+		}
 	}
 
 	.button-group {
