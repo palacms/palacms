@@ -40,7 +40,7 @@
 	import { page_type_context, site_context, hide_page_field_field_type_context } from '$lib/builder/stores/context'
 	import { tick } from 'svelte'
 	import type { ObjectOf } from '$lib/pocketbase/CollectionMapping.svelte.ts'
-	import { create_site_symbol_entries, create_site_symbol_fields, create_site_symbols } from '$lib/workers/CloneSite.svelte'
+	import { create_site_symbol_entries, create_site_symbol_fields, create_site_symbols } from '$lib/workers/CopySymbols.svelte'
 
 	const { value: site } = site_context.getOr({ value: null })
 	const page_type_id = $derived(page.params.page_type)
