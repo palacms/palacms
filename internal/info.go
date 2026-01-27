@@ -75,27 +75,18 @@ func RegisterInfoEndpoint(pb *pocketbase.PocketBase) error {
 			}
 
 			version := getBuildVersion()
-			telemetryEnabled := isUsageStateEnabled()
 			smtpEnabled := pb.Settings().SMTP.Enabled
-
-			batchConfig := pb.Settings().Batch
-			batchCount := batchConfig.MaxRequests
-			if !batchConfig.Enabled {
-				batchCount = 0
-			}
 
 			return requestEvent.JSON(200, struct {
 				Id               string `json:"id"`
 				Version          string `json:"version"`
 				TelemetryEnabled bool   `json:"telemetry_enabled"`
 				SMTPEnabled      bool   `json:"smtp_enabled"`
-				BatchCount       int    `json:"batch_count"`
 			}{
 				Id:               id,
 				Version:          version,
-				TelemetryEnabled: telemetryEnabled,
+				TelemetryEnabled: false, // Analytics disabled
 				SMTPEnabled:      smtpEnabled,
-				BatchCount:       batchCount,
 			})
 		})
 

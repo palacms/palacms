@@ -28,7 +28,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/pocketbase/pocketbase"
@@ -55,7 +54,7 @@ const usageStatsHost = "https://us.i.posthog.com"
 
 // Check if usage statistics are enabled
 func isUsageStateEnabled() bool {
-	return os.Getenv("PALA_DISABLE_USAGE_STATS") != "true"
+	return false // Analytics disabled
 }
 
 // Send usage statistics
