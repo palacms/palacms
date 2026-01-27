@@ -96,8 +96,8 @@
 		return candidate
 	}
 
-	// Auto-fill key when setting label
-	let key_edited = $state(false)
+	// Auto-fill key when setting label (only for new fields without a key yet)
+	let key_edited = $state(field.key !== '')
 
 	// autosize info textarea
 	let info_textarea
@@ -477,10 +477,6 @@
 						if (text.length > 0) {
 							should_autofocus = false
 						}
-					}}
-					onblur={() => {
-						// Stop auto-populating key when label field loses focus
-						key_edited = true
 					}}
 				/>
 			</div>
