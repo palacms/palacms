@@ -36,11 +36,12 @@
 	})
 
 	// auto-select first option (wait for field_list to populate)
+	let autofilled = $state(false)
 	watch(
 		() => field_list,
 		() => {
 			const first_option = field_list[0]
-			if (field_list.length === 0 || field.config?.field) return
+			if (field_list.length === 0 || field.config?.field || autofilled) return
 			dispatch('input', {
 				label: first_option.label,
 				key: validate_field_key(first_option.label),
@@ -49,6 +50,7 @@
 					field: first_option.id
 				}
 			})
+			autofilled = true
 		}
 	)
 </script>
