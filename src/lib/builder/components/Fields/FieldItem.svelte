@@ -200,9 +200,6 @@
 			return /\b(markdown|md)\b/.test(combined) ? 'markdown' : 'rich-text'
 		}
 
-		// Info/Help patterns
-		if (/\b(info|help|note|tip|instruction)\b/.test(combined)) return 'info'
-
 		// Default to text
 		return 'text'
 	}
