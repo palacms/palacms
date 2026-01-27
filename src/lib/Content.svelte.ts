@@ -272,12 +272,16 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			else if (field.type === 'group') {
 				const locale = 'en'
 				if (!content[locale]) content[locale] = {}
-				content[locale]![field.key] = {}
 
 				const [entry] = fieldEntries
+				if (!entry) {
+					content[locale]![field.key] = get_empty_value(field) ?? {}
+					continue
+				}
+
 				const data = getContent({ entity, fields, entries, parentField: field, parentEntry: entry })
 				if (!data) {
-					content[entry.locale]![field.key] = {}
+					content[locale]![field.key] = get_empty_value(field) ?? {}
 					continue
 				}
 
@@ -304,7 +308,11 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			// Handle markdown fields: markdown -> HTML
 			else if (field.type === 'markdown') {
 				const [entry] = fieldEntries
-				if (!entry) continue
+				if (!entry) {
+					if (!content.en) content.en = {}
+					content.en![field.key] = get_empty_value(field)
+					continue
+				}
 				if (typeof entry.value !== 'string') continue
 				if (!content[entry.locale]) content[entry.locale] = {}
 
@@ -314,7 +322,11 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			// Handle rich-text fields: JSON -> HTML
 			else if (field.type === 'rich-text') {
 				const [entry] = fieldEntries
-				if (!entry) continue
+				if (!entry) {
+					if (!content.en) content.en = {}
+					content.en![field.key] = get_empty_value(field)
+					continue
+				}
 				if (!content[entry.locale]) content[entry.locale] = {}
 				const html = convert_rich_text_to_html(entry.value)
 				content[entry.locale]![field.key] = html
@@ -323,7 +335,11 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			// Handle image fields specially - get url
 			else if (field.type === 'image') {
 				const [entry] = fieldEntries
-				if (!entry) continue
+				if (!entry) {
+					if (!content.en) content.en = {}
+					content.en![field.key] = get_empty_value(field)
+					continue
+				}
 				if (!content[entry.locale]) content[entry.locale] = {}
 
 				const upload_id: string | null | undefined = entry.value.upload
@@ -349,7 +365,11 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			// Handle page fields specially - get content from the page entity
 			else if (field.type === 'page') {
 				const [entry] = fieldEntries
-				if (!entry) continue
+				if (!entry) {
+					if (!content.en) content.en = {}
+					content.en![field.key] = get_empty_value(field)
+					continue
+				}
 				if (!content[entry.locale]) content[entry.locale] = {}
 
 				const page = Pages.one(entry.value)
@@ -437,7 +457,11 @@ export const useContent = <Collection extends keyof typeof ENTITY_COLLECTIONS>(e
 			// Handle link fields specifially - translate page ID into URL
 			else if (field.type === 'link') {
 				const [entry] = fieldEntries
-				if (!entry) continue
+				if (!entry) {
+					if (!content.en) content.en = {}
+					content.en![field.key] = get_empty_value(field)
+					continue
+				}
 				if (!content[entry.locale]) content[entry.locale] = {}
 
 				// If a page is referenced, try to resolve it; otherwise fall back to the raw URL
