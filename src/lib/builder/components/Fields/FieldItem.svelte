@@ -96,8 +96,8 @@
 		return candidate
 	}
 
-	// Auto-fill key when setting label
-	let key_edited = $state(false)
+	// Auto-fill key when setting label (only for new fields without a key yet)
+	let key_edited = $state(field.key !== '')
 
 	// autosize info textarea
 	let info_textarea
@@ -199,9 +199,6 @@
 		if (/\b(markdown|md|rich|formatted|wysiwyg|content|body|description|bio|about|summary|details)\b/.test(combined)) {
 			return /\b(markdown|md)\b/.test(combined) ? 'markdown' : 'rich-text'
 		}
-
-		// Info/Help patterns
-		if (/\b(info|help|note|tip|instruction)\b/.test(combined)) return 'info'
 
 		// Default to text
 		return 'text'
@@ -480,10 +477,6 @@
 						if (text.length > 0) {
 							should_autofocus = false
 						}
-					}}
-					onblur={() => {
-						// Stop auto-populating key when label field loses focus
-						key_edited = true
 					}}
 				/>
 			</div>

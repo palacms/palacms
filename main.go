@@ -61,5 +61,9 @@ func setup(pb *pocketbase.PocketBase) error {
 		return err
 	}
 
+	if err := internal.RegisterCloneSiteEndpoint(pb); err != nil {
+		return err
+	}
+
 	return nil
 }

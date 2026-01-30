@@ -133,7 +133,7 @@
 		/* margin: 1.5rem; */
 		margin: 1rem;
 		overflow-x: hidden; /* for richtext field */
-
+		overflow-x: initial; /* 'hidden' causes weird clipping */
 		&:not(:only-child) {
 			margin-top: 0;
 		}

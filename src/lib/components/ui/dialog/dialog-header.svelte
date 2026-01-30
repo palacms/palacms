@@ -32,7 +32,7 @@
 </script>
 
 <div bind:this={ref} class={cn('grid grid-cols-3 items-center', className)} {...restProps}>
-	<div class="ml-4">
+	<div class="ml-6">
 		{@render children?.()}
 	</div>
 	<DialogTitle class="text-center flex items-center justify-center gap-2">

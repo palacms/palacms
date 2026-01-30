@@ -8,22 +8,18 @@
 	import { Sites, SiteGroups, LibrarySymbols, SiteSnapshots } from '$lib/pocketbase/collections'
 	import { page as pageState } from '$app/state'
 	import Button from './ui/button/button.svelte'
-	import { create_site_symbol_entries, create_site_symbol_fields, create_site_symbols, useCloneSite } from '$lib/workers/CloneSite.svelte'
+	import { create_site_symbol_entries, create_site_symbol_fields, create_site_symbols } from '$lib/workers/CopySymbols.svelte'
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js'
 	import { marketplace, self } from '$lib/pocketbase/managers'
 	import { watch } from 'runed'
 	import BlockPickerPanel from '$lib/components/BlockPickerPanel.svelte'
-	import { createCollectionManager } from '$lib/pocketbase/CollectionManager'
-	import { Snapshot } from '$lib/common/models/Snapshot'
-	import { import_snapshot } from '$lib/Snapshot.svelte'
 
 	/*
   Create Site Wizard
   - Steps: name → starter → blocks
-  - Flow: clone the selected starter, then optionally copy selected blocks.
+  - Flow: clone the selected starter via server-side endpoint, then optionally copy selected blocks.
   - Data sources: local PocketBase (manager/self) and marketplace (marketplace).
-  - Commit: aggregate creates and call self.commit() once per creation.
 */
 
 	const { oncreated }: { oncreated?: () => void } = $props()
@@ -137,50 +133,45 @@
 	}
 
 	const starter_snapshots = $derived(SiteSnapshots.from(marketplace).list({ sort: '-created' }))
-	const snapshot_manager = createCollectionManager()
 	$effect(() => {
 		// Ensure that snapshots get loaded
 		starter_snapshots
 	})
-
-	const cloneSite = $derived(
-		useCloneSite({
-			source_manager: selected_starter_source === 'local' ? self : snapshot_manager,
-			source_site_id: selected_starter_id,
-			site_name: site_name,
-			site_host: pageState.url.host,
-			site_group_id: site_group?.id
-		})
-	)
 
 	let completed = $derived(Boolean(site_name && selected_starter_id))
 	let loading = $state(false)
 	let progress_message = $state('')
 	let error_message = $state('')
 
-	const progress_messages = ['Creating site structure...', 'Setting up page types...', 'Building pages...', 'Configuring blocks...', 'Adding navigation...', 'Finalizing site...']
-
-	// Clone the selected starter
+	// Clone the selected starter via server-side endpoint
 	async function create_site() {
 		if (!selected_starter_id) return
 		loading = true
 		error_message = ''
-
-		// Rotate through progress messages
-		let message_index = 0
-		progress_message = progress_messages[0]
-		const progress_interval = setInterval(() => {
-			message_index = (message_index + 1) % progress_messages.length
-			progress_message = progress_messages[message_index]
-		}, 7000)
+		progress_message = 'Creating site...'
 
 		try {
+			// Ensure default group exists
 			if (!site_group) {
 				SiteGroups.create({ name: 'Default', index: 0 })
+				await self.commit()
+			}
+
+			// Build request body for server-side clone
+			const request_body: {
+				name: string
+				host: string
+				group_id: string
+				source_site_id?: string
+				snapshot_url?: string
+			} = {
+				name: site_name,
+				host: pageState.url.host,
+				group_id: site_group?.id ?? ''
 			}
 
 			if (selected_starter_source === 'marketplace') {
-				// Load snapshot from marketplace
+				// Get snapshot URL for marketplace clone
 				const snapshot_record = starter_snapshots?.find((snapshot) => snapshot.site === selected_starter_id)
 				if (!snapshot_record) {
 					console.error('Snapshot not found. Selected starter:', selected_starter_id, 'Available snapshots:', starter_snapshots)
@@ -189,42 +180,76 @@
 				if (typeof snapshot_record.file !== 'string') {
 					throw new Error('Invalid snapshot file. Please try a different starter.')
 				}
-				const snapshot = await Snapshot.decodeAsync(
-					new File([await fetch(`${marketplace.instance?.baseURL}/api/files/site_snapshots/${snapshot_record.id}/${snapshot_record.file}`).then((res) => res.blob())], snapshot_record.file)
-				)
-				import_snapshot({ destination_manager: snapshot_manager, source_snapshot: snapshot })
+				request_body.snapshot_url = `${marketplace.instance?.baseURL}/api/files/site_snapshots/${snapshot_record.id}/${snapshot_record.file}`
+			} else {
+				// Local clone
+				request_body.source_site_id = selected_starter_id
 			}
 
-			await cloneSite.run()
+			// Call server-side clone endpoint
+			const response = await fetch(`${self.instance?.baseURL}/api/palacms/clone-site`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': self.instance?.authStore.token ? `Bearer ${self.instance.authStore.token}` : ''
+				},
+				body: JSON.stringify(request_body)
+			})
+
+			if (!response.ok) {
+				const error_data = await response.json().catch(() => ({}))
+				throw new Error(error_data.message || `Clone failed: ${response.statusText}`)
+			}
+
+			const result = await response.json()
+			created_site_id = result.id
 			done_creating_site = true
+
+			// If no blocks to copy, finish immediately without waiting for
+			// the reactive store to sync (avoids race condition on large templates)
+			if (selected_block_ids.length === 0) {
+				loading = false
+				oncreated?.()
+				return
+			}
 		} catch (e) {
 			console.error('Site creation error:', e)
-			clearInterval(progress_interval)
 			loading = false
 			error_message = e instanceof Error ? e.message : 'An error occurred while creating the site'
-		} finally {
-			clearInterval(progress_interval)
 		}
 	}
 
-	// Find the created site for this host
-	const created_sites = $derived(Sites.list({ filter: { host: pageState.url.host } }) ?? [])
-	const created_site = $derived(created_sites.find((s) => s.name === site_name) ?? created_sites[0])
+	// Track the created site ID from server response
+	let created_site_id = $state('')
 
-	// Finalize created site: copy optional blocks, and commit once.
-	// Calls oncreated() when finished.
+	// Find the created site - first try by ID from server response, then fall back to name match
+	const created_sites = $derived(Sites.list({ filter: { host: pageState.url.host } }) ?? [])
+	const created_site = $derived(
+		created_site_id
+			? (Sites.one(created_site_id) ?? created_sites.find((s) => s.id === created_site_id))
+			: created_sites.find((s) => s.name === site_name)
+	)
+
+	// Finalize created site: copy optional blocks if any, then call oncreated.
 	let done_creating_site = $state(false)
 	let finalized = false
 	$effect(() => {
 		if (!finalized && done_creating_site && created_site) {
 			finalized = true
-			copy_selected_blocks_to_site()
-				.then(() => self.commit())
-				.then(() => oncreated?.())
-				.catch((e) => console.error(e))
-				.finally(() => {
-					loading = false
-				})
+			// Copy optional blocks if any were selected
+			if (selected_block_ids.length > 0) {
+				copy_selected_blocks_to_site()
+					.then(() => self.commit())
+					.then(() => oncreated?.())
+					.catch((e) => console.error(e))
+					.finally(() => {
+						loading = false
+					})
+			} else {
+				// No blocks to copy, just finish
+				loading = false
+				oncreated?.()
+			}
 		}
 	})
 </script>

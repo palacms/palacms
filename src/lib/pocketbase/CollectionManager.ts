@@ -1,8 +1,6 @@
 import type { ObjectWithId } from './Object'
-import type { BatchRequestResult, RecordModel } from 'pocketbase'
 import { OrderedSvelteMap } from './OrderedSvelteMap'
 import type Client from 'pocketbase'
-import { instance as info } from '$lib/instance'
 
 export type Change<T extends ObjectWithId> =
 	| { collection: string; operation: 'create'; committed: boolean; data: Omit<T, 'id'> }
@@ -26,119 +24,46 @@ export const createCollectionManager = (instance?: Client) => {
 	const lists = new OrderedSvelteMap<string, TrackedList | undefined | null>()
 
 	let promise = Promise.resolve()
-	const sendBatch = async () => {
+
+	const commitChanges = async () => {
 		if (!instance) {
 			throw new Error('No instance')
 		}
 
-		if (!info.batch_count) {
-			throw new Error('Batching not enabled')
-		}
-
-		const batch = instance.createBatch()
-
-		/**
-		 * Record IDs added to this batch.
-		 */
-		const batched_changes: string[] = []
-
-		/**
-		 * One result handler per batched change in order of execution.
-		 * Result handlers are called after the batch has been sent and result is received.
-		 */
-		const result_handlers: ((result: BatchRequestResult) => void)[] = []
-
-		/**
-		 * Commit can be partially done if there's more changes than batch count
-		 * limit allows to send at once. In that case the commit continues
-		 * immidiately after sending the batch.
-		 */
-		let partial_commit = false
-
+		// Process each change individually
 		for (const [id, change] of changes) {
-			// Avoid re-committing a change if commit is done twice in a row
+			// Skip already committed changes
 			if (change.committed) {
 				continue
-			} else {
-				change.committed = true
 			}
 
-			switch (change.operation) {
-				case 'create':
-					batch.collection(change.collection).create(change.data)
-					result_handlers.push((result) => {
-						if (isOk(result.status)) {
-							// Update record from result
-							records.set(id, { data: result.body })
-						} else {
-							// Undo change
-							changes.delete(id)
-						}
-					})
-					batched_changes.push(id)
-					break
+			change.committed = true
 
-				case 'update':
-					batch.collection(change.collection).update(id, change.data)
-					result_handlers.push((result) => {
-						if (isOk(result.status)) {
-							// Update record from result
-							records.set(id, { data: result.body })
-						} else {
-							// Undo change
-							changes.delete(id)
-						}
-					})
-					batched_changes.push(id)
-					break
+			try {
+				switch (change.operation) {
+					case 'create': {
+						const result = await instance.collection(change.collection).create(change.data)
+						records.set(id, { data: result })
+						break
+					}
 
-				case 'delete':
-					batch.collection(change.collection).delete(id)
-					result_handlers.push((result) => {
-						if (isOk(result.status)) {
-							// Update record from result
-							records.set(id, null)
-						} else {
-							// Undo change
-							changes.delete(id)
-						}
-					})
-					batched_changes.push(id)
-					break
-			}
+					case 'update': {
+						const result = await instance.collection(change.collection).update(id, change.data)
+						records.set(id, { data: result })
+						break
+					}
 
-			const is_batch_full = batched_changes.length >= info.batch_count
-			if (is_batch_full) {
-				// Cut the batch
-				partial_commit = true
-				break
-			}
-		}
-
-		if (batched_changes.length === 0) {
-			// No changes
-			return
-		}
-
-		try {
-			const results = await batch.send({ requestKey: null })
-
-			// Handle results
-			for (const [index, result] of results.entries()) {
-				result_handlers[index](result)
-			}
-		} catch (error) {
-			// Undo failed changes
-			for (const id of batched_changes) {
+					case 'delete': {
+						await instance.collection(change.collection).delete(id)
+						records.set(id, null)
+						break
+					}
+				}
+			} catch (error) {
+				// Undo change on failure
 				changes.delete(id)
+				throw error
 			}
-
-			throw error
-		}
-
-		if (partial_commit) {
-			// Continue sending
-			await sendBatch()
 		}
 	}
 
@@ -148,7 +73,7 @@ export const createCollectionManager = (instance?: Client) => {
 		records,
 		lists,
 		commit: async () => {
-			promise = promise.finally(sendBatch)
+			promise = promise.then(commitChanges, commitChanges)
 			return promise
 		},
 		discard: () => {
@@ -160,5 +85,3 @@ export const createCollectionManager = (instance?: Client) => {
 		}
 	}
 }
-
-const isOk = (statusCode: number) => statusCode >= 200 && statusCode <= 299
