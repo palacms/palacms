@@ -73,7 +73,7 @@ export const createCollectionManager = (instance?: Client) => {
 		records,
 		lists,
 		commit: async () => {
-			promise = promise.finally(commitChanges)
+			promise = promise.then(commitChanges, commitChanges)
 			return promise
 		},
 		discard: () => {
