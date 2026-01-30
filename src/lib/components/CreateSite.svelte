@@ -204,6 +204,14 @@
 			const result = await response.json()
 			created_site_id = result.id
 			done_creating_site = true
+
+			// If no blocks to copy, finish immediately without waiting for
+			// the reactive store to sync (avoids race condition on large templates)
+			if (selected_block_ids.length === 0) {
+				loading = false
+				oncreated?.()
+				return
+			}
 		} catch (e) {
 			console.error('Site creation error:', e)
 			loading = false
