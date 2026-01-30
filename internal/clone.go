@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -118,8 +119,11 @@ func RegisterCloneSiteEndpoint(pb *pocketbase.PocketBase) error {
 	return nil
 }
 
+const maxSnapshotSize = 10 * 1024 * 1024 // 10MB
+
 func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshotURL, name, host, groupId string) (*core.Record, error) {
-	resp, err := http.Get(snapshotURL)
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Get(snapshotURL)
 	if err != nil {
 		return nil, err
 	}
@@ -129,9 +133,12 @@ func cloneFromSnapshot(pb *pocketbase.PocketBase, snapshotURL, name, host, group
 		return nil, errors.New("failed to fetch snapshot: " + resp.Status)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxSnapshotSize+1))
 	if err != nil {
 		return nil, err
+	}
+	if len(data) > maxSnapshotSize {
+		return nil, errors.New("snapshot exceeds maximum allowed size")
 	}
 
 	snapshot, err := parseSnapshot(data)
