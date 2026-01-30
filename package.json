@@ -73,6 +73,7 @@
 		"tailwindcss": "^4.1.18",
 		"tailwindcss-animate": "^1.0.7",
 		"typescript": "^5.9.2",
-		"zod": "^4.1.13"
+		"zod": "^4.1.13",
+		"css-simple-parser": "^3.0.2"
 	}
 }
