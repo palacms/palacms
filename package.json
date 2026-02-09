@@ -31,7 +31,7 @@
 		"@tiptap/extension-link": "^3.18.0",
 		"@tiptap/extension-typography": "^3.18.0",
 		"@tiptap/extension-youtube": "^3.18.0",
-		"@tiptap/pm": "^3.18.0",
+		"@tiptap/pm": "^3.19.0",
 		"@tiptap/starter-kit": "^3.18.0",
 		"@types/lodash-es": "^4.17.12",
 		"@types/pluralize": "^0.0.33",
