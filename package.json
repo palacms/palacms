@@ -46,7 +46,7 @@
 		"idb-keyval": "^6.2.2",
 		"lodash-es": "^4.17.23",
 		"lowlight": "^3.3.0",
-		"lucide-svelte": "^0.563.0",
+		"lucide-svelte": "^0.564.0",
 		"markdown-it": "^14.1.1",
 		"mode-watcher": "^1.1.0",
 		"nanoid": "^5.1.6",
