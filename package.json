@@ -61,7 +61,7 @@
 		"promise-worker": "^2.0.1",
 		"prosemirror-schema-basic": "^1.2.4",
 		"runed": "^0.37.1",
-		"svelte": "^5.53.0",
+		"svelte": "^5.53.2",
 		"svelte-awesome-color-picker": "^4.1.1",
 		"svelte-check": "^4.4.3",
 		"svelte-inspect-value": "^0.10.0",
