@@ -55,7 +55,7 @@
 		"pocketbase": "^0.26.8",
 		"postcss": "^8.5.6",
 		"postcss-nested": "^7.0.2",
-		"posthog-js": "^1.347.2",
+		"posthog-js": "^1.352.0",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.4.1",
 		"promise-worker": "^2.0.1",
