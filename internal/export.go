@@ -3,11 +3,11 @@ package internal
 import (
 	"archive/zip"
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/pocketbase/pocketbase"
@@ -73,8 +73,8 @@ func buildSiteZip(pb *pocketbase.PocketBase, host string) (*bytes.Buffer, error)
 func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 	pb.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		// download the generated files as a zip archive
-		se.Router.GET("/api/palacms/site-zip/:siteId", func(e *core.RequestEvent) error {
-			site, err := pb.FindRecordById("sites", e.Param("siteId"))
+		se.Router.GET("/api/palacms/site-zip/{siteId}", func(e *core.RequestEvent) error {
+			site, err := pb.FindRecordById("sites", e.Request.PathValue("siteId"))
 			if err != nil {
 				return e.NotFoundError("site not found", err)
 			}
@@ -98,8 +98,8 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 		})
 
 		// trigger a deployment to Cloudflare Pages
-		se.Router.POST("/api/palacms/deploy/:siteId", func(e *core.RequestEvent) error {
-			site, err := pb.FindRecordById("sites", e.Param("siteId"))
+		se.Router.POST("/api/palacms/deploy/{siteId}", func(e *core.RequestEvent) error {
+			site, err := pb.FindRecordById("sites", e.Request.PathValue("siteId"))
 			if err != nil {
 				return e.NotFoundError("site not found", err)
 			}
@@ -108,11 +108,6 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 			canAccess, _ := e.App.CanAccessRecord(site, info, site.Collection().UpdateRule)
 			if !canAccess {
 				return e.ForbiddenError("", nil)
-			}
-
-			buf, err := buildSiteZip(pb, site.GetString("host"))
-			if err != nil {
-				return err
 			}
 
 			// allow per-site overrides stored on the site record; fall back to
@@ -130,42 +125,27 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 				token = os.Getenv("CF_API_TOKEN")
 			}
 			if acct == "" || proj == "" || token == "" {
-				return e.InternalError("cloudflare credentials missing", nil)
+				return e.InternalServerError("cloudflare credentials missing", nil)
 			}
 
-			req, err := http.NewRequest(
-				"POST",
-				"https://api.cloudflare.com/client/v4/accounts/"+acct+
-					"/pages/projects/"+proj+"/deployments",
-				buf,
+			// The files are already generated and stored locally in PocketBase's data directory.
+			siteDir := filepath.Join(pb.DataDir(), "storage", "sites", site.GetString("host"))
+
+			cmd := exec.Command("npx", "-y", "wrangler@latest", "pages", "deploy", siteDir, "--project-name", proj, "--branch", "main")
+			cmd.Env = append(os.Environ(),
+				"CLOUDFLARE_ACCOUNT_ID="+acct,
+				"CLOUDFLARE_API_TOKEN="+token,
+				"WRANGLER_SEND_METRICS=false",
 			)
+
+			out, err := cmd.CombinedOutput()
 			if err != nil {
-				return err
+				return e.InternalServerError("cloudflare deployment failed: "+string(out), err)
 			}
-			req.Header.Set("Authorization", "Bearer "+token)
-			req.Header.Set("Content-Type", "application/zip")
-
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return err
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode >= 300 {
-				body, _ := io.ReadAll(resp.Body)
-				return e.InternalError("cloudflare error: "+string(body), nil)
-			}
-
-			var result struct {
-				Result struct {
-					URL string `json:"url"`
-				} `json:"result"`
-			}
-			_ = json.NewDecoder(resp.Body).Decode(&result)
 
 			return e.JSON(200, map[string]any{
 				"status": "deployed",
-				"url":    result.Result.URL,
+				"url":    "https://" + proj + ".pages.dev",
 			})
 		})
 

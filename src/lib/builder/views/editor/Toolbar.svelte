@@ -46,14 +46,19 @@
 	const publish = $derived(usePublishSite(site?.id))
 
 	// determine whether this site has cloudflare deployment configured
-	const has_cf = $derived(!!(site?.cfAccountId && site.cfProjectName && site.cfApiToken))
+	const has_cf = $derived(!!(site?.cfAccountId && site.cfProjectName))
 
 	let deploy_in_progress = $state(false)
 	async function handle_deploy() {
 		if (!site) return
 		deploy_in_progress = true
 		try {
-			const resp = await fetch(`/api/palacms/deploy/${site.id}`, { method: 'POST' })
+			const resp = await fetch(`${self.instance?.baseURL}/api/palacms/deploy/${site.id}`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${self.instance?.authStore.token}`
+				}
+			})
 			if (!resp.ok) throw new Error('deploy failed')
 			const data = await resp.json()
 			if (data.url) {

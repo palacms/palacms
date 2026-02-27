@@ -12,6 +12,7 @@
 	import { Button } from '$lib/components/ui/button'
 	import { Globe, Loader, ChevronDown, SquarePen, Trash2, EllipsisVertical, ArrowLeftRight, Download, CirclePlus, Settings } from 'lucide-svelte'
 	import { useSidebar } from '$lib/components/ui/sidebar'
+	const sidebar = useSidebar()
 	import { page } from '$app/state'
 	import type { Site } from '$lib/common/models/Site'
 	import { Sites, SiteGroups, Pages } from '$lib/pocketbase/collections'
@@ -19,6 +20,7 @@
 	import { goto } from '$app/navigation'
 	import { ClientResponseError } from 'pocketbase'
 	import { toast } from 'svelte-sonner'
+	const site_group_id = $derived(page.url.searchParams.get('group') ?? '')
 	$effect(() => {
 		if (!site_group_id && site_groups.length > 0) {
 			const url = new URL(page.url)
@@ -61,7 +63,11 @@
 	async function download_site_file() {
 		if (!current_site) return
 		try {
-			const resp = await fetch(`/api/palacms/site-zip/${current_site.id}`)
+			const resp = await fetch(`${self.instance?.baseURL}/api/palacms/site-zip/${current_site.id}`, {
+				headers: {
+					Authorization: `Bearer ${self.instance?.authStore.token}`
+				}
+			})
 			if (!resp.ok) throw new Error('download failed')
 			const blob = await resp.blob()
 			const url = URL.createObjectURL(blob)
@@ -97,11 +103,14 @@
 
 	async function save_cf_settings() {
 		if (!current_site) return
-		Sites.update(current_site.id, {
+		const data: Partial<Site> = {
 			cfAccountId: cf_account || null,
-			cfProjectName: cf_project || null,
-			cfApiToken: cf_token || null
-		})
+			cfProjectName: cf_project || null
+		}
+		if (cf_token) {
+			data.cfApiToken = cf_token
+		}
+		Sites.update(current_site.id, data)
 		await self.commit()
 		is_cf_settings_open = false
 		toast.success('Cloudflare settings updated')
@@ -110,7 +119,12 @@
 	async function deploy_site() {
 		if (!current_site) return
 		try {
-			const resp = await fetch(`/api/palacms/deploy/${current_site.id}`, { method: 'POST' })
+			const resp = await fetch(`${self.instance?.baseURL}/api/palacms/deploy/${current_site.id}`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${self.instance?.authStore.token}`
+				}
+			})
 			if (!resp.ok) throw new Error('deploy failed')
 			const data = await resp.json()
 			if (data.url) {
@@ -302,7 +316,7 @@
 						<Download class="h-4 w-4" />
 						<span>Download</span>
 					</DropdownMenu.Item>
-					{#if site.cfAccountId && site.cfProjectName && site.cfApiToken}
+					{#if site.cfAccountId && site.cfProjectName}
 						<DropdownMenu.Item
 							onclick={() => {
 								current_site = site
