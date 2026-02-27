@@ -21,14 +21,15 @@
 	import Deploy from '$lib/components/Modals/Deploy/Deploy.svelte'
 	import { usePublishSite } from '$lib/workers/Publish.svelte'
 	import { type Snippet } from 'svelte'
-	import { site_context } from '$lib/builder/stores/context'
-	import { current_user } from '$lib/pocketbase/user'
-	import { resolve_page, build_cms_page_url } from '$lib/pages'
 	import { self } from '$lib/pocketbase/managers'
 	import { getUserActivity } from '$lib/UserActivity.svelte'
 	import { useSiteSnapshot } from '$lib/Snapshot.svelte'
 	import { Snapshot } from '$lib/common/models/Snapshot'
 	import { instance } from '$lib/instance'
+	import { toast } from 'svelte-sonner'
+	import { site_context } from '$lib/builder/stores/context'
+	import { current_user } from '$lib/pocketbase/user'
+	import { resolve_page, build_cms_page_url } from '$lib/pages'
 
 	let { children }: { children: Snippet } = $props()
 
@@ -43,6 +44,30 @@
 	const active_page_type = $derived(active_page_type_id && PageTypes.one(active_page_type_id))
 
 	const publish = $derived(usePublishSite(site?.id))
+
+	// determine whether this site has cloudflare deployment configured
+	const has_cf = $derived(!!(site?.cfAccountId && site.cfProjectName && site.cfApiToken))
+
+	let deploy_in_progress = $state(false)
+	async function handle_deploy() {
+		if (!site) return
+		deploy_in_progress = true
+		try {
+			const resp = await fetch(`/api/palacms/deploy/${site.id}`, { method: 'POST' })
+			if (!resp.ok) throw new Error('deploy failed')
+			const data = await resp.json()
+			if (data.url) {
+				toast.success(`Deployment started, url: ${data.url}`)
+			} else {
+				toast.success('Deployment started')
+			}
+		} catch (err) {
+			console.error('deploy error', err)
+			toast.error('Deploy failed')
+		} finally {
+			deploy_in_progress = false
+		}
+	}
 
 	const existing_snapshots = $derived(SiteSnapshots.list({ filter: { site: site.id }, sort: '-created' }))
 	const create_snapshot = $derived(useSiteSnapshot({ source_site_id: site?.id }))
@@ -363,7 +388,12 @@
 			</DropdownMenu.Root>
 			{@render children?.()}
 			<!-- <LocaleSelector /> -->
-			<ToolbarButton type="primo" icon="entypo:publish" label="Publish" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
+			{#if has_cf}
+				<ToolbarButton type="primo" icon="entypo:eye" label="Preview" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
+				<ToolbarButton type="primo" icon="lucide:cloud" label="Deploy" loading={deploy_in_progress} on:click={handle_deploy} />
+			{:else}
+				<ToolbarButton type="primo" icon="entypo:publish" label="Publish" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
+			{/if}
 		</div>
 	</div>
 </nav>

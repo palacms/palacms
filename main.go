@@ -65,5 +65,10 @@ func setup(pb *pocketbase.PocketBase) error {
 		return err
 	}
 
+	// endpoints for downloading/deploying generated sites
+	if err := internal.RegisterExportEndpoints(pb); err != nil {
+		return err
+	}
+
 	return nil
 }
