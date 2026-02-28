@@ -49,7 +49,6 @@
 	// determine whether this site has cloudflare deployment configured
 	const has_cf = $derived(!!(site?.cfAccountId && site.cfProjectName))
 
-	let deploy_in_progress = $state(false)
 	let cf_deploying = $state(false)
 	async function handle_deploy() {
 		if (!site) return
@@ -383,7 +382,7 @@
 			<!-- <LocaleSelector /> -->
 			{#if has_cf}
 				<ToolbarButton type="primo" icon="entypo:eye" label="Preview" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
-				<ToolbarButton type="primo" icon="lucide:cloud" label="Deploy" loading={deploy_in_progress} on:click={handle_deploy} />
+				<ToolbarButton type="primo" icon="lucide:cloud" label="Deploy" loading={cf_deploying} on:click={handle_deploy} />
 			{:else}
 				<ToolbarButton type="primo" icon="entypo:publish" label="Publish" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
 			{/if}

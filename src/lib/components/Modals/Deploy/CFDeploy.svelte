@@ -137,9 +137,9 @@
 			<h3 class="title">Cloudflare Deployment</h3>
 			<p class="description">
 				The current preview at
-				<a href={previewUrl} target="_blank" class="text-blue-400 hover:underline">{previewUrl}</a>
+				<a href={previewUrl} target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">{previewUrl}</a>
 				will be deployed to Cloudflare at
-				<a href={targetUrl} target="_blank" class="text-blue-400 hover:underline">{targetUrl}</a>
+				<a href={targetUrl} target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">{targetUrl}</a>
 				.
 			</p>
 
@@ -167,7 +167,7 @@
 			<p class="description">Your deployment has been triggered. It might take a minute to go live.</p>
 			{#if deployUrl}
 				<div class="url-box">
-					<a href={deployUrl} target="_blank" class="deploy-link">
+					<a href={deployUrl} target="_blank" rel="noopener noreferrer" class="deploy-link">
 						{deployUrl}
 						<Icon icon="lucide:external-link" width=".85rem" />
 					</a>

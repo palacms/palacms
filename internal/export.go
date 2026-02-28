@@ -242,25 +242,33 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 			}
 
 			infoDir, err := os.Stat(siteDir)
-			if os.IsNotExist(err) {
-				return e.JSON(200, map[string]any{
-					"exists":      false,
-					"lastUpdated": lastUpdated.Format(time.RFC3339),
-					"isOutdated":  true,
-				})
+			if err != nil {
+				if os.IsNotExist(err) {
+					return e.JSON(200, map[string]any{
+						"exists":      false,
+						"lastUpdated": lastUpdated.Format(time.RFC3339),
+						"isOutdated":  true,
+					})
+				}
+				return e.InternalServerError("failed to inspect preview files", err)
 			}
 
 			// find the newest file to determine generation time
 			var lastGenerated time.Time
-			filepath.Walk(siteDir, func(path string, info os.FileInfo, err error) error {
-				if err == nil && !info.IsDir() {
+			if err := filepath.Walk(siteDir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if !info.IsDir() {
 					modTime := info.ModTime().UTC()
 					if modTime.After(lastGenerated) {
 						lastGenerated = modTime
 					}
 				}
 				return nil
-			})
+			}); err != nil {
+				return e.InternalServerError("failed to scan preview files", err)
+			}
 
 			if lastGenerated.IsZero() {
 				lastGenerated = infoDir.ModTime().UTC()
