@@ -8,6 +8,9 @@ export const Site = z.object({
 	group: z.string().nonempty(),
 	head: z.string(),
 	foot: z.string(),
+	// cloudflare project/account info for per-site deployments
+	cfAccountId: z.string().optional(),
+	cfProjectName: z.string().optional(),
 	preview: z.string().or(z.file()).optional(),
 	index: z.number().int().nonnegative()
 })
