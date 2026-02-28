@@ -226,7 +226,7 @@
 
 <Dialog.Root bind:open={cf_deploying}>
 	<Dialog.Content class="z-999 max-w-[500px] flex flex-col p-0">
-		<CFDeploy {site} onClose={() => (cf_deploying = false)} />
+		<CFDeploy {site} {publish} onClose={() => (cf_deploying = false)} />
 	</Dialog.Content>
 </Dialog.Root>
 

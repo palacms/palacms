@@ -3,13 +3,20 @@
 	import { self } from '$lib/pocketbase/managers'
 	import { toast } from 'svelte-sonner'
 
-	let { site, onClose } = $props()
+	let { site, publish, onClose } = $props()
 
 	let branch = $state('main')
 	let stage = $state('CHECKING') // CHECKING, INITIAL, DEPLOYING, DEPLOYED, ERROR, NO_PREVIEW, OLD_PREVIEW, GENERATING
 	let status = $state({ exists: false, isOutdated: false })
 	let error = $state(null)
 	let deployUrl = $state('')
+
+	const previewUrl = $derived(`${self.instance?.baseURL}/?_site=${site.id}`)
+	const targetUrl = $derived.by(() => {
+		if (!site.cfProjectName) return ''
+		if (branch === 'main') return `https://${site.cfProjectName}.pages.dev`
+		return `https://${branch}.${site.cfProjectName}.pages.dev`
+	})
 
 	$effect(() => {
 		check_status()
@@ -41,15 +48,7 @@
 	async function handle_generate() {
 		stage = 'GENERATING'
 		try {
-			const resp = await fetch(`${self.instance?.baseURL}/api/palacms/generate`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${self.instance?.authStore.token}`
-				},
-				body: JSON.stringify({ site_id: site.id })
-			})
-			if (!resp.ok) throw new Error('Generation failed')
+			await publish.run()
 			await check_status()
 			toast.success('Preview generated successfully')
 		} catch (err) {
@@ -137,8 +136,11 @@
 		<div class="container">
 			<h3 class="title">Cloudflare Deployment</h3>
 			<p class="description">
-				Deploying <strong>{site.name}</strong>
-				to Cloudflare Pages.
+				The current preview at
+				<a href={previewUrl} target="_blank" class="text-blue-400 hover:underline">{previewUrl}</a>
+				will be deployed to Cloudflare at
+				<a href={targetUrl} target="_blank" class="text-blue-400 hover:underline">{targetUrl}</a>
+				.
 			</p>
 
 			<div class="form-group">
