@@ -3,12 +3,14 @@ package internal
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -99,7 +101,7 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 
 		// trigger a deployment to Cloudflare Pages
 		se.Router.POST("/api/palacms/deploy/{siteId}", func(e *core.RequestEvent) error {
-			site, err := pb.FindRecordById("sites", e.Request.PathValue("siteId"))
+			site, err := e.App.FindRecordById("sites", e.Request.PathValue("siteId"))
 			if err != nil {
 				return e.NotFoundError("site not found", err)
 			}
@@ -108,6 +110,18 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 			canAccess, _ := e.App.CanAccessRecord(site, info, site.Collection().UpdateRule)
 			if !canAccess {
 				return e.ForbiddenError("", nil)
+			}
+
+			// Parse optional branch name from request body
+			var body struct {
+				Branch string `json:"branch"`
+			}
+			if err := e.BindBody(&body); err != nil {
+				// Body might be empty, that's fine
+			}
+			branch := body.Branch
+			if branch == "" {
+				branch = "main"
 			}
 
 			// allow per-site overrides stored on the site record; fall back to
@@ -128,10 +142,18 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 				return e.InternalServerError("cloudflare credentials missing", nil)
 			}
 
-			// The files are already generated and stored locally in PocketBase's data directory.
-			siteDir := filepath.Join(pb.DataDir(), "storage", "sites", site.GetString("host"))
+			host := site.GetString("host")
+			if strings.Contains(host, "/") || strings.Contains(host, "\\") || host == ".." {
+				return e.BadRequestError("invalid host name", nil)
+			}
 
-			cmd := exec.Command("npx", "-y", "wrangler@latest", "pages", "deploy", siteDir, "--project-name", proj, "--branch", "main")
+			// The files are already generated and stored locally in PocketBase's data directory.
+			siteDir := filepath.Join(e.App.DataDir(), "storage", "sites", host)
+
+			ctx, cancel := context.WithTimeout(e.Request.Context(), 2*time.Minute)
+			defer cancel()
+
+			cmd := exec.CommandContext(ctx, "npx", "wrangler", "pages", "deploy", siteDir, "--project-name", proj, "--branch", branch)
 			cmd.Env = append(os.Environ(),
 				"CLOUDFLARE_ACCOUNT_ID="+acct,
 				"CLOUDFLARE_API_TOKEN="+token,
@@ -140,7 +162,8 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 
 			out, err := cmd.CombinedOutput()
 			if err != nil {
-				return e.InternalServerError("cloudflare deployment failed: "+string(out), err)
+				e.App.Logger().Error("cloudflare deployment failed", "error", err, "output", string(out))
+				return e.InternalServerError("cloudflare deployment failed", nil)
 			}
 
 			return e.JSON(200, map[string]any{

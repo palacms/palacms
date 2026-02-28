@@ -11,7 +11,6 @@ export const Site = z.object({
 	// cloudflare project/account info for per-site deployments
 	cfAccountId: z.string().optional(),
 	cfProjectName: z.string().optional(),
-	cfApiToken: z.string().optional(),
 	preview: z.string().or(z.file()).optional(),
 	index: z.number().int().nonnegative()
 })

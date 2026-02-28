@@ -11,6 +11,7 @@
 	import { Separator } from '$lib/components/ui/separator'
 	import { Button } from '$lib/components/ui/button'
 	import { Globe, Loader, ChevronDown, SquarePen, Trash2, EllipsisVertical, ArrowLeftRight, Download, CirclePlus, Settings } from 'lucide-svelte'
+	import CFDeploy from '$lib/components/Modals/Deploy/CFDeploy.svelte'
 	import { useSidebar } from '$lib/components/ui/sidebar'
 	const sidebar = useSidebar()
 	import { page } from '$app/state'
@@ -97,45 +98,29 @@
 		if (current_site) {
 			cf_account = current_site.cfAccountId || ''
 			cf_project = current_site.cfProjectName || ''
-			cf_token = current_site.cfApiToken || ''
+			cf_token = '' // Token is write-only and not returned by API
 		}
 	})
 
 	async function save_cf_settings() {
 		if (!current_site) return
-		const data: Partial<Site> = {
+		const data: Record<string, any> = {
 			cfAccountId: cf_account || null,
 			cfProjectName: cf_project || null
 		}
 		if (cf_token) {
 			data.cfApiToken = cf_token
 		}
-		Sites.update(current_site.id, data)
+		Sites.update(current_site.id, data as Partial<Site>)
 		await self.commit()
 		is_cf_settings_open = false
 		toast.success('Cloudflare settings updated')
 	}
 
+	let is_cf_deploy_open = $state(false)
 	async function deploy_site() {
 		if (!current_site) return
-		try {
-			const resp = await fetch(`${self.instance?.baseURL}/api/palacms/deploy/${current_site.id}`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${self.instance?.authStore.token}`
-				}
-			})
-			if (!resp.ok) throw new Error('deploy failed')
-			const data = await resp.json()
-			if (data.url) {
-				toast.success(`Deployment started, url: ${data.url}`)
-			} else {
-				toast.success('Deployment started')
-			}
-		} catch (err) {
-			console.error('deploy error', err)
-			toast.error('Deploy failed')
-		}
+		is_cf_deploy_open = true
 	}
 
 	$effect(() => {
@@ -509,5 +494,11 @@
 		<Dialog.Footer class="mt-6">
 			<Button type="button" onclick={() => (is_create_site_instructions_open = false)}>Okay</Button>
 		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={is_cf_deploy_open}>
+	<Dialog.Content class="z-999 max-w-[500px] flex flex-col p-0">
+		<CFDeploy site={current_site} onClose={() => (is_cf_deploy_open = false)} />
 	</Dialog.Content>
 </Dialog.Root>

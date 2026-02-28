@@ -19,6 +19,7 @@
 	import PageTypeModal from '$lib/builder/views/modal/PageTypeModal/PageTypeModal.svelte'
 	import Collaboration from '$lib/builder/views/modal/Collaboration.svelte'
 	import Deploy from '$lib/components/Modals/Deploy/Deploy.svelte'
+	import CFDeploy from '$lib/components/Modals/Deploy/CFDeploy.svelte'
 	import { usePublishSite } from '$lib/workers/Publish.svelte'
 	import { type Snippet } from 'svelte'
 	import { self } from '$lib/pocketbase/managers'
@@ -49,29 +50,10 @@
 	const has_cf = $derived(!!(site?.cfAccountId && site.cfProjectName))
 
 	let deploy_in_progress = $state(false)
+	let cf_deploying = $state(false)
 	async function handle_deploy() {
 		if (!site) return
-		deploy_in_progress = true
-		try {
-			const resp = await fetch(`${self.instance?.baseURL}/api/palacms/deploy/${site.id}`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${self.instance?.authStore.token}`
-				}
-			})
-			if (!resp.ok) throw new Error('deploy failed')
-			const data = await resp.json()
-			if (data.url) {
-				toast.success(`Deployment started, url: ${data.url}`)
-			} else {
-				toast.success('Deployment started')
-			}
-		} catch (err) {
-			console.error('deploy error', err)
-			toast.error('Deploy failed')
-		} finally {
-			deploy_in_progress = false
-		}
+		cf_deploying = true
 	}
 
 	const existing_snapshots = $derived(SiteSnapshots.list({ filter: { site: site.id }, sort: '-created' }))
@@ -239,6 +221,12 @@
 				publish_stage = 'INITIAL'
 			}}
 		/>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={cf_deploying}>
+	<Dialog.Content class="z-999 max-w-[500px] flex flex-col p-0">
+		<CFDeploy {site} onClose={() => (cf_deploying = false)} />
 	</Dialog.Content>
 </Dialog.Root>
 
