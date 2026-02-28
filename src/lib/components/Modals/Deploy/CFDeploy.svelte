@@ -6,9 +6,58 @@
 	let { site, onClose } = $props()
 
 	let branch = $state('main')
-	let stage = $state('INITIAL') // INITIAL, DEPLOYING, DEPLOYED, ERROR
+	let stage = $state('CHECKING') // CHECKING, INITIAL, DEPLOYING, DEPLOYED, ERROR, NO_PREVIEW, OLD_PREVIEW, GENERATING
+	let status = $state({ exists: false, isOutdated: false })
 	let error = $state(null)
 	let deployUrl = $state('')
+
+	$effect(() => {
+		check_status()
+	})
+
+	async function check_status() {
+		try {
+			const resp = await fetch(`${self.instance?.baseURL}/api/palacms/deploy-status/${site.id}`, {
+				headers: {
+					Authorization: `Bearer ${self.instance?.authStore.token}`
+				}
+			})
+			if (!resp.ok) throw new Error('Failed to check status')
+			status = await resp.json()
+
+			if (!status.exists) {
+				stage = 'NO_PREVIEW'
+			} else if (status.isOutdated) {
+				stage = 'OLD_PREVIEW'
+			} else {
+				stage = 'INITIAL'
+			}
+		} catch (err) {
+			console.error('Status check error:', err)
+			stage = 'INITIAL' // Fallback to initial if check fails
+		}
+	}
+
+	async function handle_generate() {
+		stage = 'GENERATING'
+		try {
+			const resp = await fetch(`${self.instance?.baseURL}/api/palacms/generate`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${self.instance?.authStore.token}`
+				},
+				body: JSON.stringify({ site_id: site.id })
+			})
+			if (!resp.ok) throw new Error('Generation failed')
+			await check_status()
+			toast.success('Preview generated successfully')
+		} catch (err) {
+			console.error('Generate error:', err)
+			toast.error('Failed to generate preview')
+			stage = 'INITIAL'
+		}
+	}
 
 	async function handle_deploy() {
 		stage = 'DEPLOYING'
@@ -32,20 +81,64 @@
 			toast.success('Deployment started successfully')
 		} catch (err) {
 			console.error('Deploy error:', err)
-			error = err instanceof Error ? err.message : 'Deployment failed'
+			const errorMessage = err instanceof Error ? err.message : 'Deployment failed'
+			error = errorMessage
 			stage = 'ERROR'
-			toast.error(error)
+			toast.error(errorMessage)
 		}
 	}
 </script>
 
 <div class="CFDeploy primo-reset">
-	{#if stage === 'INITIAL' || stage === 'DEPLOYING'}
+	{#if stage === 'CHECKING'}
+		<div class="container text-center py-8">
+			<Icon icon="line-md:loading-twotone-loop" width="2rem" />
+			<p>Checking preview status...</p>
+		</div>
+	{:else if stage === 'NO_PREVIEW'}
+		<div class="container">
+			<h3 class="title">Preview Required</h3>
+			<div class="warning-box">
+				<Icon icon="lucide:alert-triangle" />
+				<p>No preview files found. You must generate a preview before deploying.</p>
+			</div>
+			<div class="buttons">
+				<button class="primo-button" onclick={onClose}>Cancel</button>
+				<button class="primo-button primary" onclick={handle_generate}>
+					<Icon icon="lucide:play" />
+					<span>Generate Preview</span>
+				</button>
+			</div>
+		</div>
+	{:else if stage === 'OLD_PREVIEW'}
+		<div class="container">
+			<h3 class="title">Outdated Preview</h3>
+			<div class="warning-box">
+				<Icon icon="lucide:alert-circle" />
+				<p>The site has been updated since the last preview was generated. You might want to refresh the preview before deploying.</p>
+			</div>
+			<div class="buttons">
+				<button class="primo-button" onclick={onClose}>Cancel</button>
+				<button class="primo-button" onclick={() => (stage = 'INITIAL')}>
+					<span>Deploy Anyway</span>
+				</button>
+				<button class="primo-button primary" onclick={handle_generate}>
+					<Icon icon="lucide:refresh-cw" />
+					<span>Generate Fresh Preview</span>
+				</button>
+			</div>
+		</div>
+	{:else if stage === 'GENERATING'}
+		<div class="container text-center py-8">
+			<Icon icon="line-md:loading-twotone-loop" width="2rem" />
+			<p>Generating preview files...</p>
+		</div>
+	{:else if stage === 'INITIAL' || stage === 'DEPLOYING'}
 		<div class="container">
 			<h3 class="title">Cloudflare Deployment</h3>
 			<p class="description">
 				Deploying <strong>{site.name}</strong>
-				 to Cloudflare Pages.
+				to Cloudflare Pages.
 			</p>
 
 			<div class="form-group">
@@ -191,6 +284,24 @@
 		margin-bottom: 1rem;
 		display: flex;
 		justify-content: center;
+	}
+	.warning-box {
+		background: rgba(245, 158, 11, 0.1);
+		border: 1px solid rgba(245, 158, 11, 0.2);
+		padding: 1rem;
+		border-radius: 0.25rem;
+		color: #fbbf24;
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+	.warning-box p {
+		margin: 0;
+		font-size: 0.9rem;
+	}
+	.py-8 {
+		padding-top: 2rem;
+		padding-bottom: 2rem;
 	}
 	.url-box {
 		background: #111;

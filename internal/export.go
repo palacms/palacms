@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -99,6 +100,189 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 			return nil
 		})
 
+		// check deployment status (presence and age of preview files)
+		se.Router.GET("/api/palacms/deploy-status/{siteId}", func(e *core.RequestEvent) error {
+			site, err := e.App.FindRecordById("sites", e.Request.PathValue("siteId"))
+			if err != nil {
+				return e.NotFoundError("site not found", err)
+			}
+
+			info, _ := e.RequestInfo()
+			canAccess, _ := e.App.CanAccessRecord(site, info, site.Collection().UpdateRule)
+			if !canAccess {
+				return e.ForbiddenError("", nil)
+			}
+
+			host := site.GetString("host")
+			siteDir := filepath.Join(e.App.DataDir(), "storage", "sites", host)
+
+			// Get the latest update across all site-related collections
+			lastUpdated := site.GetDateTime("updated").Time().UTC()
+
+			// DB timestamp format: 2006-01-02 15:04:05.000Z
+			dbTimeFormat := "2006-01-02 15:04:05.000Z"
+
+			// Check site-linked collections (direct)
+			directSiteCollections := []string{
+				"pages",
+				"site_symbols",
+				"site_uploads",
+				"site_fields",
+				"site_groups",
+			}
+			for _, collName := range directSiteCollections {
+				var maxTime struct {
+					MaxT string `db:"max_t"`
+				}
+				err := e.App.DB().
+					Select(fmt.Sprintf("MAX(%s.updated) as max_t", collName)).
+					From(collName).
+					Where(dbx.HashExp{"site": site.Id}).
+					One(&maxTime)
+
+				if err == nil && maxTime.MaxT != "" {
+					t, err := time.Parse(dbTimeFormat, maxTime.MaxT)
+					if err == nil && t.UTC().After(lastUpdated) {
+						lastUpdated = t.UTC()
+					}
+				}
+			}
+
+			// Check collections linked through site_fields (site_entries)
+			var maxSiteEntryTime struct {
+				MaxT string `db:"max_t"`
+			}
+			err = e.App.DB().
+				Select("MAX(site_entries.updated) as max_t").
+				From("site_entries").
+				Join("JOIN", "site_fields", dbx.NewExp("site_entries.field = site_fields.id")).
+				Where(dbx.HashExp{"site_fields.site": site.Id}).
+				One(&maxSiteEntryTime)
+			if err == nil && maxSiteEntryTime.MaxT != "" {
+				t, err := time.Parse(dbTimeFormat, maxSiteEntryTime.MaxT)
+				if err == nil && t.UTC().After(lastUpdated) {
+					lastUpdated = t.UTC()
+				}
+			}
+
+			// Check collections linked through site_symbols (site_symbol_fields)
+			var maxSiteSymbolFieldTime struct {
+				MaxT string `db:"max_t"`
+			}
+			err = e.App.DB().
+				Select("MAX(site_symbol_fields.updated) as max_t").
+				From("site_symbol_fields").
+				Join("JOIN", "site_symbols", dbx.NewExp("site_symbol_fields.symbol = site_symbols.id")).
+				Where(dbx.HashExp{"site_symbols.site": site.Id}).
+				One(&maxSiteSymbolFieldTime)
+			if err == nil && maxSiteSymbolFieldTime.MaxT != "" {
+				t, err := time.Parse(dbTimeFormat, maxSiteSymbolFieldTime.MaxT)
+				if err == nil && t.UTC().After(lastUpdated) {
+					lastUpdated = t.UTC()
+				}
+			}
+
+			// Check collections linked through site_symbol_fields (site_symbol_entries)
+			// site_symbol_entries -> field (site_symbol_fields) -> symbol (site_symbols) -> site
+			var maxSiteSymbolEntryTime struct {
+				MaxT string `db:"max_t"`
+			}
+			err = e.App.DB().
+				Select("MAX(site_symbol_entries.updated) as max_t").
+				From("site_symbol_entries").
+				Join("JOIN", "site_symbol_fields", dbx.NewExp("site_symbol_entries.field = site_symbol_fields.id")).
+				Join("JOIN", "site_symbols", dbx.NewExp("site_symbol_fields.symbol = site_symbols.id")).
+				Where(dbx.HashExp{"site_symbols.site": site.Id}).
+				One(&maxSiteSymbolEntryTime)
+			if err == nil && maxSiteSymbolEntryTime.MaxT != "" {
+				t, err := time.Parse(dbTimeFormat, maxSiteSymbolEntryTime.MaxT)
+				if err == nil && t.UTC().After(lastUpdated) {
+					lastUpdated = t.UTC()
+				}
+			}
+
+			// Check collections linked through pages (page_entries, page_sections)
+			pageCollections := []string{"page_entries", "page_sections"}
+			for _, collName := range pageCollections {
+				var maxTime struct {
+					MaxT string `db:"max_t"`
+				}
+				err = e.App.DB().
+					Select(fmt.Sprintf("MAX(%s.updated) as max_t", collName)).
+					From(collName).
+					Join("JOIN", "pages", dbx.NewExp(fmt.Sprintf("%s.page = pages.id", collName))).
+					Where(dbx.HashExp{"pages.site": site.Id}).
+					One(&maxTime)
+
+				if err == nil && maxTime.MaxT != "" {
+					t, err := time.Parse(dbTimeFormat, maxTime.MaxT)
+					if err == nil && t.UTC().After(lastUpdated) {
+						lastUpdated = t.UTC()
+					}
+				}
+			}
+
+			// Check collections linked through page_sections (page_section_entries)
+			// page_section_entries -> section (page_sections) -> page (pages) -> site
+			var maxPageSectionEntryTime struct {
+				MaxT string `db:"max_t"`
+			}
+			err = e.App.DB().
+				Select("MAX(page_section_entries.updated) as max_t").
+				From("page_section_entries").
+				Join("JOIN", "page_sections", dbx.NewExp("page_section_entries.section = page_sections.id")).
+				Join("JOIN", "pages", dbx.NewExp("page_sections.page = pages.id")).
+				Where(dbx.HashExp{"pages.site": site.Id}).
+				One(&maxPageSectionEntryTime)
+			if err == nil && maxPageSectionEntryTime.MaxT != "" {
+				t, err := time.Parse(dbTimeFormat, maxPageSectionEntryTime.MaxT)
+				if err == nil && t.UTC().After(lastUpdated) {
+					lastUpdated = t.UTC()
+				}
+			}
+
+			infoDir, err := os.Stat(siteDir)
+			if os.IsNotExist(err) {
+				return e.JSON(200, map[string]any{
+					"exists":      false,
+					"lastUpdated": lastUpdated.Format(time.RFC3339),
+					"isOutdated":  true,
+				})
+			}
+
+			// find the newest file to determine generation time
+			var lastGenerated time.Time
+			filepath.Walk(siteDir, func(path string, info os.FileInfo, err error) error {
+				if err == nil && !info.IsDir() {
+					modTime := info.ModTime().UTC()
+					if modTime.After(lastGenerated) {
+						lastGenerated = modTime
+					}
+				}
+				return nil
+			})
+
+			if lastGenerated.IsZero() {
+				lastGenerated = infoDir.ModTime().UTC()
+			}
+
+			isOutdated := lastUpdated.After(lastGenerated)
+
+			e.App.Logger().Info("Deployment status check",
+				"site", host,
+				"lastUpdated", lastUpdated.Format(time.RFC3339Nano),
+				"lastGenerated", lastGenerated.Format(time.RFC3339Nano),
+				"isOutdated", isOutdated,
+			)
+
+			return e.JSON(200, map[string]any{
+				"exists":        true,
+				"lastGenerated": lastGenerated.Format(time.RFC3339),
+				"lastUpdated":   lastUpdated.Format(time.RFC3339),
+				"isOutdated":    isOutdated,
+			})
+		})
+
 		// trigger a deployment to Cloudflare Pages
 		se.Router.POST("/api/palacms/deploy/{siteId}", func(e *core.RequestEvent) error {
 			site, err := e.App.FindRecordById("sites", e.Request.PathValue("siteId"))
@@ -166,9 +350,14 @@ func RegisterExportEndpoints(pb *pocketbase.PocketBase) error {
 				return e.InternalServerError("cloudflare deployment failed", nil)
 			}
 
+			url := "https://" + proj + ".pages.dev"
+			if branch != "main" {
+				url = "https://" + branch + "." + proj + ".pages.dev"
+			}
+
 			return e.JSON(200, map[string]any{
 				"status": "deployed",
-				"url":    "https://" + proj + ".pages.dev",
+				"url":    url,
 			})
 		})
 
