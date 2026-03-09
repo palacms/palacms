@@ -53,7 +53,7 @@
 		"paneforge": "^1.0.2",
 		"pluralize": "^8.0.0",
 		"pocketbase": "^0.26.8",
-		"postcss": "^8.5.6",
+		"postcss": "^8.5.8",
 		"postcss-nested": "^7.0.2",
 		"posthog-js": "^1.359.1",
 		"prettier": "^3.8.1",
