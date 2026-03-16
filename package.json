@@ -29,7 +29,7 @@
 		"@tiptap/extension-highlight": "^3.20.2",
 		"@tiptap/extension-image": "^3.20.1",
 		"@tiptap/extension-link": "^3.20.2",
-		"@tiptap/extension-typography": "^3.20.1",
+		"@tiptap/extension-typography": "^3.20.2",
 		"@tiptap/extension-youtube": "^3.20.2",
 		"@tiptap/pm": "^3.20.1",
 		"@tiptap/starter-kit": "^3.20.2",
