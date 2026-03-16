@@ -30,7 +30,7 @@
 		"@tiptap/extension-image": "^3.20.1",
 		"@tiptap/extension-link": "^3.20.0",
 		"@tiptap/extension-typography": "^3.20.1",
-		"@tiptap/extension-youtube": "^3.20.1",
+		"@tiptap/extension-youtube": "^3.20.2",
 		"@tiptap/pm": "^3.20.1",
 		"@tiptap/starter-kit": "^3.20.1",
 		"@types/lodash-es": "^4.17.12",
