@@ -12,6 +12,20 @@ const sveltePromiseWorker = new PromiseWorker(new svelteWorker())
 // Based on https://github.com/pngwn/REPLicant & the Svelte REPL package (https://github.com/sveltejs/sites/tree/master/packages/repl)
 
 const CDN_URL = 'https://cdn.jsdelivr.net/npm' // or 'https://unpkg.com'
+const CDN_VERSION_OVERRIDES = {
+	svelte: '3.59.2',
+	'@iconify/svelte': '2.2.1'
+}
+const SVELTE_CDN_BASE = `${CDN_URL}/${cdn_package('svelte')}`
+
+function cdn_package(pkg_name) {
+	const version = CDN_VERSION_OVERRIDES[pkg_name]
+	return version ? `${pkg_name}@${version}` : pkg_name
+}
+
+function is_svelte_cdn_import(url = '') {
+	return url.startsWith(`${CDN_URL}/svelte/`) || url.startsWith(`${SVELTE_CDN_BASE}/`)
+}
 
 registerPromiseWorker(rollup_worker)
 async function rollup_worker({ component, hydrated, buildStatic = true, format = 'esm' }) {
@@ -118,15 +132,15 @@ async function rollup_worker({ component, hydrated, buildStatic = true, format =
 						// handle imports from 'svelte'
 
 						// import x from 'svelte'
-						if (importee === 'svelte') return `${CDN_URL}/svelte/index.mjs`
+						if (importee === 'svelte') return `${SVELTE_CDN_BASE}/index.mjs`
 
 						// import x from 'svelte/somewhere'
 						if (importee.startsWith('svelte/')) {
-							return `${CDN_URL}/svelte/${importee.slice(7)}/index.mjs`
+							return `${SVELTE_CDN_BASE}/${importee.slice(7)}/index.mjs`
 						}
 
 						// import x from './file.js' (via a 'svelte' or 'svelte/x' package)
-						if (importer && importer.startsWith(`${CDN_URL}/svelte/`)) {
+						if (is_svelte_cdn_import(importer)) {
 							const resolved = new URL(importee, importer).href
 							if (resolved.endsWith('.mjs')) return resolved
 							return `${resolved}/index.mjs`
@@ -153,7 +167,7 @@ async function rollup_worker({ component, hydrated, buildStatic = true, format =
 
 						const fetch_package_info = async () => {
 							try {
-								const pkg_url = await follow_redirects(`${CDN_URL}/${pkg_name}/package.json`)
+								const pkg_url = await follow_redirects(`${CDN_URL}/${cdn_package(pkg_name)}/package.json`)
 
 								if (!pkg_url) throw new Error()
 
