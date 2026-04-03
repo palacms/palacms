@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"bytes"
+	"encoding/xml"
+
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -154,6 +157,68 @@ func generatePage(
 	return newFiles, nil
 }
 
+// Sitemap XML structures
+type sitemapURL struct {
+	XMLName xml.Name `xml:"url"`
+	Loc     string   `xml:"loc"`
+}
+
+type sitemap struct {
+	XMLName xml.Name     `xml:"urlset"`
+	Xmlns   string       `xml:"xmlns,attr"`
+	URLs    []sitemapURL `xml:"url"`
+}
+
+func generateSitemap(system *filesystem.System, site *core.Record, pages []*core.Record) (string, error) {
+	host := site.GetString("host")
+	baseURL := "https://" + host
+
+	var urls []sitemapURL
+
+	// Collect all page paths recursively
+	var collectPaths func(page *core.Record, path string)
+	collectPaths = func(page *core.Record, path string) {
+		urls = append(urls, sitemapURL{
+			Loc: baseURL + path + "/",
+		})
+
+		for _, subPage := range pages {
+			if subPage.GetString("parent") == page.Id {
+				collectPaths(subPage, path+"/"+subPage.GetString("slug"))
+			}
+		}
+	}
+
+	// Start from root pages (no parent)
+	for _, page := range pages {
+		if page.GetString("parent") == "" {
+			collectPaths(page, "")
+		}
+	}
+
+	// Generate XML
+	sm := sitemap{
+		Xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9",
+		URLs:  urls,
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString(xml.Header)
+	encoder := xml.NewEncoder(&buf)
+	encoder.Indent("", "  ")
+	if err := encoder.Encode(sm); err != nil {
+		return "", err
+	}
+
+	// Write sitemap to filesystem
+	destinationKey := "sites/" + host + "/sitemap.xml"
+	if err := system.Upload(buf.Bytes(), destinationKey); err != nil {
+		return "", err
+	}
+
+	return destinationKey, nil
+}
+
 func RegisterGenerateEndpoint(pb *pocketbase.PocketBase) error {
 	pb.OnServe().BindFunc(func(serveEvent *core.ServeEvent) error {
 		serveEvent.Router.POST("/api/palacms/generate", func(requestEvent *core.RequestEvent) error {
@@ -206,6 +271,27 @@ func RegisterGenerateEndpoint(pb *pocketbase.PocketBase) error {
 				return err
 			}
 
+			// Generate sitemap
+			pagesCollection, err := pb.FindCollectionByNameOrId("pages")
+			if err != nil {
+				return err
+			}
+			pages, err := pb.FindRecordsByFilter(
+				pagesCollection.Id,
+				"site = {:site}",
+				"",
+				0,
+				0,
+				dbx.Params{"site": site.Id},
+			)
+			if err != nil {
+				return err
+			}
+			sitemapFile, err := generateSitemap(system, site, pages)
+			if err != nil {
+				return err
+			}
+
 		cleanup:
 			for _, file := range existingFiles {
 				if file.IsDir {
@@ -228,6 +314,10 @@ func RegisterGenerateEndpoint(pb *pocketbase.PocketBase) error {
 					if file.Key == pageFile {
 						continue cleanup
 					}
+				}
+
+				if file.Key == sitemapFile {
+					continue cleanup
 				}
 
 				if err := system.Delete(file.Key); err != nil {
