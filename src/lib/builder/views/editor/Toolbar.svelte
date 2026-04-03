@@ -19,16 +19,18 @@
 	import PageTypeModal from '$lib/builder/views/modal/PageTypeModal/PageTypeModal.svelte'
 	import Collaboration from '$lib/builder/views/modal/Collaboration.svelte'
 	import Deploy from '$lib/components/Modals/Deploy/Deploy.svelte'
+	import CFDeploy from '$lib/components/Modals/Deploy/CFDeploy.svelte'
 	import { usePublishSite } from '$lib/workers/Publish.svelte'
 	import { type Snippet } from 'svelte'
-	import { site_context } from '$lib/builder/stores/context'
-	import { current_user } from '$lib/pocketbase/user'
-	import { resolve_page, build_cms_page_url } from '$lib/pages'
 	import { self } from '$lib/pocketbase/managers'
 	import { getUserActivity } from '$lib/UserActivity.svelte'
 	import { useSiteSnapshot } from '$lib/Snapshot.svelte'
 	import { Snapshot } from '$lib/common/models/Snapshot'
 	import { instance } from '$lib/instance'
+	import { toast } from 'svelte-sonner'
+	import { site_context } from '$lib/builder/stores/context'
+	import { current_user } from '$lib/pocketbase/user'
+	import { resolve_page, build_cms_page_url } from '$lib/pages'
 
 	let { children }: { children: Snippet } = $props()
 
@@ -43,6 +45,15 @@
 	const active_page_type = $derived(active_page_type_id && PageTypes.one(active_page_type_id))
 
 	const publish = $derived(usePublishSite(site?.id))
+
+	// determine whether this site has cloudflare deployment configured
+	const has_cf = $derived(!!(site?.cfAccountId && site.cfProjectName))
+
+	let cf_deploying = $state(false)
+	async function handle_deploy() {
+		if (!site) return
+		cf_deploying = true
+	}
 
 	const existing_snapshots = $derived(SiteSnapshots.list({ filter: { site: site.id }, sort: '-created' }))
 	const create_snapshot = $derived(useSiteSnapshot({ source_site_id: site?.id }))
@@ -212,6 +223,12 @@
 	</Dialog.Content>
 </Dialog.Root>
 
+<Dialog.Root bind:open={cf_deploying}>
+	<Dialog.Content class="z-999 max-w-[500px] flex flex-col p-0">
+		<CFDeploy {site} {publish} onClose={() => (cf_deploying = false)} />
+	</Dialog.Content>
+</Dialog.Root>
+
 <nav aria-label="toolbar" id="primo-toolbar">
 	<div class="menu-container">
 		<div class="left">
@@ -363,7 +380,12 @@
 			</DropdownMenu.Root>
 			{@render children?.()}
 			<!-- <LocaleSelector /> -->
-			<ToolbarButton type="primo" icon="entypo:publish" label="Publish" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
+			{#if has_cf}
+				<ToolbarButton type="primo" icon="entypo:eye" label="Preview" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
+				<ToolbarButton type="primo" icon="lucide:cloud" label="Deploy" loading={cf_deploying} on:click={handle_deploy} />
+			{:else}
+				<ToolbarButton type="primo" icon="entypo:publish" label="Publish" key="p" loading={publish_in_progress} on:click={() => (publishing = true)} />
+			{/if}
 		</div>
 	</div>
 </nav>
