@@ -10,18 +10,18 @@
 	import EmptyState from '$lib/components/EmptyState.svelte'
 	import { Separator } from '$lib/components/ui/separator'
 	import { Button } from '$lib/components/ui/button'
-	import { Globe, Loader, ChevronDown, SquarePen, Trash2, EllipsisVertical, ArrowLeftRight, Download, CirclePlus } from 'lucide-svelte'
+	import { Globe, Loader, ChevronDown, SquarePen, Trash2, EllipsisVertical, ArrowLeftRight, Download, CirclePlus, Settings } from 'lucide-svelte'
+	import CFDeploy from '$lib/components/Modals/Deploy/CFDeploy.svelte'
 	import { useSidebar } from '$lib/components/ui/sidebar'
+	const sidebar = useSidebar()
 	import { page } from '$app/state'
 	import type { Site } from '$lib/common/models/Site'
 	import { Sites, SiteGroups, Pages } from '$lib/pocketbase/collections'
 	import { self as pb, self } from '$lib/pocketbase/managers'
 	import { goto } from '$app/navigation'
 	import { ClientResponseError } from 'pocketbase'
-
-	const sidebar = useSidebar()
-
-	const site_group_id = $derived(page.url.searchParams.get('group'))
+	import { toast } from 'svelte-sonner'
+	const site_group_id = $derived(page.url.searchParams.get('group') ?? '')
 	$effect(() => {
 		if (!site_group_id && site_groups.length > 0) {
 			const url = new URL(page.url)
@@ -62,13 +62,66 @@
 	}
 
 	async function download_site_file() {
-		// TODO: Implement
-		throw new Error('Not implemented')
+		if (!current_site) return
+		try {
+			const resp = await fetch(`${self.instance?.baseURL}/api/palacms/site-zip/${current_site.id}`, {
+				headers: {
+					Authorization: `Bearer ${self.instance?.authStore.token}`
+				}
+			})
+			if (!resp.ok) throw new Error('download failed')
+			const blob = await resp.blob()
+			const url = URL.createObjectURL(blob)
+			const a = document.createElement('a')
+			a.href = url
+			a.download = `${current_site.host}.zip`
+			a.click()
+			URL.revokeObjectURL(url)
+			toast.success('Downloaded site archive')
+		} catch (err) {
+			console.error('download error', err)
+			toast.error('Unable to download site')
+		}
 	}
 
 	let is_rename_site_open = $state(false)
 	let new_site_name = $state('')
 	let current_site: Site | null = $state(null)
+
+	// cloudflare settings modal
+	let is_cf_settings_open = $state(false)
+	let cf_account = $state('')
+	let cf_project = $state('')
+	let cf_token = $state('')
+
+	$effect(() => {
+		if (current_site) {
+			cf_account = current_site.cfAccountId || ''
+			cf_project = current_site.cfProjectName || ''
+			cf_token = '' // Token is write-only and not returned by API
+		}
+	})
+
+	async function save_cf_settings() {
+		if (!current_site) return
+		const data: Record<string, any> = {
+			cfAccountId: cf_account || null,
+			cfProjectName: cf_project || null
+		}
+		if (cf_token) {
+			data.cfApiToken = cf_token
+		}
+		Sites.update(current_site.id, data as Partial<Site>)
+		await self.commit()
+		is_cf_settings_open = false
+		toast.success('Cloudflare settings updated')
+	}
+
+	let is_cf_deploy_open = $state(false)
+	async function deploy_site() {
+		if (!current_site) return
+		is_cf_deploy_open = true
+	}
 
 	$effect(() => {
 		if (current_site) {
@@ -230,10 +283,35 @@
 							<span>Move</span>
 						</DropdownMenu.Item>
 					{/if}
-					<DropdownMenu.Item onclick={download_site_file}>
+					<DropdownMenu.Item
+						onclick={() => {
+							current_site = site
+							is_cf_settings_open = true
+						}}
+					>
+						<Settings class="h-4 w-4" />
+						<span>Cloudflare</span>
+					</DropdownMenu.Item>
+					<DropdownMenu.Item
+						onclick={() => {
+							current_site = site
+							download_site_file()
+						}}
+					>
 						<Download class="h-4 w-4" />
 						<span>Download</span>
 					</DropdownMenu.Item>
+					{#if site.cfAccountId && site.cfProjectName}
+						<DropdownMenu.Item
+							onclick={() => {
+								current_site = site
+								deploy_site()
+							}}
+						>
+							<Globe class="h-4 w-4" />
+							<span>Deploy</span>
+						</DropdownMenu.Item>
+					{/if}
 					<DropdownMenu.Item
 						onclick={() => {
 							current_site = site
@@ -326,6 +404,38 @@
 	</Dialog.Content>
 </Dialog.Root>
 
+<Dialog.Root bind:open={is_cf_settings_open}>
+	<Dialog.Content class="sm:max-w-[425px] pt-12 gap-0">
+		<h2 class="text-lg font-semibold leading-none tracking-tight">Cloudflare Settings</h2>
+		<p class="text-muted-foreground text-sm">Configure Cloudflare Pages deployment for this site</p>
+		<form
+			onsubmit={(e) => {
+				e.preventDefault()
+				save_cf_settings()
+			}}
+		>
+			<div class="grid gap-4 py-4">
+				<div class="space-y-2">
+					<Label for="cf-account">Account ID</Label>
+					<Input id="cf-account" bind:value={cf_account} placeholder="Cloudflare Account ID" />
+				</div>
+				<div class="space-y-2">
+					<Label for="cf-project">Project Name</Label>
+					<Input id="cf-project" bind:value={cf_project} placeholder="Pages Project Name" />
+				</div>
+				<div class="space-y-2">
+					<Label for="cf-token">API Token</Label>
+					<Input id="cf-token" type="password" bind:value={cf_token} placeholder="Cloudflare API Token" />
+				</div>
+			</div>
+			<Dialog.Footer>
+				<Button type="button" variant="outline" onclick={() => (is_cf_settings_open = false)}>Cancel</Button>
+				<Button type="submit">Save</Button>
+			</Dialog.Footer>
+		</form>
+	</Dialog.Content>
+</Dialog.Root>
+
 <AlertDialog.Root bind:open={is_delete_site_open}>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
@@ -384,5 +494,11 @@
 		<Dialog.Footer class="mt-6">
 			<Button type="button" onclick={() => (is_create_site_instructions_open = false)}>Okay</Button>
 		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={is_cf_deploy_open}>
+	<Dialog.Content class="z-999 max-w-[500px] flex flex-col p-0">
+		<CFDeploy site={current_site} onClose={() => (is_cf_deploy_open = false)} />
 	</Dialog.Content>
 </Dialog.Root>
