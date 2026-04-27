@@ -72,7 +72,7 @@
 		"tailwind-variants": "^3.2.2",
 		"tailwindcss": "^4.2.4",
 		"tailwindcss-animate": "^1.0.7",
-		"typescript": "^5.9.2",
+		"typescript": "^6.0.3",
 		"zod": "^4.3.6",
 		"css-simple-parser": "^3.0.2"
 	}
